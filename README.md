@@ -45,3 +45,4 @@ How it works:
 2. `VITE_DEV_API_PROXY_TARGET`: Vite proxy forwards `/api` and `/uploads` to this target during local development.
 3. If `VITE_API_URL` is not set, production website domains still use `https://apigeo.gisvn.space` by default.
 4. If `VITE_API_URL` is not set in local development, frontend keeps using current origin and Vite proxy handles the API routing.
+"# qlddhcm"  
