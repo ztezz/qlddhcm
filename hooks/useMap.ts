@@ -240,12 +240,46 @@ export const useMap = (user: User | null, systemSettings?: Record<string, string
             }
 
             try {
+                const printCanvas = element.querySelector('canvas');
+
+                if (printCanvas instanceof HTMLCanvasElement) {
+                    const isCanvasReady = () => {
+                        const ctx = printCanvas.getContext('2d');
+                        if (!ctx || printCanvas.width === 0 || printCanvas.height === 0) return false;
+                        const sample = ctx.getImageData(
+                            0,
+                            0,
+                            Math.min(20, printCanvas.width),
+                            Math.min(20, printCanvas.height)
+                        ).data;
+                        for (let i = 3; i < sample.length; i += 4) {
+                            if (sample[i] > 0) return true;
+                        }
+                        return false;
+                    };
+
+                    let attempts = 0;
+                    while (!isCanvasReady() && attempts < 10) {
+                        await new Promise(resolve => setTimeout(resolve, 180));
+                        attempts += 1;
+                    }
+                }
+
                 const canvas = await html2canvas(element, {
-                    scale: 3, 
+                    scale: 2.8,
                     useCORS: true,
                     logging: false,
                     backgroundColor: '#ffffff',
+                    windowWidth: element.scrollWidth,
+                    windowHeight: element.scrollHeight,
                     onclone: (clonedDoc) => {
+                        const clonedElement = clonedDoc.getElementById('print-template');
+                        if (clonedElement) {
+                            (clonedElement as HTMLElement).style.opacity = '1';
+                            (clonedElement as HTMLElement).style.position = 'relative';
+                            (clonedElement as HTMLElement).style.left = '0';
+                        }
+
                         const textEls = clonedDoc.querySelectorAll('*');
                         textEls.forEach(el => {
                             (el as HTMLElement).style.color = '#000000';
@@ -253,15 +287,55 @@ export const useMap = (user: User | null, systemSettings?: Record<string, string
                         });
                     }
                 });
-                
-                const imgData = canvas.toDataURL('image/png', 1.0);
+
                 const pdf = new jsPDF('p', 'mm', 'a4');
-                const pdfWidth = pdf.internal.pageSize.getWidth();
-                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-                const finalHeight = pdfHeight > 297 ? 297 : pdfHeight;
-                
-                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, finalHeight, undefined, 'FAST');
-                pdf.save(`TrichLuc_To${parcel.properties.so_to}_Thua${parcel.properties.so_thua}.pdf`);
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+
+                const marginX = 8;
+                const marginTop = 8;
+                const marginBottom = 12;
+                const printableWidthMm = pageWidth - marginX * 2;
+                const printableHeightMm = pageHeight - marginTop - marginBottom;
+                const pageSliceHeightPx = Math.max(1, Math.floor((canvas.width * printableHeightMm) / printableWidthMm));
+
+                let offsetY = 0;
+                let pageIndex = 0;
+
+                while (offsetY < canvas.height) {
+                    const sliceHeightPx = Math.min(pageSliceHeightPx, canvas.height - offsetY);
+                    const pageCanvas = document.createElement('canvas');
+                    pageCanvas.width = canvas.width;
+                    pageCanvas.height = sliceHeightPx;
+
+                    const pageCtx = pageCanvas.getContext('2d');
+                    if (!pageCtx) throw new Error('Không thể dựng trang PDF tạm thời.');
+
+                    pageCtx.fillStyle = '#ffffff';
+                    pageCtx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+                    pageCtx.drawImage(canvas, 0, offsetY, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
+
+                    const pageImgData = pageCanvas.toDataURL('image/png', 1.0);
+                    const renderedHeightMm = (sliceHeightPx * printableWidthMm) / canvas.width;
+
+                    if (pageIndex > 0) pdf.addPage();
+                    pdf.addImage(pageImgData, 'PNG', marginX, marginTop, printableWidthMm, renderedHeightMm, undefined, 'FAST');
+
+                    offsetY += sliceHeightPx;
+                    pageIndex += 1;
+                }
+
+                const totalPages = pdf.getNumberOfPages();
+                for (let page = 1; page <= totalPages; page++) {
+                    pdf.setPage(page);
+                    pdf.setFont('times', 'normal');
+                    pdf.setFontSize(9);
+                    pdf.text(`Trang ${page}/${totalPages}`, pageWidth / 2, pageHeight - 6, { align: 'center' });
+                }
+
+                const soTo = parcel.properties?.so_to || parcel.properties?.sodoto || 'UnknownTo';
+                const soThua = parcel.properties?.so_thua || parcel.properties?.sothua || 'UnknownThua';
+                pdf.save(`TrichLuc_To${soTo}_Thua${soThua}.pdf`);
             } catch (err) {
                 console.error("PDF Export Error:", err);
                 setDialog({ isOpen: true, type: 'error', title: 'Lỗi PDF', message: 'Có lỗi xảy ra khi tạo tệp trích lục.' });
@@ -269,7 +343,7 @@ export const useMap = (user: User | null, systemSettings?: Record<string, string
                 setIsPrinting(false);
                 setPrintingParcel(null);
             }
-        }, 1800); 
+        }, 1500); 
     };
 
     const handleUpdateParcel = async (e: React.FormEvent) => {

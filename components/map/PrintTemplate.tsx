@@ -128,18 +128,22 @@ const PrintTemplate: React.FC<PrintTemplateProps> = ({ parcel, user, systemSetti
                         const pNext = points[idx + 1] || points[0];
                         const x1 = tx(pt.x), y1 = ty(pt.y);
                         const x2 = tx(pNext.x), y2 = ty(pNext.y);
+                        const pointLabelStep = points.length > 60 ? 4 : points.length > 40 ? 3 : points.length > 24 ? 2 : 1;
+                        const edgeLabelStep = points.length > 60 ? 5 : points.length > 40 ? 4 : points.length > 24 ? 3 : 1;
                         
                         ctx.beginPath();
                         ctx.arc(x1, y1, 2.5, 0, Math.PI * 2);
                         ctx.fillStyle = "#000000";
                         ctx.fill();
-                        
-                        ctx.font = "bold 12px Arial";
-                        ctx.fillStyle = "#000000";
-                        const anglePoint = Math.atan2(y1 - (canvas.height/2), x1 - (canvas.width/2));
-                        ctx.fillText(pt.id.toString(), x1 + Math.cos(anglePoint) * 15 - 4, y1 + Math.sin(anglePoint) * 15 + 4);
-                        
-                        if (pt.distanceNext) {
+
+                        if (idx % pointLabelStep === 0) {
+                            ctx.font = points.length > 40 ? "bold 10px Arial" : "bold 12px Arial";
+                            ctx.fillStyle = "#000000";
+                            const anglePoint = Math.atan2(y1 - (canvas.height/2), x1 - (canvas.width/2));
+                            ctx.fillText(pt.id.toString(), x1 + Math.cos(anglePoint) * 15 - 4, y1 + Math.sin(anglePoint) * 15 + 4);
+                        }
+
+                        if (pt.distanceNext && idx % edgeLabelStep === 0) {
                             const midX = (x1 + x2) / 2;
                             const midY = (y1 + y2) / 2;
                             ctx.save();
@@ -147,7 +151,7 @@ const PrintTemplate: React.FC<PrintTemplateProps> = ({ parcel, user, systemSetti
                             let angle = Math.atan2(y2 - y1, x2 - x1);
                             if (angle > Math.PI/2 || angle < -Math.PI/2) angle += Math.PI;
                             ctx.rotate(angle);
-                            ctx.font = "italic bold 10px Arial";
+                            ctx.font = points.length > 40 ? "italic bold 8px Arial" : "italic bold 10px Arial";
                             ctx.textAlign = "center";
                             ctx.fillStyle = "#000000";
                             ctx.fillText(pt.distanceNext, 0, -5);
@@ -170,7 +174,7 @@ const PrintTemplate: React.FC<PrintTemplateProps> = ({ parcel, user, systemSetti
     const tableStyle = getTableStyles();
 
     return (
-        <div id="print-template" style={{ 
+            <div id="print-template" style={{ 
             width: "794px", 
             minHeight: "1123px", 
             padding: "40px 60px", 
@@ -213,44 +217,42 @@ const PrintTemplate: React.FC<PrintTemplateProps> = ({ parcel, user, systemSetti
             
             {/* Hình vẽ thửa đất - Thu nhỏ chiều cao nếu cần không gian cho bảng */}
             <div style={{ width: "100%", border: "1px solid #000", padding: "5px", marginBottom: "10px", position: "relative", backgroundColor: "#ffffff" }}>
-                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: geometryPoints.length > 30 ? "300px" : "380px" }}>
-                    <canvas ref={parcelCanvasRef} width={650} height={geometryPoints.length > 30 ? 300 : 380} style={{ maxWidth: "100%" }} />
+                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "380px" }}>
+                    <canvas ref={parcelCanvasRef} width={650} height={380} style={{ maxWidth: "100%" }} />
                 </div>
             </div>
 
             {/* Bảng tọa độ - Cơ chế co giãn linh hoạt */}
             <div style={{ width: "100%", marginBottom: "15px" }}>
                 <p style={{ fontWeight: "bold", fontSize: "13px", marginBottom: "5px", fontStyle: "italic", color: "#000000" }}>6. Bảng kê tọa độ và khoảng cách:</p>
-                <div style={{ maxHeight: "400px", overflow: "hidden" }}>
-                    <table style={{ 
-                        width: "100%", 
-                        borderCollapse: "collapse", 
-                        fontSize: tableStyle.fontSize, 
-                        textAlign: "center", 
-                        border: "1.5px solid #000",
-                        color: "#000000",
-                        lineHeight: tableStyle.lineHeight
-                    }}>
-                        <thead>
-                            <tr style={{ backgroundColor: "#f2f2f2" }}>
-                                <th style={{ border: "1px solid #000", padding: tableStyle.padding, fontWeight: "bold" }}>Số hiệu đỉnh</th>
-                                <th style={{ border: "1px solid #000", padding: tableStyle.padding, fontWeight: "bold" }}>Tọa độ X (m)</th>
-                                <th style={{ border: "1px solid #000", padding: tableStyle.padding, fontWeight: "bold" }}>Tọa độ Y (m)</th>
-                                <th style={{ border: "1px solid #000", padding: tableStyle.padding, fontWeight: "bold" }}>Cạnh (m)</th>
+                <table style={{ 
+                    width: "100%", 
+                    borderCollapse: "collapse", 
+                    fontSize: tableStyle.fontSize, 
+                    textAlign: "center", 
+                    border: "1.5px solid #000",
+                    color: "#000000",
+                    lineHeight: tableStyle.lineHeight
+                }}>
+                    <thead>
+                        <tr style={{ backgroundColor: "#f2f2f2" }}>
+                            <th style={{ border: "1px solid #000", padding: tableStyle.padding, fontWeight: "bold" }}>Số hiệu đỉnh</th>
+                            <th style={{ border: "1px solid #000", padding: tableStyle.padding, fontWeight: "bold" }}>Tọa độ X (m)</th>
+                            <th style={{ border: "1px solid #000", padding: tableStyle.padding, fontWeight: "bold" }}>Tọa độ Y (m)</th>
+                            <th style={{ border: "1px solid #000", padding: tableStyle.padding, fontWeight: "bold" }}>Cạnh (m)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {geometryPoints.map((p, i) => (
+                            <tr key={i}>
+                                <td style={{ border: "1px solid #000", padding: tableStyle.padding, fontWeight: "bold" }}>{p.id}</td>
+                                <td style={{ border: "1px solid #000", padding: tableStyle.padding }}>{p.x.toFixed(3)}</td>
+                                <td style={{ border: "1px solid #000", padding: tableStyle.padding }}>{p.y.toFixed(3)}</td>
+                                <td style={{ border: "1px solid #000", padding: tableStyle.padding, fontWeight: "bold" }}>{p.distanceNext || "-"}</td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            {geometryPoints.map((p, i) => (
-                                <tr key={i}>
-                                    <td style={{ border: "1px solid #000", padding: tableStyle.padding, fontWeight: "bold" }}>{p.id}</td>
-                                    <td style={{ border: "1px solid #000", padding: tableStyle.padding }}>{p.x.toFixed(3)}</td>
-                                    <td style={{ border: "1px solid #000", padding: tableStyle.padding }}>{p.y.toFixed(3)}</td>
-                                    <td style={{ border: "1px solid #000", padding: tableStyle.padding, fontWeight: "bold" }}>{p.distanceNext || "-"}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                        ))}
+                    </tbody>
+                </table>
             </div>
 
             {/* Chữ ký và QR - Đẩy xuống cuối */}
