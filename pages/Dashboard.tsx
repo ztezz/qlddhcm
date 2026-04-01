@@ -3,9 +3,9 @@ import React, { useEffect, useState, useRef } from 'react';
 import { statsService } from '../services/mockBackend';
 import { DashboardStats, User } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, Sector, LineChart, Line } from 'recharts';
-import { FileText, Download, RefreshCw, DollarSign, Scaling, Building, ChevronRight, Activity, Loader2, AlertTriangle, ListFilter, Wifi, Image, ArrowUpRight, ArrowDownRight, Minus, PieChart as PieChartIcon, Table2, CalendarDays } from 'lucide-react';
+import { FileText, Download, RefreshCw, DollarSign, Scaling, Building, ChevronRight, Activity, Loader2, AlertTriangle, ListFilter, Wifi, Image, ArrowUpRight, ArrowDownRight, Minus, PieChart as PieChartIcon, Table2, CalendarDays, RotateCcw, Braces } from 'lucide-react';
 import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
+import { toBlob } from 'html-to-image';
 
 const COLORS = ['#6366f1', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#8b5cf6', '#3b82f6', '#475569'];
 
@@ -67,6 +67,28 @@ const TinySparkline: React.FC<{ values: number[]; stroke: string }> = ({ values,
     );
 };
 
+const TrendBadge: React.FC<{ direction: 'up' | 'down' | 'flat'; label: string }> = ({ direction, label }) => {
+    if (direction === 'up') {
+        return (
+            <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <ArrowUpRight size={11} /> {label} so với kỳ trước
+            </span>
+        );
+    }
+    if (direction === 'down') {
+        return (
+            <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-full bg-red-500/20 text-red-300 border border-red-500/30">
+                <ArrowDownRight size={11} /> {label} so với kỳ trước
+            </span>
+        );
+    }
+    return (
+        <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-full bg-gray-500/20 text-gray-300 border border-gray-500/30">
+            <Minus size={11} /> {label} so với kỳ trước
+        </span>
+    );
+};
+
 const Dashboard: React.FC<DashboardProps> = ({ user }) => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
     const [previousStats, setPreviousStats] = useState<DashboardStats | null>(null);
@@ -83,8 +105,93 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     const [branchSort, setBranchSort] = useState<'value-desc' | 'value-asc' | 'name-asc'>('value-desc');
     const [typeQuery, setTypeQuery] = useState('');
     const [typeView, setTypeView] = useState<'chart' | 'table'>('chart');
-      const [kpiHistory, setKpiHistory] = useState<Array<{ ts: number; totalParcels: number; totalArea: number; totalValue: number }>>([]);
+    const [kpiHistory, setKpiHistory] = useState<Array<{ ts: number; totalParcels: number; totalArea: number; totalValue: number }>>([]);
+    const [movingAverageWindow, setMovingAverageWindow] = useState<2 | 3 | 5>(3);
+    const [trendVisibility, setTrendVisibility] = useState({
+        parcels: true,
+        area: true,
+        value: true,
+        movingAverage: true
+    });
   const dashboardRef = useRef<HTMLDivElement>(null);
+
+  const exportFileBase = () => `ThongKe_${new Date().toISOString().replace(/[:.]/g, '-')}`;
+
+  const downloadBlob = (blob: Blob, fileName: string) => {
+      const nav = window.navigator as Navigator & { msSaveOrOpenBlob?: (b: Blob, n?: string) => boolean };
+      if (typeof nav.msSaveOrOpenBlob === 'function') {
+          nav.msSaveOrOpenBlob(blob, fileName);
+          return;
+      }
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      // Delay revocation to avoid race conditions in some browsers.
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const safeExcelCell = (value: unknown) => {
+      const raw = value === null || value === undefined ? '' : String(value);
+      const escaped = raw.replace(/"/g, '""');
+      const dangerous = /^[=+\-@]/.test(escaped.trim());
+      const safe = dangerous ? `'${escaped}` : escaped;
+      return `"${safe}"`;
+  };
+
+  const blobToDataUrl = async (blob: Blob) => {
+      return await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+              if (typeof reader.result === 'string') resolve(reader.result);
+              else reject(new Error('Cannot convert blob to data URL'));
+          };
+          reader.onerror = () => reject(reader.error || new Error('FileReader failed'));
+          reader.readAsDataURL(blob);
+      });
+  };
+
+  const captureDashboardBlob = async (pixelRatio = 2) => {
+      if (!dashboardRef.current) {
+          throw new Error('Dashboard reference not found');
+      }
+
+      const element = dashboardRef.current;
+      const orbs = element.querySelectorAll('.animate-orb-move');
+      const hiddenSnapshot: Array<{ el: HTMLElement; display: string }> = [];
+
+      // Hide heavy animated layers before capture to reduce rendering failures.
+      orbs.forEach((orb) => {
+          const el = orb as HTMLElement;
+          hiddenSnapshot.push({ el, display: el.style.display });
+          el.style.display = 'none';
+      });
+
+      try {
+          const blob = await toBlob(element, {
+              pixelRatio,
+              cacheBust: true,
+              skipFonts: true,
+              backgroundColor: '#0B0C10',
+              style: {
+                  transform: 'none',
+                  isolation: 'isolate'
+              }
+          });
+
+          if (!blob) {
+              throw new Error('Capture failed: cannot create image blob');
+          }
+          return blob;
+      } finally {
+          hiddenSnapshot.forEach(({ el, display }) => {
+              el.style.display = display;
+          });
+      }
+  };
 
       const getTimeParams = () => {
           if (timePreset === 'custom') {
@@ -141,94 +248,96 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     return () => clearInterval(interval);
         }, [user, autoRefresh, timePreset]);
 
-  // EXPORT TO EXCEL (CSV) - Optimized with correct Encoding and Formatting
-  const handleExportExcel = () => {
-    if (!stats) return;
+  // EXPORT TO EXCEL/CSV (an toàn và bám theo dữ liệu đang lọc)
+  const handleExportExcel = async () => {
     setIsExporting('EXCEL');
-    
-    setTimeout(() => {
+    try {
+        const exportedAt = new Date().toLocaleString('vi-VN');
+        const selectedPeriod = timePreset === 'custom' ? `Tùy chọn (${dateFrom || '...'} -> ${dateTo || '...'})` : timePreset;
+        const sourceStats = stats || MOCK_FALLBACK;
+
         const rows = [
-            ["BÁO CÁO THỐNG KÊ QUẢN LÝ ĐẤT ĐAI - GEOMASTER"],
-            ["Chi nhánh", user.branchId || "Trụ sở chính"],
-            ["Thời điểm xuất", new Date().toLocaleString("vi-VN")],
-            [""],
-            ["--- CHỈ SỐ TỔNG QUAN ---"],
-            ["Chỉ tiêu", "Giá trị", "Đơn vị"],
-            ["Tổng số thửa đất", stats.totalParcels, "Thửa"],
-            ["Tổng diện tích", stats.totalArea.toFixed(2), "m2"],
-            ["Giá trị tích lũy (tạm tính)", stats.totalValue, "VND"],
-            [""],
-            ["--- CƠ CẤU LOẠI ĐẤT ---"],
-            ["Loại đất", "Số lượng thửa"],
-            ...stats.parcelsByType.map(p => [p.name, p.value]),
-            [""],
-            ["--- MẬT ĐỘ THEO KHU VỰC ---"],
-            ["Tên khu vực/phân khu", "Số lượng thửa"],
-            ...stats.valueByBranch.map(v => [v.name, v.value])
+            ['BAO CAO THONG KE QUAN LY DAT DAI - GEOMASTER'],
+            ['Chi nhanh', user.branchId || 'Tru so chinh'],
+            ['Thoi diem xuat', exportedAt],
+            ['Bo loc thoi gian', selectedPeriod],
+            ['Che do loai dat', typeView === 'chart' ? 'Bieu do' : 'Bang'],
+            ['Tu khoa loc loai dat', typeQuery || '(khong)'],
+            ['Bo loc khu vuc', branchLimit === 0 ? 'Tat ca' : `Top ${branchLimit}`],
+            ['Sap xep khu vuc', branchSort],
+            [''],
+            ['--- CHI SO TONG QUAN ---'],
+            ['Chi tieu', 'Gia tri', 'Don vi'],
+            ['Tong so thua dat', sourceStats.totalParcels, 'Thua'],
+            ['Tong dien tich', sourceStats.totalArea.toFixed(2), 'm2'],
+            ['Gia tri tich luy (tam tinh)', sourceStats.totalValue, 'VND'],
+            [''],
+            ['--- CO CAU LOAI DAT (DU LIEU DANG LOC) ---'],
+            ['Loai dat', 'So luong thua', 'Ty trong (%)'],
+            ...filteredTypeData.map(item => [
+                item.name,
+                item.value,
+                totalTypeParcels > 0 ? ((item.value / totalTypeParcels) * 100).toFixed(2) : '0.00'
+            ]),
+            [''],
+            ['--- MAT DO THEO KHU VUC (DU LIEU DANG LOC) ---'],
+            ['Ten khu vuc/phan khu', 'So luong thua'],
+            ...filteredBranchData.map(item => [item.name, item.value])
         ];
 
-        // Dùng BOM \uFEFF để Excel nhận diện đúng tiếng Việt UTF-8
-        let csvContent = "\uFEFF"; 
-        rows.forEach(rowArray => {
-            const row = rowArray.map(val => {
-                if (typeof val === 'string') return `"${val.replace(/"/g, '""')}"`;
-                return val;
-            }).join(",");
-            csvContent += row + "\r\n";
+        let csvContent = '\uFEFF';
+        rows.forEach((rowArray) => {
+            csvContent += rowArray.map(safeExcelCell).join(',') + '\r\n';
         });
 
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.setAttribute("href", url);
-        link.setAttribute("download", `BaoCao_ThongKe_${new Date().getTime()}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        downloadBlob(
+            new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }),
+            `${exportFileBase()}.csv`
+        );
+    } catch (error) {
+        console.error('CSV Export Error:', error);
+        alert('Khong the xuat file CSV. Vui long thu lai.');
+    } finally {
         setIsExporting(null);
-    }, 800);
+    }
   };
 
   // EXPORT TO PDF - Fixed Blur & Ghosting Issues
   const handleExportPDF = async () => {
     if (!dashboardRef.current) return;
     setIsExporting('PDF');
-    
-    const element = dashboardRef.current;
-    
-    try {
-        // Tạm thời ẩn các thành phần trang trí gây nhiễu cho canvas
-        const orbs = element.querySelectorAll('.animate-orb-move');
-        orbs.forEach(orb => (orb as HTMLElement).style.display = 'none');
-        
-        const canvas = await html2canvas(element, {
-            scale: 2.5, // Tăng độ nét cao
-            useCORS: true,
-            backgroundColor: '#0B0C10',
-            logging: false,
-            onclone: (clonedDoc) => {
-                // Trong bản clone, xóa các hiệu ứng blur gây lỗi đen màn hình
-                const clonedElement = clonedDoc.querySelector('.mesh-bg') as HTMLElement;
-                if (clonedElement) {
-                    clonedElement.style.filter = 'none';
-                    clonedElement.style.backdropFilter = 'none';
-                }
-                // Ẩn nút xuất trong PDF
-                const buttons = clonedDoc.querySelectorAll('button');
-                buttons.forEach(btn => (btn as HTMLElement).style.display = 'none');
-            }
-        });
-        
-        // Trả lại hiển thị cho orbs
-        orbs.forEach(orb => (orb as HTMLElement).style.display = 'block');
 
-        const imgData = canvas.toDataURL('image/png');
+    try {
+        const imageBlob = await captureDashboardBlob(2);
+        const imgData = await blobToDataUrl(imageBlob);
+
+        // Decode once to compute dimensions reliably.
+        const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+            const img = new window.Image();
+            img.onload = () => resolve(img);
+            img.onerror = () => reject(new Error('Cannot decode captured image'));
+            img.src = imgData;
+        });
+
         const pdf = new jsPDF('p', 'mm', 'a4');
         const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-        
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
-        pdf.save(`ThongKe_GeoMaster_${new Date().getTime()}.pdf`);
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        const imgWidth = pdfWidth;
+        const imgHeight = (image.height * pdfWidth) / image.width;
+
+        let heightLeft = imgHeight;
+        let position = 0;
+
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
+        heightLeft -= pdfHeight;
+
+        while (heightLeft > 0) {
+            position = heightLeft - imgHeight;
+            pdf.addPage();
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
+            heightLeft -= pdfHeight;
+        }
+        pdf.save(`${exportFileBase()}.pdf`);
     } catch (error) {
         console.error("PDF Export Error:", error);
         alert("Có lỗi khi tạo PDF. Hệ thống đã được ghi nhận lỗi.");
@@ -242,22 +351,46 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     setIsExporting('PNG');
 
     try {
-        const canvas = await html2canvas(dashboardRef.current, {
-            scale: 2,
-            useCORS: true,
-            backgroundColor: '#0B0C10',
-            logging: false
-        });
-        const url = canvas.toDataURL('image/png');
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `ThongKe_GeoMaster_${new Date().getTime()}.png`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        const blob = await captureDashboardBlob(2);
+        downloadBlob(blob, `${exportFileBase()}.png`);
     } catch (error) {
         console.error('PNG Export Error:', error);
         alert('Có lỗi khi xuất ảnh PNG.');
+    } finally {
+        setIsExporting(null);
+    }
+  };
+
+  const handleExportJSON = async () => {
+    setIsExporting('JSON');
+    try {
+        const payload = {
+            metadata: {
+                exportedAt: new Date().toISOString(),
+                branchId: user.branchId || null,
+                timePreset,
+                dateFrom: dateFrom || null,
+                dateTo: dateTo || null,
+                branchLimit,
+                branchSort,
+                typeQuery,
+                typeView,
+                movingAverageWindow,
+                trendVisibility
+            },
+            overview: stats || MOCK_FALLBACK,
+            filtered: {
+                landTypes: filteredTypeData,
+                branches: filteredBranchData
+            },
+            trend: trendChartData
+        };
+
+        const content = JSON.stringify(payload, null, 2);
+        downloadBlob(new Blob([content], { type: 'application/json;charset=utf-8;' }), `${exportFileBase()}.json`);
+    } catch (error) {
+        console.error('JSON Export Error:', error);
+        alert('Khong the xuat file JSON. Vui long thu lai.');
     } finally {
         setIsExporting(null);
     }
@@ -286,12 +419,26 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     const parcelsHistoryValues = kpiHistory.map(item => item.totalParcels);
     const areaHistoryValues = kpiHistory.map(item => item.totalArea);
     const valueHistoryValues = kpiHistory.map(item => item.totalValue);
-    const trendChartData = kpiHistory.map(item => ({
+    const movingAverageAt = (values: number[], index: number, windowSize: number) => {
+        if (index < windowSize - 1) return null;
+        const slice = values.slice(index - windowSize + 1, index + 1);
+        return slice.reduce((acc, cur) => acc + cur, 0) / windowSize;
+    };
+
+    const trendChartData = kpiHistory.map((item, index) => {
+        const maParcels = movingAverageAt(parcelsHistoryValues, index, movingAverageWindow);
+        const maArea = movingAverageAt(areaHistoryValues, index, movingAverageWindow);
+        const maValue = movingAverageAt(valueHistoryValues, index, movingAverageWindow);
+        return {
             time: new Date(item.ts).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
             totalParcels: item.totalParcels,
             totalArea: Math.round(item.totalArea),
-            totalValueBillion: Number((item.totalValue / 1e9).toFixed(2))
-    }));
+            totalValueBillion: Number((item.totalValue / 1e9).toFixed(2)),
+            totalParcelsMA: maParcels ? Math.round(maParcels) : null,
+            totalAreaMA: maArea ? Math.round(maArea) : null,
+            totalValueBillionMA: maValue ? Number((maValue / 1e9).toFixed(2)) : null
+        };
+    });
 
   const getTrend = (current: number, previous: number | null) => {
       if (previous === null || previous === 0) {
@@ -323,7 +470,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
   } as const;
 
   return (
-    <div ref={dashboardRef} className="relative p-6 bg-[#0B0C10] mesh-bg animate-mesh min-h-full text-white overflow-x-hidden overflow-y-auto h-full custom-scrollbar">
+    <div id="dashboard-export-root" ref={dashboardRef} className="relative p-6 bg-[#0B0C10] mesh-bg animate-mesh min-h-full text-white overflow-x-hidden overflow-y-auto h-full custom-scrollbar">
       
       {/* BACKGROUND DECORATION */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0 decoration-layers">
@@ -377,6 +524,13 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                         className="flex items-center gap-2 bg-white/5 border border-white/10 hover:bg-indigo-600 px-4 py-2 rounded-xl text-[10px] font-black transition-all shadow-xl active:scale-95 group disabled:opacity-50"
                     >
                         {isExporting === 'PNG' ? <Loader2 size={14} className="animate-spin" /> : <Image size={14} />} PNG
+                    </button>
+                    <button
+                        onClick={handleExportJSON}
+                        disabled={!!isExporting}
+                        className="flex items-center gap-2 bg-white/5 border border-white/10 hover:bg-cyan-700 px-4 py-2 rounded-xl text-[10px] font-black transition-all shadow-xl active:scale-95 group disabled:opacity-50"
+                    >
+                        {isExporting === 'JSON' ? <Loader2 size={14} className="animate-spin" /> : <Braces size={14} />} JSON
                     </button>
         </div>
       </div>
@@ -527,9 +681,53 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                         <h3 className="text-lg font-black uppercase tracking-tighter text-emerald-400 font-display">Xu hướng đồng bộ KPI</h3>
                         <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">Biến động qua các lần cập nhật gần nhất</p>
                     </div>
-                    <div className="text-[9px] text-gray-400 font-black uppercase tracking-widest bg-black/20 border border-white/10 rounded-lg px-3 py-1.5">
-                        {trendChartData.length} mốc dữ liệu
+                    <div className="flex items-center gap-2">
+                        <div className="text-[9px] text-gray-400 font-black uppercase tracking-widest bg-black/20 border border-white/10 rounded-lg px-3 py-1.5">
+                            {trendChartData.length} mốc dữ liệu
+                        </div>
+                        <button
+                            onClick={() => {
+                                setKpiHistory([]);
+                                setPreviousStats(null);
+                            }}
+                            className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/20 transition-all"
+                        >
+                            <RotateCcw size={12} /> Reset trend
+                        </button>
                     </div>
+                </div>
+
+                <div className="mb-4 flex flex-wrap items-center gap-2">
+                    {[
+                        { key: 'parcels' as const, label: 'Số thửa', color: 'text-cyan-300 border-cyan-500/40 bg-cyan-500/10' },
+                        { key: 'area' as const, label: 'Diện tích', color: 'text-violet-300 border-violet-500/40 bg-violet-500/10' },
+                        { key: 'value' as const, label: 'Giá trị', color: 'text-emerald-300 border-emerald-500/40 bg-emerald-500/10' }
+                    ].map(item => (
+                        <button
+                            key={item.key}
+                            onClick={() => setTrendVisibility(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase border transition-all ${trendVisibility[item.key] ? item.color : 'text-gray-500 border-gray-700 bg-gray-900/50'}`}
+                        >
+                            {trendVisibility[item.key] ? 'ON' : 'OFF'} • {item.label}
+                        </button>
+                    ))}
+
+                    <button
+                        onClick={() => setTrendVisibility(prev => ({ ...prev, movingAverage: !prev.movingAverage }))}
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase border transition-all ${trendVisibility.movingAverage ? 'text-amber-300 border-amber-500/40 bg-amber-500/10' : 'text-gray-500 border-gray-700 bg-gray-900/50'}`}
+                    >
+                        {trendVisibility.movingAverage ? 'ON' : 'OFF'} • Moving Avg
+                    </button>
+
+                    <select
+                        value={movingAverageWindow}
+                        onChange={(e) => setMovingAverageWindow(Number(e.target.value) as 2 | 3 | 5)}
+                        className="bg-black/20 border border-white/10 rounded-lg px-2.5 py-1.5 text-[10px] font-black text-gray-300 uppercase outline-none"
+                    >
+                        <option value={2}>MA 2</option>
+                        <option value={3}>MA 3</option>
+                        <option value={5}>MA 5</option>
+                    </select>
                 </div>
 
                 <div className="h-[300px]">
@@ -547,15 +745,26 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                                 <Tooltip
                                     contentStyle={{ backgroundColor: 'rgba(11, 12, 16, 0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
                                     formatter={(value: number, name: string) => {
-                                        if (name === 'totalValueBillion') return [`${value.toLocaleString('vi-VN')} tỷ`, 'Giá trị'];
-                                        if (name === 'totalArea') return [`${value.toLocaleString('vi-VN')} m2`, 'Diện tích'];
+                                        if (name === 'totalValueBillion' || name === 'totalValueBillionMA') return [`${value.toLocaleString('vi-VN')} tỷ`, name.includes('MA') ? 'Giá trị (MA)' : 'Giá trị'];
+                                        if (name === 'totalArea' || name === 'totalAreaMA') return [`${value.toLocaleString('vi-VN')} m2`, name.includes('MA') ? 'Diện tích (MA)' : 'Diện tích'];
+                                        if (name === 'totalParcelsMA') return [value.toLocaleString('vi-VN'), 'Số thửa (MA)'];
                                         return [value.toLocaleString('vi-VN'), 'Số thửa'];
                                     }}
                                 />
                                 <Legend wrapperStyle={{ fontSize: '10px', fontWeight: 800, paddingTop: '8px' }} />
-                                <Line yAxisId="left" type="monotone" dataKey="totalParcels" name="Số thửa" stroke="#22d3ee" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
-                                <Line yAxisId="left" type="monotone" dataKey="totalArea" name="Diện tích" stroke="#a78bfa" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
-                                <Line yAxisId="right" type="monotone" dataKey="totalValueBillion" name="Giá trị (tỷ)" stroke="#34d399" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
+                                {trendVisibility.parcels && <Line yAxisId="left" type="monotone" dataKey="totalParcels" name="Số thửa" stroke="#22d3ee" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />}
+                                {trendVisibility.area && <Line yAxisId="left" type="monotone" dataKey="totalArea" name="Diện tích" stroke="#a78bfa" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />}
+                                {trendVisibility.value && <Line yAxisId="right" type="monotone" dataKey="totalValueBillion" name="Giá trị (tỷ)" stroke="#34d399" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />}
+
+                                {trendVisibility.movingAverage && trendVisibility.parcels && (
+                                    <Line yAxisId="left" type="monotone" dataKey="totalParcelsMA" name={`Số thửa (MA${movingAverageWindow})`} stroke="#67e8f9" strokeWidth={2} dot={false} strokeDasharray="6 4" connectNulls />
+                                )}
+                                {trendVisibility.movingAverage && trendVisibility.area && (
+                                    <Line yAxisId="left" type="monotone" dataKey="totalAreaMA" name={`Diện tích (MA${movingAverageWindow})`} stroke="#c4b5fd" strokeWidth={2} dot={false} strokeDasharray="6 4" connectNulls />
+                                )}
+                                {trendVisibility.movingAverage && trendVisibility.value && (
+                                    <Line yAxisId="right" type="monotone" dataKey="totalValueBillionMA" name={`Giá trị (MA${movingAverageWindow})`} stroke="#6ee7b7" strokeWidth={2} dot={false} strokeDasharray="6 4" connectNulls />
+                                )}
                             </LineChart>
                         </ResponsiveContainer>
                     )}
@@ -744,28 +953,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
       </div>
     </div>
   );
-};
-
-const TrendBadge: React.FC<{ direction: 'up' | 'down' | 'flat'; label: string }> = ({ direction, label }) => {
-    if (direction === 'up') {
-        return (
-            <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                <ArrowUpRight size={11} /> {label} so với kỳ trước
-            </span>
-        );
-    }
-    if (direction === 'down') {
-        return (
-            <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-full bg-red-500/20 text-red-300 border border-red-500/30">
-                <ArrowDownRight size={11} /> {label} so với kỳ trước
-            </span>
-        );
-    }
-    return (
-        <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-full bg-gray-500/20 text-gray-300 border border-gray-500/30">
-            <Minus size={11} /> {label} so với kỳ trước
-        </span>
-    );
 };
 
 export default Dashboard;

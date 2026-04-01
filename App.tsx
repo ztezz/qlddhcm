@@ -199,7 +199,7 @@ const App: React.FC = () => {
                   <div className="w-2 h-2 bg-white rounded-full animate-ping"></div>
               </div>
           </div>
-          <p className="font-display uppercase tracking-[0.3em] text-[10px] text-blue-400 font-black animate-pulse">GeoMaster Engine Loading...</p>
+          <p className="font-display uppercase tracking-[0.3em] text-[10px] text-blue-400 font-black animate-pulse">QLDDHCM Đang khởi động...</p>
       </div>
   );
 
