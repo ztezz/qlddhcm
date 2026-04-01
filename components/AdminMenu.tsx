@@ -20,7 +20,7 @@ const AdminMenu: React.FC<AdminMenuProps> = ({ activeTab, onSelect, systemName, 
 
         { header: 'Hệ thống' },
         { id: 'USERS', icon: Users, label: 'Người dùng' },
-        { id: 'PRICES_2026', icon: Coins, label: 'Quản lý Bảng giá 2026', highlight: true },
+        { id: 'PRICES_2026', icon: Coins, label: 'Quản lý Bảng giá đất', highlight: true },
         { id: 'NOTIFICATIONS', icon: BellRing, label: 'Thông báo hệ thống' },
         { id: 'PERMISSIONS', icon: ShieldCheck, label: 'Phân quyền & Vai trò' },
         { id: 'BRANCHES', icon: Building2, label: 'Chi nhánh' },

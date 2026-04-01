@@ -202,9 +202,23 @@ export const adminService = {
     addBasemap: async (bm: any) => apiCall('/basemaps', { method: 'POST', body: JSON.stringify(bm) }),
     updateBasemap: async (bm: any) => apiCall(`/basemaps/${bm.id}`, { method: 'PUT', body: JSON.stringify(bm) }),
     deleteBasemap: async (id: string) => apiCall(`/basemaps/${id}`, { method: 'DELETE' }),
-    getLogs: async () => {
-        const data = await apiCall('/logs');
-        return Array.isArray(data) ? data : [];
+    getLogs: async (params?: { page?: number; limit?: number; action?: string; search?: string; from?: string; to?: string }) => {
+        let qs = `?t=${Date.now()}`;
+        if (params?.page) qs += `&page=${params.page}`;
+        if (params?.limit) qs += `&limit=${params.limit}`;
+        if (params?.action) qs += `&action=${encodeURIComponent(params.action)}`;
+        if (params?.search) qs += `&search=${encodeURIComponent(params.search)}`;
+        if (params?.from) qs += `&from=${encodeURIComponent(params.from)}`;
+        if (params?.to) qs += `&to=${encodeURIComponent(params.to)}`;
+        const data = await apiCall(`/logs${qs}`);
+        if (Array.isArray(data)) return { data, total: data.length, page: 1, limit: data.length, pages: 1 };
+        return data as { data: SystemLog[]; total: number; page: number; limit: number; pages: number };
+    },
+    getLogStats: async () => {
+        try {
+            const data = await apiCall('/logs/stats');
+            return data as { today: number; actionStats: { action: string; count: number }[]; uniqueUsersWeek: number };
+        } catch { return { today: 0, actionStats: [], uniqueUsersWeek: 0 }; }
     },
     getRolePermissions: async () => {
         const data = await apiCall('/role-permissions');

@@ -96,8 +96,43 @@ export default function(pool, logSystemAction, dbConfig) {
     });
 
     // --- SYSTEM LOGS ---
+    router.get('/logs/stats', authenticateToken, async (req, res) => {
+        try {
+            const [todayResult, actionResult, userResult] = await Promise.all([
+                pool.query(`SELECT COUNT(*) as total FROM system_logs WHERE timestamp::date = CURRENT_DATE`),
+                pool.query(`SELECT action, COUNT(*) as count FROM system_logs GROUP BY action ORDER BY count DESC LIMIT 10`),
+                pool.query(`SELECT COUNT(DISTINCT user_name) as total FROM system_logs WHERE timestamp > NOW() - INTERVAL '7 days'`)
+            ]);
+            res.json({
+                today: parseInt(todayResult.rows[0].total),
+                actionStats: actionResult.rows.map(r => ({ action: r.action, count: parseInt(r.count) })),
+                uniqueUsersWeek: parseInt(userResult.rows[0].total)
+            });
+        } catch (e) { res.status(500).json({ error: e.message }); }
+    });
+
     router.get('/logs', authenticateToken, async (req, res) => {
-        try { res.json((await pool.query(`SELECT id, user_id as "userId", user_name as "userName", action, details, timestamp FROM system_logs ORDER BY timestamp DESC LIMIT 200`)).rows); } catch (e) { res.status(500).json({ error: e.message }); }
+        try {
+            const { page = 1, limit = 50, action, search, from, to } = req.query;
+            const offset = (parseInt(page) - 1) * parseInt(limit);
+            const conditions = [];
+            const params = [];
+            let idx = 1;
+            if (action) { conditions.push(`action = $${idx++}`); params.push(action); }
+            if (search) {
+                conditions.push(`(user_name ILIKE $${idx} OR details ILIKE $${idx + 1})`);
+                params.push(`%${search}%`, `%${search}%`); idx += 2;
+            }
+            if (from) { conditions.push(`timestamp >= $${idx++}`); params.push(new Date(from).toISOString()); }
+            if (to) { conditions.push(`timestamp <= $${idx++}`); params.push(new Date(to + 'T23:59:59').toISOString()); }
+            const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+            const [countResult, dataResult] = await Promise.all([
+                pool.query(`SELECT COUNT(*) as total FROM system_logs ${where}`, params),
+                pool.query(`SELECT id, user_id as "userId", user_name as "userName", action, details, timestamp FROM system_logs ${where} ORDER BY timestamp DESC LIMIT $${idx} OFFSET $${idx + 1}`, [...params, parseInt(limit), offset])
+            ]);
+            const total = parseInt(countResult.rows[0].total);
+            res.json({ data: dataResult.rows, total, page: parseInt(page), limit: parseInt(limit), pages: Math.ceil(total / parseInt(limit)) });
+        } catch (e) { res.status(500).json({ error: e.message }); }
     });
 
     // --- DB STATUS & SERVER INFO ---
