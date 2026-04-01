@@ -135,14 +135,14 @@ export const useMap = (user: User | null, systemSettings?: Record<string, string
         try {
             let rows: any[] = [];
             if (soTo && soThua) {
-                rows = await parcelApi.getAll(String(tableName), {
+                rows = (await parcelApi.getAll(String(tableName), {
                     sodoto: String(soTo),
                     sothua: String(soThua)
-                });
+                })).data;
             }
 
             if (!Array.isArray(rows) || rows.length === 0) {
-                rows = await parcelApi.getAll(String(tableName));
+                rows = (await parcelApi.getAll(String(tableName))).data;
             }
 
             if (!Array.isArray(rows) || rows.length === 0) {
