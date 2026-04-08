@@ -25,7 +25,9 @@ const MailCenter: React.FC<MessagingProps> = ({ user }) => {
     const [selectedMail, setSelectedMail] = useState<Message | null>(null);
     const [recipients, setRecipients] = useState<User[]>([]);
     const [loading, setLoading] = useState(false);
-    
+    const [unreadCount, setUnreadCount] = useState(0);
+    const [searchQuery, setSearchQuery] = useState('');
+
     // Compose State
     const [composeData, setComposeData] = useState({ receiverId: '', content: '' });
     const [isEmojiOpen, setIsEmojiOpen] = useState(false);
@@ -57,8 +59,14 @@ const MailCenter: React.FC<MessagingProps> = ({ user }) => {
     }, []);
 
     useEffect(() => {
+        setSearchQuery('');
         loadMails();
         loadRecipients();
+    }, [view]);
+
+    useEffect(() => {
+        const interval = setInterval(() => { if (view === 'INBOX') loadMails(); }, 60000);
+        return () => clearInterval(interval);
     }, [view]);
 
     const loadMails = async () => {
@@ -70,6 +78,7 @@ const MailCenter: React.FC<MessagingProps> = ({ user }) => {
             else if (view === 'SENT') data = await messageService.getSent();
             else if (view === 'TRASH') data = await messageService.getTrash();
             setMails(data);
+            if (view === 'INBOX') setUnreadCount(data.filter(m => !m.is_read).length);
         } catch (e) {
             console.error(e);
         } finally {
@@ -91,6 +100,7 @@ const MailCenter: React.FC<MessagingProps> = ({ user }) => {
             try {
                 await messageService.markAsRead(mail.id);
                 setMails(prev => prev.map(m => m.id === mail.id ? { ...m, is_read: true } : m));
+                setUnreadCount(prev => Math.max(0, prev - 1));
             } catch (e) {}
         }
     };
@@ -182,11 +192,44 @@ const MailCenter: React.FC<MessagingProps> = ({ user }) => {
         }, 10);
     };
 
+    const relativeTime = (dateStr: string) => {
+        const diff = Date.now() - new Date(dateStr).getTime();
+        if (diff < 60000) return 'Vừa xong';
+        if (diff < 3600000) return `${Math.floor(diff / 60000)} phút trước`;
+        if (diff < 86400000) return `${Math.floor(diff / 3600000)} giờ trước`;
+        if (diff < 604800000) return `${Math.floor(diff / 86400000)} ngày trước`;
+        return new Date(dateStr).toLocaleDateString('vi-VN');
+    };
+
+    const renderMarkdown = (text: string) => {
+        return text.split('\n').map((line, i) => {
+            const escaped = line
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+            const htmlLine = escaped
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/_(.*?)_/g, '<em>$1</em>');
+            if (line.startsWith('- ')) return <li key={i} className="ml-5 list-disc text-slate-300" dangerouslySetInnerHTML={{ __html: htmlLine.substring(2) }} />;
+            if (line.startsWith('> ')) return <blockquote key={i} className="border-l-2 border-slate-600 pl-3 text-slate-500 italic" dangerouslySetInnerHTML={{ __html: htmlLine.substring(5) }} />;
+            if (line === '') return <div key={i} className="h-2" />;
+            return <p key={i} dangerouslySetInnerHTML={{ __html: htmlLine }} />;
+        });
+    };
+
     const getAvatarUrl = (path?: string) => {
         if (!path) return null;
         if (path.startsWith('http') || path.startsWith('data:')) return path;
         return `${API_URL}${path.startsWith('/') ? path : '/' + path}`;
     };
+
+    const filteredMails = searchQuery.trim()
+        ? mails.filter(m => {
+            const q = searchQuery.toLowerCase();
+            const name = (view === 'INBOX' ? m.sender_name : m.receiver_name) || '';
+            return name.toLowerCase().includes(q) || m.content.toLowerCase().includes(q);
+          })
+        : mails;
 
     return (
         <div className="flex h-full bg-slate-950 overflow-hidden font-sans">
@@ -206,7 +249,12 @@ const MailCenter: React.FC<MessagingProps> = ({ user }) => {
                             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${view === 'INBOX' ? 'bg-slate-800 text-blue-400 shadow-inner' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'}`}
                         >
                             <Inbox size={18}/>
-                            <span className="text-xs font-bold uppercase tracking-wider">Hộp thư đến</span>
+                            <span className="text-xs font-bold uppercase tracking-wider flex-1">Hộp thư đến</span>
+                            {unreadCount > 0 && (
+                                <span className="bg-blue-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full min-w-[20px] text-center">
+                                    {unreadCount > 99 ? '99+' : unreadCount}
+                                </span>
+                            )}
                         </button>
                         <button 
                             onClick={() => { setView('SENT'); setSelectedMail(null); }}
@@ -229,22 +277,38 @@ const MailCenter: React.FC<MessagingProps> = ({ user }) => {
             {/* List & Detail Area */}
             <div className="flex-1 flex flex-col relative bg-slate-950 min-w-0">
                 {/* Header */}
-                <div className="p-4 border-b border-slate-800 bg-slate-900/30 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg shrink-0 ${view === 'TRASH' ? 'bg-red-600/20' : 'bg-blue-600/20'}`}>
-                            {view === 'INBOX' ? <Inbox className="text-blue-500" size={20}/> : 
-                             view === 'SENT' ? <SendHorizontal className="text-blue-500" size={20}/> : 
-                             view === 'TRASH' ? <Trash2 className="text-red-500" size={20}/> :
-                             <Mail className="text-blue-500" size={20}/>}
+                <div className="border-b border-slate-800 bg-slate-900/30">
+                    <div className="p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg shrink-0 ${view === 'TRASH' ? 'bg-red-600/20' : 'bg-blue-600/20'}`}>
+                                {view === 'INBOX' ? <Inbox className="text-blue-500" size={20}/> : 
+                                 view === 'SENT' ? <SendHorizontal className="text-blue-500" size={20}/> : 
+                                 view === 'TRASH' ? <Trash2 className="text-red-500" size={20}/> :
+                                 <Mail className="text-blue-500" size={20}/>}
+                            </div>
+                            <h2 className="text-sm font-black text-white uppercase tracking-widest truncate">
+                                {view === 'INBOX' ? 'Hộp thư đến' : view === 'SENT' ? 'Thư đã gửi' : view === 'TRASH' ? 'Thùng rác' : view === 'READ' ? 'Chi tiết thư' : 'Soạn thư mới'}
+                            </h2>
                         </div>
-                        <h2 className="text-sm font-black text-white uppercase tracking-widest truncate">
-                            {view === 'INBOX' ? 'Hộp thư đến' : view === 'SENT' ? 'Thư đã gửi' : view === 'TRASH' ? 'Thùng rác' : view === 'READ' ? 'Chi tiết thư' : 'Soạn thư mới'}
-                        </h2>
+                        {(view === 'INBOX' || view === 'SENT' || view === 'TRASH') && (
+                            <button onClick={loadMails} className="text-slate-500 hover:text-white transition-all shrink-0">
+                                <RefreshCw size={18} className={loading ? "animate-spin" : ""}/>
+                            </button>
+                        )}
                     </div>
                     {(view === 'INBOX' || view === 'SENT' || view === 'TRASH') && (
-                        <button onClick={loadMails} className="text-slate-500 hover:text-white transition-all shrink-0">
-                            <RefreshCw size={18} className={loading ? "animate-spin" : ""}/>
-                        </button>
+                        <div className="px-4 pb-3">
+                            <div className="relative">
+                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"/>
+                                <input
+                                    type="text"
+                                    placeholder="Tìm kiếm theo người gửi, nội dung..."
+                                    value={searchQuery}
+                                    onChange={e => setSearchQuery(e.target.value)}
+                                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
+                                />
+                            </div>
+                        </div>
                     )}
                 </div>
 
@@ -312,8 +376,8 @@ const MailCenter: React.FC<MessagingProps> = ({ user }) => {
                                             </div>
                                         </div>
 
-                                        <div className="text-slate-200 leading-relaxed whitespace-pre-wrap text-sm py-4 min-h-[200px]">
-                                            {selectedMail.content}
+                                        <div className="text-slate-200 leading-relaxed text-sm py-4 min-h-[200px] space-y-1.5">
+                                            {renderMarkdown(selectedMail.content)}
                                         </div>
                                     </div>
                                 );
@@ -392,6 +456,9 @@ const MailCenter: React.FC<MessagingProps> = ({ user }) => {
                                         value={composeData.content}
                                         onChange={e => setComposeData({...composeData, content: e.target.value})}
                                     />
+                                    <div className="text-right text-[10px] text-slate-600 mt-1.5 font-mono pr-1">
+                                        {composeData.content.length} ký tự
+                                    </div>
                                 </div>
 
                                 <div className="flex justify-end gap-4 pt-4">
@@ -416,15 +483,15 @@ const MailCenter: React.FC<MessagingProps> = ({ user }) => {
                                 </div>
                             )}
                             <div className="divide-y divide-slate-800/50">
-                                {mails.length === 0 ? (
+                            {filteredMails.length === 0 ? (
                                     <div className="p-32 text-center flex flex-col items-center gap-6 opacity-20">
                                         <Mail size={80} className="text-slate-600"/>
                                         <div className="space-y-1">
-                                            <p className="text-sm font-black uppercase tracking-[0.3em]">Hộp thư đang trống</p>
-                                            <p className="text-[10px] font-bold">Bắt đầu trao đổi công việc nội bộ ngay</p>
+                                            <p className="text-sm font-black uppercase tracking-[0.3em]">{searchQuery ? 'Không tìm thấy kết quả' : 'Hộp thư đang trống'}</p>
+                                            <p className="text-[10px] font-bold">{searchQuery ? 'Thử tìm với từ khóa khác' : 'Bắt đầu trao đổi công việc nội bộ ngay'}</p>
                                         </div>
                                     </div>
-                                ) : mails.map(m => (
+                            ) : filteredMails.map(m => (
                                     <div 
                                         key={m.id} 
                                         onClick={() => handleReadMail(m)}
@@ -443,7 +510,7 @@ const MailCenter: React.FC<MessagingProps> = ({ user }) => {
                                                 <p className={`text-xs uppercase tracking-tighter truncate ${m.is_read || view === 'SENT' || view === 'TRASH' ? 'text-slate-400 font-bold' : 'text-white font-black'}`}>
                                                     {view === 'INBOX' ? m.sender_name : view === 'SENT' ? m.receiver_name : (m.sender_id === user.id ? <span className="text-blue-400">Đến: {m.receiver_name}</span> : <span className="text-emerald-400">Từ: {m.sender_name}</span>)}
                                                 </p>
-                                                <p className="text-[9px] font-black text-slate-600 uppercase shrink-0 ml-4 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">{new Date(m.timestamp).toLocaleDateString()}</p>
+                                                <p className="text-[9px] font-black text-slate-600 uppercase shrink-0 ml-4 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">{relativeTime(m.timestamp)}</p>
                                             </div>
                                             <p className="text-sm truncate text-slate-200">
                                                 {m.content.length > 100 ? m.content.substring(0, 100) + '...' : m.content}

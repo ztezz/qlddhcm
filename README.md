@@ -66,7 +66,7 @@ npm run lint
 ### Mặc định
 
 - Trên domain production `geo.gisvn.space`, `www.geo.gisvn.space`, `qlddhcm.io.vn`, `www.qlddhcm.io.vn`:
-  frontend mặc định gọi API tại `https://apigeo.gisvn.space`.
+  frontend mặc định gọi API tại `https://api.datdathcm.pro`.
 - Trong môi trường local (không set biến môi trường):
   frontend gọi cùng origin và Vite proxy chuyển tiếp `/api`, `/uploads` sang backend.
 
@@ -75,8 +75,8 @@ npm run lint
 Tạo file `.env.local` ở root dự án:
 
 ```env
-VITE_API_URL=https://apigeo.gisvn.space
-VITE_DEV_API_PROXY_TARGET=https://apigeo.gisvn.space
+VITE_API_URL=https://api.datdathcm.pro
+VITE_DEV_API_PROXY_TARGET=https://api.datdathcm.pro
 ```
 
 Ý nghĩa:

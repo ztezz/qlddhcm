@@ -1,10 +1,12 @@
 
 import { User, UserRole, Branch, LandParcel, DashboardStats, SystemLog, LandPriceConfig, WMSLayerConfig, SystemSetting, RoleConfig, PermissionDefinition, BasemapConfig, MenuItem, Message, SystemNotification, LandPrice2026 } from '../types';
 
-const PRODUCTION_API_URL = 'https://apigeo.gisvn.space';
+const PRODUCTION_API_URL = 'https://api.datdaihcm.pro';
 
 const ALLOWED_HOSTS = [
     'geo.gisvn.space', 
+    'datdaihcm.pro',
+    'www.datdaihcm.pro',
     'www.geo.gisvn.space',
     'qlddhcm.io.vn',
     'aistudio.google.com',
@@ -19,11 +21,6 @@ const getApiUrl = () => {
         return configuredApiUrl.replace(/\/$/, '');
     }
     
-    // Domain production luôn dùng API riêng.
-    if (ALLOWED_HOSTS.includes(hostname) && !hostname.includes('aistudio.google.com')) {
-        return PRODUCTION_API_URL;
-    }
-
     // Kiểm tra môi trường AI Studio hoặc các tên miền đặc biệt đang chạy full-stack cùng origin.
     if (hostname.includes('.run.app') || 
         hostname.includes('aistudio.google.com')) {
@@ -42,8 +39,8 @@ const getApiUrl = () => {
         return origin; // Trong môi trường dev tích hợp, dùng luôn origin
     }
 
-    // Fallback cho các trường hợp khác
-    return origin;
+    // Mọi môi trường deploy còn lại mặc định gọi backend riêng.
+    return PRODUCTION_API_URL;
 };
 
 export const API_URL = getApiUrl();

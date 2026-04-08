@@ -1,7 +1,7 @@
 
 import { LandParcel } from '../types';
 
-const PRODUCTION_API_URL = 'https://apigeo.gisvn.space';
+const PRODUCTION_API_URL = 'https://api.datdaihcm.pro';
 
 const getApiUrl = () => {
     const { hostname, origin } = window.location;
@@ -11,15 +11,21 @@ const getApiUrl = () => {
         return configuredApiUrl.replace(/\/$/, '');
     }
     
-    // Whitelist Production Domains
-    if (['geo.gisvn.space', 'www.geo.gisvn.space', 'qlddhcm.io.vn', 'www.qlddhcm.io.vn'].includes(hostname)) {
-        return PRODUCTION_API_URL; 
-    }
-
     // Dùng origin (cùng host:port với trình duyệt) để đi qua Vite proxy
     // Vite proxy sẽ chuyển tiếp /api → backend port 3004
     // Tránh gọi trực tiếp port 3004 vì máy khác trong LAN có thể bị chặn firewall
-    return origin;
+    const isLocal = hostname === 'localhost' || 
+        hostname === '127.0.0.1' || 
+        hostname === '0.0.0.0' ||
+        hostname.startsWith('192.168.') || 
+        hostname.startsWith('10.') || 
+        hostname.startsWith('172.');
+
+    if (isLocal || hostname.includes('.run.app') || hostname.includes('aistudio.google.com')) {
+        return origin;
+    }
+
+    return PRODUCTION_API_URL;
 };
 
 export const API_URL = getApiUrl();

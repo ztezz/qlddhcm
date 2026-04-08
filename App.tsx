@@ -16,6 +16,8 @@ const Messaging = lazy(() => import('./pages/Messaging'));
 const QRGenerator = lazy(() => import('./components/tools/QRGenerator'));
 const EditorPage = lazy(() => import('./pages/EditorPage'));
 const LandPriceLookup = lazy(() => import('./pages/LandPriceLookup'));
+const About = lazy(() => import('./pages/About'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 const PageLoader = () => (
     <div className="h-full w-full bg-slate-900/50 backdrop-blur-sm flex flex-col items-center justify-center text-white gap-4 animate-in fade-in duration-300">
@@ -40,7 +42,8 @@ const PATH_MAPPING: Record<string, string> = {
     'messaging': '/tinnhan',
     'qr-generator': '/taomaqr',
     'land-price': '/giadata',
-    'admin': '/quantri'
+    'admin': '/quantri',
+    'about': '/gioithieu'
 };
 
 // Bản đồ ngược để highlight Sidebar dựa trên URL
@@ -216,6 +219,15 @@ const App: React.FC = () => {
       />
   );
 
+  // Render 404 toàn màn hình — trước khi vào layout sidebar
+  const KNOWN_PATHS = ['/', '/giadata', '/taomaqr', '/gioithieu', '/thongke', '/chinhsuabanve', '/hoso', '/tinnhan', '/quantri'];
+  const isKnownPath = KNOWN_PATHS.some(p => location.pathname === p || location.pathname.startsWith(p + '/'));
+  if (!isKnownPath) return (
+      <Suspense fallback={<PageLoader />}>
+          <NotFound />
+      </Suspense>
+  );
+
   if (systemSettings['maintenance_mode'] === 'true' && user?.role !== UserRole.ADMIN) return (
       <div className="h-screen w-full bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
           <ShieldAlert className="text-orange-500 mb-6" size={64} />
@@ -246,6 +258,7 @@ const App: React.FC = () => {
                 <Route path="/" element={<MapPage user={user} systemSettings={systemSettings} />} />
                 <Route path="/giadata" element={<LandPriceLookup />} />
                 <Route path="/taomaqr" element={<QRGenerator />} />
+                <Route path="/gioithieu" element={<About />} />
                 
                 {/* Protected Routes */}
                 <Route path="/thongke" element={<ProtectedRoute><Dashboard user={user!} /></ProtectedRoute>} />
@@ -259,9 +272,6 @@ const App: React.FC = () => {
                         <AdminPage systemName={systemSettings['system_name']} logoUrl={systemSettings['site_logo']} />
                     </ProtectedRoute>
                 } />
-                
-                {/* Fallback */}
-                <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </Suspense>
       </main>

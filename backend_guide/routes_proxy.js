@@ -8,6 +8,7 @@ const ALLOWED_PROXY_DOMAINS = [
     'images.vietbando.com',
     'gisvn.space',
     'apigeo.gisvn.space',
+    'api.datdathcm.pro',
     'openstreetmap.org',
     'tile.openstreetmap.org',
     'google.com',

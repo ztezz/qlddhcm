@@ -5,8 +5,8 @@
   "type": "module",
   "main": "server/index.js",
   "scripts": {
-    "dev": "vite",
-    "dev:frontend": "vite",
+    "dev": "vite --host --port 3000",
+    "dev:frontend": "vite --host --port 3000",
     "dev:backend": "node backend_guide/server.js",
     "dev:all": "concurrently -k -n backend,frontend -c yellow,cyan \"npm run dev:backend\" \"npm run dev:frontend\"",
     "build": "vite build",
@@ -54,5 +54,8 @@
     "concurrently": "^9.2.1",
     "typescript": "^5.2.2",
     "vite": "^5.0.0"
-  }
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
 }
