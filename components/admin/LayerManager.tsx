@@ -10,11 +10,34 @@ interface LayerManagerProps {
 }
 
 const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
+    const TIFF_MARKER = '#TIFF';
+    const ACTIVE_TAB_STORAGE_KEY = 'admin.layerManager.activeTab';
+
+    const parseIsTiffLayer = (description: string): boolean => {
+        const text = (description || '').toLowerCase();
+        return text.includes('#tiff') || text.includes('[tiff]') || text.includes('raster:tiff') || text.includes('layer:tiff') || text.includes('format:tiff');
+    };
+
+    const applyTiffMarkerToDescription = (description: string, isTiff: boolean): string => {
+        const cleaned = (description || '')
+            .replace(/#tiff/gi, '')
+            .replace(/\[tiff\]/gi, '')
+            .replace(/raster:tiff/gi, '')
+            .replace(/layer:tiff/gi, '')
+            .replace(/format:tiff/gi, '')
+            .replace(/\s{2,}/g, ' ')
+            .trim();
+
+        if (!isTiff) return cleaned;
+        return cleaned ? `${cleaned} ${TIFF_MARKER}` : TIFF_MARKER;
+    };
+
     const [wmsLayers, setWmsLayers] = useState<WMSLayerConfig[]>([]);
     const [basemaps, setBasemaps] = useState<BasemapConfig[]>([]);
     const [spatialTables, setSpatialTables] = useState<any[]>([]);
     const [globalQuery, setGlobalQuery] = useState('');
     const [layerFilter, setLayerFilter] = useState<'ALL' | 'VISIBLE' | 'HIDDEN' | 'PLANNING' | 'STANDARD' | 'ADMINISTRATIVE'>('ALL');
+    const [activeTab, setActiveTab] = useState<'TABLES' | 'LAYERS' | 'BASEMAPS'>('LAYERS');
     const [draggingLayerId, setDraggingLayerId] = useState<string | null>(null);
     const [draggingBasemapId, setDraggingBasemapId] = useState<string | null>(null);
     const [dragOverLayerId, setDragOverLayerId] = useState<string | null>(null);
@@ -55,6 +78,25 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
     });
 
     useEffect(() => { loadData(); }, []);
+
+    useEffect(() => {
+        try {
+            const savedTab = window.localStorage.getItem(ACTIVE_TAB_STORAGE_KEY);
+            if (savedTab === 'TABLES' || savedTab === 'LAYERS' || savedTab === 'BASEMAPS') {
+                setActiveTab(savedTab);
+            }
+        } catch (_) {
+            // Ignore localStorage errors (private mode / blocked storage).
+        }
+    }, []);
+
+    useEffect(() => {
+        try {
+            window.localStorage.setItem(ACTIVE_TAB_STORAGE_KEY, activeTab);
+        } catch (_) {
+            // Ignore localStorage errors (private mode / blocked storage).
+        }
+    }, [activeTab]);
 
     useEffect(() => {
         return () => {
@@ -104,8 +146,8 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
         
         if (type === 'LAYER') {
             setFormData(item 
-                ? { ...item, type: item.type || 'WMS', category: item.category || 'STANDARD', opacity: item.opacity ?? 1, description: item.description || '', sortOrder: item.sortOrder ?? 0 } 
-                : { name: '', url: '', layers: '', visible: true, opacity: 1, type: 'WMS', category: 'STANDARD', description: '', sortOrder: 0 }
+                ? { ...item, type: item.type || 'WMS', category: item.category || 'STANDARD', opacity: item.opacity ?? 1, description: item.description || '', sortOrder: item.sortOrder ?? 0, isTiff: parseIsTiffLayer(item.description || '') } 
+                : { name: '', url: '', layers: '', visible: true, opacity: 1, type: 'WMS', category: 'STANDARD', description: '', sortOrder: 0, isTiff: false }
             );
         } else if (type === 'TABLE') {
             if (item) {
@@ -142,7 +184,8 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
                 }
 
                 finalData.sortOrder = Number.isFinite(Number(finalData.sortOrder)) ? Number(finalData.sortOrder) : 0;
-                finalData.description = (finalData.description || '').trim();
+                finalData.description = applyTiffMarkerToDescription((finalData.description || '').trim(), !!finalData.isTiff);
+                delete finalData.isTiff;
 
                 if (!finalData.name || !finalData.url) {
                     throw new Error("Vui lòng nhập Tên và URL cho lớp bản đồ.");
@@ -348,6 +391,12 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
         totalBasemaps: basemaps.length
     };
 
+    const searchPlaceholder = activeTab === 'TABLES'
+        ? 'Tìm theo tên bảng, tên hiển thị, mô tả...'
+        : activeTab === 'LAYERS'
+            ? 'Tìm theo tên lớp, layer, mô tả, URL...'
+            : 'Tìm theo tên bản đồ nền, mô tả, URL...';
+
     return (
         <div className="p-8 space-y-10 pb-24 max-w-7xl mx-auto font-sans">
             {error && (
@@ -409,21 +458,29 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
                     <input
                         value={globalQuery}
                         onChange={(e) => setGlobalQuery(e.target.value)}
-                        placeholder="Tìm theo tên lớp, bảng, mô tả, URL..."
+                        placeholder={searchPlaceholder}
                         className="w-full bg-gray-900 border border-gray-700 rounded-xl pl-9 pr-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500"
                     />
                 </div>
                 <div className="bg-gray-900 p-1 rounded-xl flex gap-1">
-                    <button onClick={() => setLayerFilter('ALL')} className={`px-3 py-1.5 text-[10px] font-black rounded-lg uppercase ${layerFilter === 'ALL' ? 'bg-cyan-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}>Tất cả</button>
-                    <button onClick={() => setLayerFilter('VISIBLE')} className={`px-3 py-1.5 text-[10px] font-black rounded-lg uppercase ${layerFilter === 'VISIBLE' ? 'bg-emerald-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}>Đang hiện</button>
-                    <button onClick={() => setLayerFilter('HIDDEN')} className={`px-3 py-1.5 text-[10px] font-black rounded-lg uppercase ${layerFilter === 'HIDDEN' ? 'bg-slate-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}>Đang ẩn</button>
-                    <button onClick={() => setLayerFilter('PLANNING')} className={`px-3 py-1.5 text-[10px] font-black rounded-lg uppercase ${layerFilter === 'PLANNING' ? 'bg-purple-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}>Quy hoạch</button>
-                    <button onClick={() => setLayerFilter('ADMINISTRATIVE')} className={`px-3 py-1.5 text-[10px] font-black rounded-lg uppercase ${layerFilter === 'ADMINISTRATIVE' ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}>Hành chính</button>
+                    <button onClick={() => setActiveTab('TABLES')} className={`px-3 py-1.5 text-[10px] font-black rounded-lg uppercase ${activeTab === 'TABLES' ? 'bg-green-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}>Bảng dữ liệu</button>
+                    <button onClick={() => setActiveTab('LAYERS')} className={`px-3 py-1.5 text-[10px] font-black rounded-lg uppercase ${activeTab === 'LAYERS' ? 'bg-cyan-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}>Lớp</button>
+                    <button onClick={() => setActiveTab('BASEMAPS')} className={`px-3 py-1.5 text-[10px] font-black rounded-lg uppercase ${activeTab === 'BASEMAPS' ? 'bg-orange-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}>Base map</button>
                 </div>
             </div>
 
+            {activeTab === 'LAYERS' && (
+                <div className="bg-gray-800 border border-gray-700 rounded-xl p-4 flex flex-wrap gap-2">
+                    <button onClick={() => setLayerFilter('ALL')} className={`px-3 py-1.5 text-[10px] font-black rounded-lg uppercase ${layerFilter === 'ALL' ? 'bg-cyan-600 text-white' : 'bg-gray-900 text-gray-500 hover:text-gray-300'}`}>Tất cả</button>
+                    <button onClick={() => setLayerFilter('VISIBLE')} className={`px-3 py-1.5 text-[10px] font-black rounded-lg uppercase ${layerFilter === 'VISIBLE' ? 'bg-emerald-600 text-white' : 'bg-gray-900 text-gray-500 hover:text-gray-300'}`}>Đang hiện</button>
+                    <button onClick={() => setLayerFilter('HIDDEN')} className={`px-3 py-1.5 text-[10px] font-black rounded-lg uppercase ${layerFilter === 'HIDDEN' ? 'bg-slate-600 text-white' : 'bg-gray-900 text-gray-500 hover:text-gray-300'}`}>Đang ẩn</button>
+                    <button onClick={() => setLayerFilter('PLANNING')} className={`px-3 py-1.5 text-[10px] font-black rounded-lg uppercase ${layerFilter === 'PLANNING' ? 'bg-purple-600 text-white' : 'bg-gray-900 text-gray-500 hover:text-gray-300'}`}>Quy hoạch</button>
+                    <button onClick={() => setLayerFilter('ADMINISTRATIVE')} className={`px-3 py-1.5 text-[10px] font-black rounded-lg uppercase ${layerFilter === 'ADMINISTRATIVE' ? 'bg-indigo-600 text-white' : 'bg-gray-900 text-gray-500 hover:text-gray-300'}`}>Hành chính</button>
+                </div>
+            )}
+
             {/* 2. SPATIAL TABLES REGISTRY */}
-            <div className="bg-gray-800 rounded-lg border border-gray-700 shadow-xl overflow-hidden">
+            {activeTab === 'TABLES' && <div className="bg-gray-800 rounded-lg border border-gray-700 shadow-xl overflow-hidden">
                 <div className="p-4 flex justify-between border-b border-gray-700 bg-gray-800/50">
                     <span className="font-semibold text-gray-100 flex items-center gap-2">
                         <Table size={18} className="text-green-400"/> Quản lý Bảng Dữ liệu (Registry)
@@ -457,10 +514,10 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </div>}
 
             {/* 3. WMS LAYERS SECTION */}
-            <div className="bg-gray-800 rounded-lg border border-gray-700 shadow-xl overflow-hidden">
+            {activeTab === 'LAYERS' && <div className="bg-gray-800 rounded-lg border border-gray-700 shadow-xl overflow-hidden">
                 <div className="p-4 flex justify-between border-b border-gray-700 bg-gray-800/50">
                     <div>
                         <span className="font-semibold text-gray-100 flex items-center gap-2">
@@ -543,10 +600,10 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </div>}
 
             {/* 4. BASEMAPS SECTION */}
-            <div className="bg-gray-800 rounded-lg border border-gray-700 shadow-xl overflow-hidden">
+            {activeTab === 'BASEMAPS' && <div className="bg-gray-800 rounded-lg border border-gray-700 shadow-xl overflow-hidden">
                 <div className="p-4 flex justify-between border-b border-gray-700 bg-gray-800/50">
                     <div>
                         <span className="font-semibold text-gray-100 flex items-center gap-2">
@@ -612,7 +669,7 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </div>}
 
             {/* --- CONFIRMATION MODAL & MAIN FORM MODAL --- */}
             {confirmDialog.isOpen && (
@@ -676,6 +733,19 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
                                         <div>
                                             <label className="text-[10px] text-gray-500 font-black uppercase block mb-1.5 ml-1">Mô tả ngắn</label>
                                             <input className="w-full bg-gray-900 border border-gray-600 rounded-lg p-2.5 text-white text-sm outline-none" value={formData.description || ''} onChange={e => setFormData({...formData, description: e.target.value})}/>
+                                            <p className="mt-1 text-[10px] text-gray-500">Mẹo: thêm #TIFF (hoặc raster:tiff) để đánh dấu lớp WMS hiển thị ảnh TIFF.</p>
+                                        </div>
+
+                                        <div className="bg-gray-900/50 p-3 rounded-xl border border-gray-700/50">
+                                            <label className="flex items-center gap-3 cursor-pointer group">
+                                                <div className={`w-9 h-5 rounded-full relative transition-colors ${formData.isTiff ? 'bg-amber-600' : 'bg-gray-700'}`} onClick={() => setFormData({...formData, isTiff: !formData.isTiff})}>
+                                                    <div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform ${formData.isTiff ? 'translate-x-4' : ''}`}></div>
+                                                </div>
+                                                <div className="flex-1">
+                                                    <span className="text-xs font-bold text-amber-300 block uppercase tracking-wide">Lớp TIFF (Raster qua WMS)</span>
+                                                    <span className="text-[9px] text-gray-500">Bật để xem lớp này như ảnh TIFF: vẫn hiển thị/zoom/opacity, nhưng không truy vấn thuộc tính.</span>
+                                                </div>
+                                            </label>
                                         </div>
                                     </div>
 
