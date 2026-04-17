@@ -25,6 +25,8 @@ export default function(pool, logSystemAction) {
     const router = express.Router();
     const TABLE_NAME_REGEX = /^[a-z0-9_]+$/;
     const ADMIN_NAME_COLUMN_CANDIDATES = ['ten_tinh', 'ten_tinh_tp', 'ten_dvhc', 'ten_don_vi', 'ten', 'name', 'province'];
+    const ACCENTED_CHARS = 'àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ';
+    const UNACCENTED_CHARS = 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd';
 
     const resolveSafeTableName = async (rawTableName) => {
         const table = (rawTableName || '').toLowerCase().trim();
@@ -470,7 +472,10 @@ export default function(pool, logSystemAction) {
 
             if (sodoto && cols.sodoto) { whereClauses.push(`"${cols.sodoto}"::text = $${idx++}`); params.push(sodoto); }
             if (sothua && cols.sothua) { whereClauses.push(`"${cols.sothua}"::text = $${idx++}`); params.push(sothua); }
-            if (tenchu && cols.tenchu) { whereClauses.push(`"${cols.tenchu}" ILIKE $${idx++}`); params.push(`%${tenchu}%`); }
+            if (tenchu && cols.tenchu) {
+                whereClauses.push(`translate(lower(COALESCE("${cols.tenchu}"::text, '')), '${ACCENTED_CHARS}', '${UNACCENTED_CHARS}') LIKE '%' || translate(lower($${idx++}), '${ACCENTED_CHARS}', '${UNACCENTED_CHARS}') || '%'`);
+                params.push(String(tenchu).trim());
+            }
             if (diachi && cols.diachi) { whereClauses.push(`"${cols.diachi}" ILIKE $${idx++}`); params.push(`%${diachi}%`); }
 
             const whereSql = whereClauses.join(' AND ');
