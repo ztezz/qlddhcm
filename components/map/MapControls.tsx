@@ -7,9 +7,9 @@ interface MapControlsProps {
     mapInstance: Map | null;
     mapRotation: number;
     isLocating: boolean;
-    isLegendOpen: boolean;
+    isLegendOpen?: boolean;
     onLocate: () => void;
-    onToggleLegend: () => void;
+    onToggleLegend?: () => void;
 }
 
 const MapControls: React.FC<MapControlsProps> = ({ 
@@ -22,13 +22,15 @@ const MapControls: React.FC<MapControlsProps> = ({
 }) => {
     return (
         <div className="absolute bottom-6 right-6 z-[400] flex flex-col gap-3">
-            <button 
-                onClick={onToggleLegend}
-                className={`p-3.5 rounded-full shadow-2xl transition-all active:scale-90 border border-slate-200 ${isLegendOpen ? 'bg-blue-600 text-white' : 'bg-white text-blue-600 hover:bg-slate-50'}`}
-                title="Chú giải"
-            >
-                <Info size={24} />
-            </button>
+            {onToggleLegend !== undefined && (
+                <button 
+                    onClick={onToggleLegend}
+                    className={`p-3.5 rounded-full shadow-2xl transition-all active:scale-90 border border-slate-200 ${isLegendOpen ? 'bg-blue-600 text-white' : 'bg-white text-blue-600 hover:bg-slate-50'}`}
+                    title="Chú giải"
+                >
+                    <Info size={24} />
+                </button>
+            )}
             
             {Math.abs(mapRotation) > 0.01 && ( 
                 <button 

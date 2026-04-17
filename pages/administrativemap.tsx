@@ -5,22 +5,17 @@ import { API_URL } from '../services/parcelApi';
 import { gisService } from '../services/mockBackend';
 import { parcelApi, AdminSearchResult } from '../services/parcelApi';
 
-// Hooks
 import { useMap } from '../hooks/useMap';
 
-// Components
-import MapLegend from '../components/map/MapLegend';
 import MapStatusIndicators from '../components/map/MapStatusIndicators';
 import MapInfoOverlay from '../components/map/MapInfoOverlay';
 import MapControls from '../components/map/MapControls';
 import MapDialog from '../components/map/MapDialog';
 
-// Utilities
 import { highlightStyle, locationStyle, measureStyle } from '../components/map/mapUtils';
 import { MAP_CONFIG } from '../utils/mapConstants';
 import { removeAccents } from '../utils/helpers';
 
-// OpenLayers
 import Map from 'ol/Map';
 import View from 'ol/View';
 import Overlay from 'ol/Overlay';
@@ -35,7 +30,6 @@ import proj4 from "proj4";
 import { register } from 'ol/proj/proj4';
 import { SlidersHorizontal, X, Search, Layers, Eye, EyeOff } from 'lucide-react';
 
-// Đăng ký VN-2000 (Kinh tuyến trục 105.75 cho Bình Dương/HCM)
 proj4.defs("EPSG:9210", "+proj=tmerc +lat_0=0 +lon_0=105.75 +k=0.9999 +x_0=500000 +y_0=0 +ellps=WGS84 +towgs84=-191.904,-39.303,-111.450,0,0,0,0 +units=m +no_defs");
 register(proj4);
 
@@ -61,7 +55,6 @@ const ThematicMapPage: React.FC<{ user: User | null; systemSettings?: Record<str
     const [isTabletViewport, setIsTabletViewport] = useState(() => window.innerWidth >= 768 && window.innerWidth < 1024);
     
     const {
-        // Refs
         mapInstance,
         highlightLayer,
         wmsLayerGroup,
@@ -69,20 +62,17 @@ const ThematicMapPage: React.FC<{ user: User | null; systemSettings?: Record<str
         overlayInstance,
         measureSource,
 
-        // State
         availableLayers, setAvailableLayers,
         visibleLayerIds, setVisibleLayerIds,
         activeLayerId, setActiveLayerId,
         basemaps, setBasemaps,
         activeBasemapId, setActiveBasemapId,
-        isLegendOpen, setIsLegendOpen,
         isInitialLoading, setIsInitialLoading,
         mapRotation, setMapRotation,
         mapZoom, setMapZoom,
         mouseCoord, setMouseCoord,
         dialog, setDialog,
 
-        // Actions
         handleLocateUser,
         initData
     } = useMap(user, systemSettings);
@@ -155,7 +145,6 @@ const ThematicMapPage: React.FC<{ user: User | null; systemSettings?: Record<str
         thematicLayerIdSetRef.current = thematicLayerIdSet;
     }, [thematicLayers, thematicLayerIdSet]);
 
-    // Chỉ giữ lớp hành chính ở trang này để đảm bảo tách biệt với MapPage.
     useEffect(() => {
         setVisibleLayerIds((prev) => {
             const next = prev.filter((id) => thematicLayerIdSet.has(id));
@@ -307,7 +296,6 @@ const ThematicMapPage: React.FC<{ user: User | null; systemSettings?: Record<str
                 });
                 let dedup = Object.values(dedupMap).slice(0, 12);
 
-                // Fallback to local feature cache so dropdown still works when DB suggest endpoint is unavailable.
                 if (dedup.length === 0) {
                     const localMatches: Array<{ name: string; layerId: string }> = [];
                     const normKeyword = removeAccents(keyword);
@@ -1161,14 +1149,7 @@ const ThematicMapPage: React.FC<{ user: User | null; systemSettings?: Record<str
                 mapInstance={mapInstance.current} 
                 mapRotation={mapRotation} 
                 isLocating={false} 
-                isLegendOpen={isLegendOpen} 
                 onLocate={handleLocateUser} 
-                onToggleLegend={() => setIsLegendOpen(!isLegendOpen)} 
-            />
-
-            <MapLegend 
-                isOpen={isLegendOpen} 
-                onClose={() => setIsLegendOpen(false)} 
             />
 
             <MapDialog 
