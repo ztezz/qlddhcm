@@ -629,7 +629,8 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
                                         <button onClick={() => triggerConfirm('DELETE_WMS', l.id, l.name)} className="p-2 text-red-500 hover:bg-red-500/10 rounded transition-all"><Trash2 size={16}/></button>
                                     </td>
                                 </tr>
-                            ))}
+                            );
+                            })}
                         </tbody>
                     </table>
                 </div>
