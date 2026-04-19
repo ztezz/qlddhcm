@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { parcelApi, ParcelDTO, SpatialTable } from '../services/parcelApi';
 import { RefreshCw, Database, Layers, CheckCircle2, AlertTriangle, Info, Plus, FileSpreadsheet } from 'lucide-react';
+import { removeAccents } from '../utils/helpers';
 
 // Sub-components
 import TableFilter from '../components/admin/parcel/TableFilter';
@@ -38,13 +39,33 @@ const ParcelManager: React.FC = () => {
         setDialog({ isOpen: true, type, title, message, onConfirm });
     };
 
+    const isAdministrativeTable = useCallback((table: SpatialTable) => {
+        const haystack = removeAccents(`${table.table_name || ''} ${table.display_name || ''} ${table.description || ''}`.toLowerCase());
+        const blockedKeywords = [
+            'donvihanhchinh',
+            'don vi hanh chinh',
+            'hanh chinh',
+            'administrative',
+            'ranh gioi',
+            'dia gioi',
+            'boundary'
+        ];
+
+        return blockedKeywords.some((keyword) => haystack.includes(removeAccents(keyword)));
+    }, []);
+
     // --- LOGIC: FETCHING ---
     const loadTables = async () => {
         setLoading(true);
         try {
             const tables = await parcelApi.manageTables.getAll();
-            setAvailableTables(tables);
-            if (tables.length > 0 && !layer) setLayer(tables[0].table_name);
+            const parcelTables = tables.filter((table) => !isAdministrativeTable(table));
+            setAvailableTables(parcelTables);
+
+            if (parcelTables.length > 0 && !parcelTables.some((table) => table.table_name === layer)) {
+                setLayer(parcelTables[0].table_name);
+            }
+
             setError(null);
         } catch (e: any) { setError("Không thể tải danh sách lớp dữ liệu."); }
         finally { setLoading(false); }

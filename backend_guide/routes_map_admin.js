@@ -28,18 +28,18 @@ export default function(pool, logSystemAction, dbConfig) {
     // --- WMS LAYERS ---
     router.get('/wms-layers', async (req, res) => {
         try { 
-            const result = await pool.query(`SELECT id, name, url, layers, visible, opacity, type, category, description, sort_order as "sortOrder" FROM wms_layers ORDER BY sort_order ASC, name ASC`);
+            const result = await pool.query(`SELECT id, name, url, layers, visible, opacity, type, category, map_scope as "mapScope", description, sort_order as "sortOrder" FROM wms_layers ORDER BY sort_order ASC, name ASC`);
             res.json(result.rows); 
         } catch (e) { res.status(500).json({ error: e.message }); }
     });
 
     router.post('/wms-layers', authenticateToken, async (req, res) => {
-        const { name, url, layers, visible, opacity, type, category, description, sortOrder } = req.body;
+        const { name, url, layers, visible, opacity, type, category, mapScope, description, sortOrder } = req.body;
         try {
             const id = 'ly-' + Date.now();
             await pool.query(
-                `INSERT INTO wms_layers (id, name, url, layers, visible, opacity, type, category, description, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-                [id, name, url, layers, visible, parseFloat(opacity) || 1, type || 'WMS', category || 'STANDARD', description || '', Number.isFinite(Number(sortOrder)) ? Number(sortOrder) : 0]
+                `INSERT INTO wms_layers (id, name, url, layers, visible, opacity, type, category, map_scope, description, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+                [id, name, url, layers, visible, parseFloat(opacity) || 1, type || 'WMS', category || 'STANDARD', mapScope || 'MAIN', description || '', Number.isFinite(Number(sortOrder)) ? Number(sortOrder) : 0]
             );
             await logSystemAction(req, 'ADD_LAYER', `Thêm lớp bản đồ: ${name}`);
             res.json({ status: 'ok' });
@@ -48,11 +48,11 @@ export default function(pool, logSystemAction, dbConfig) {
 
     router.put('/wms-layers/:id', authenticateToken, async (req, res) => {
         const { id } = req.params;
-        const { name, url, layers, visible, opacity, type, category, description, sortOrder } = req.body;
+        const { name, url, layers, visible, opacity, type, category, mapScope, description, sortOrder } = req.body;
         try {
             await pool.query(
-                `UPDATE wms_layers SET name=$1, url=$2, layers=$3, visible=$4, opacity=$5, type=$6, category=$7, description=$8, sort_order=$9 WHERE id=$10`,
-                [name, url, layers, visible, parseFloat(opacity) || 1, type, category, description || '', Number.isFinite(Number(sortOrder)) ? Number(sortOrder) : 0, id]
+                `UPDATE wms_layers SET name=$1, url=$2, layers=$3, visible=$4, opacity=$5, type=$6, category=$7, map_scope=$8, description=$9, sort_order=$10 WHERE id=$11`,
+                [name, url, layers, visible, parseFloat(opacity) || 1, type, category, mapScope || 'MAIN', description || '', Number.isFinite(Number(sortOrder)) ? Number(sortOrder) : 0, id]
             );
             res.json({ status: 'ok' });
         } catch (e) { res.status(500).json({ error: e.message }); }

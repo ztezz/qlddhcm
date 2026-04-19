@@ -136,8 +136,10 @@ export interface WMSLayerConfig {
     opacity?: number;
     type?: 'WMS' | 'XYZ'; 
     category?: 'STANDARD' | 'PLANNING' | 'ADMINISTRATIVE';
-  description?: string;
-  sortOrder?: number;
+    mapScope?: 'MAIN' | 'ADMIN' | 'SHARED';
+    availableMaps?: string[];
+    description?: string;
+    sortOrder?: number;
 }
 
 export interface BasemapConfig {

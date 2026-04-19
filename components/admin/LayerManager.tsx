@@ -4,6 +4,7 @@ import { adminService } from '../../services/mockBackend';
 import { parcelApi } from '../../services/parcelApi';
 import { WMSLayerConfig, BasemapConfig } from '../../types';
 import { Layers, Database, Plus, Edit2, Trash2, X, Eye, EyeOff, Save, Table, Link2Off, RefreshCw, Map as MapIcon, CheckCircle2, Globe, AlertCircle, Check, ShieldAlert, Lock, Tags, Info, Sun, DatabaseZap, Search, Shield, Wrench, GripVertical } from 'lucide-react';
+import { getLayerScope, MapScope } from '../../utils/layerScope';
 
 interface LayerManagerProps {
     dbStatus: any;
@@ -30,6 +31,27 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
 
         if (!isTiff) return cleaned;
         return cleaned ? `${cleaned} ${TIFF_MARKER}` : TIFF_MARKER;
+    };
+
+    const stripScopeMarker = (description: string): string => {
+        return (description || '')
+            .replace(/\[map:(main|admin|shared|all)\]/gi, '')
+            .replace(/#map-(main|admin|shared)/gi, '')
+            .replace(/scope:(main|admin|shared)/gi, '')
+            .replace(/\s{2,}/g, ' ')
+            .trim();
+    };
+
+    const applyScopeMarkerToDescription = (description: string, mapScope: MapScope): string => {
+        const cleaned = stripScopeMarker(description);
+        const marker = mapScope === 'SHARED' ? '[map:shared]' : mapScope === 'ADMIN' ? '[map:admin]' : '[map:main]';
+        return cleaned ? `${cleaned} ${marker}` : marker;
+    };
+
+    const getScopeMeta = (scope: MapScope) => {
+        if (scope === 'ADMIN') return { label: 'Map hành chính', badge: 'bg-indigo-900/40 text-indigo-300 border-indigo-700/60' };
+        if (scope === 'SHARED') return { label: 'Dùng chung', badge: 'bg-emerald-900/40 text-emerald-300 border-emerald-700/60' };
+        return { label: 'Map chính', badge: 'bg-cyan-900/40 text-cyan-300 border-cyan-700/60' };
     };
 
     const [wmsLayers, setWmsLayers] = useState<WMSLayerConfig[]>([]);
@@ -146,8 +168,8 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
         
         if (type === 'LAYER') {
             setFormData(item 
-                ? { ...item, type: item.type || 'WMS', category: item.category || 'STANDARD', opacity: item.opacity ?? 1, description: item.description || '', sortOrder: item.sortOrder ?? 0, isTiff: parseIsTiffLayer(item.description || '') } 
-                : { name: '', url: '', layers: '', visible: true, opacity: 1, type: 'WMS', category: 'STANDARD', description: '', sortOrder: 0, isTiff: false }
+                ? { ...item, type: item.type || 'WMS', category: item.category || 'STANDARD', opacity: item.opacity ?? 1, description: stripScopeMarker(item.description || ''), sortOrder: item.sortOrder ?? 0, isTiff: parseIsTiffLayer(item.description || ''), mapScope: item.mapScope || getLayerScope(item) } 
+                : { name: '', url: '', layers: '', visible: true, opacity: 1, type: 'WMS', category: 'STANDARD', description: '', sortOrder: 0, isTiff: false, mapScope: 'MAIN' }
             );
         } else if (type === 'TABLE') {
             if (item) {
@@ -184,7 +206,11 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
                 }
 
                 finalData.sortOrder = Number.isFinite(Number(finalData.sortOrder)) ? Number(finalData.sortOrder) : 0;
-                finalData.description = applyTiffMarkerToDescription((finalData.description || '').trim(), !!finalData.isTiff);
+                finalData.mapScope = (finalData.mapScope || 'MAIN') as MapScope;
+                finalData.description = applyScopeMarkerToDescription(
+                    applyTiffMarkerToDescription((finalData.description || '').trim(), !!finalData.isTiff),
+                    finalData.mapScope
+                );
                 delete finalData.isTiff;
 
                 if (!finalData.name || !finalData.url) {
@@ -537,12 +563,14 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
                         <thead className="bg-gray-900 text-gray-400 uppercase text-[10px] tracking-widest font-black">
-                            <tr><th className="p-4">Kéo</th><th className="p-4">Thứ tự</th><th className="p-4">Tên hiển thị</th><th className="p-4">Loại</th><th className="p-4">Mô tả</th><th className="p-4">Độ mờ</th><th className="p-4">Trạng thái</th><th className="p-4 text-right">Thao tác</th></tr>
+                            <tr><th className="p-4">Kéo</th><th className="p-4">Thứ tự</th><th className="p-4">Tên hiển thị</th><th className="p-4">Loại</th><th className="p-4">Scope</th><th className="p-4">Mô tả</th><th className="p-4">Độ mờ</th><th className="p-4">Trạng thái</th><th className="p-4 text-right">Thao tác</th></tr>
                         </thead>
                         <tbody className="divide-y divide-gray-700 text-gray-300">
                             {filteredWmsLayers.length === 0 ? (
-                                <tr><td colSpan={8} className="p-10 text-center text-gray-600 italic">Không có lớp dữ liệu nào khớp điều kiện lọc</td></tr>
-                            ) : filteredWmsLayers.map(l => (
+                                <tr><td colSpan={9} className="p-10 text-center text-gray-600 italic">Không có lớp dữ liệu nào khớp điều kiện lọc</td></tr>
+                            ) : filteredWmsLayers.map(l => {
+                                const scopeMeta = getScopeMeta((l.mapScope || getLayerScope(l)) as MapScope);
+                                return (
                                 <tr
                                     key={l.id}
                                     draggable={canReorderLayers}
@@ -571,7 +599,12 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
                                             {l.type || 'WMS'}
                                         </span>
                                     </td>
-                                    <td className="p-4 text-xs text-gray-400 max-w-[260px] truncate">{l.description || '--'}</td>
+                                    <td className="p-4">
+                                        <span className={`inline-flex px-2 py-0.5 rounded-full border text-[9px] font-black uppercase ${scopeMeta.badge}`}>
+                                            {scopeMeta.label}
+                                        </span>
+                                    </td>
+                                    <td className="p-4 text-xs text-gray-400 max-w-[260px] truncate">{stripScopeMarker(l.description || '') || '--'}</td>
                                     <td className="p-4">
                                         <div className="flex items-center gap-2">
                                             <Sun size={12} className="text-gray-500" />
@@ -723,6 +756,16 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
                                     <div>
                                         <label className="text-[10px] text-gray-500 font-black uppercase block mb-1.5 ml-1">Tên hiển thị (VD: Quy hoạch TDM)</label>
                                         <input className="w-full bg-gray-900 border border-gray-600 rounded-lg p-2.5 text-white outline-none focus:border-cyan-500 font-bold" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})}/>
+                                    </div>
+
+                                    <div>
+                                        <label className="text-[10px] text-gray-500 font-black uppercase mb-3 block tracking-[0.15em]">Phạm vi hiển thị map</label>
+                                        <div className="grid grid-cols-3 gap-2 bg-gray-900 p-1 rounded-xl">
+                                            <button onClick={() => setFormData({...formData, mapScope: 'MAIN'})} className={`py-2 text-[10px] font-black rounded-lg uppercase transition-all ${formData.mapScope === 'MAIN' ? 'bg-cyan-600 text-white shadow-md' : 'text-gray-500 hover:text-gray-300'}`}>Map chính</button>
+                                            <button onClick={() => setFormData({...formData, mapScope: 'ADMIN'})} className={`py-2 text-[10px] font-black rounded-lg uppercase transition-all ${formData.mapScope === 'ADMIN' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-500 hover:text-gray-300'}`}>Hành chính</button>
+                                            <button onClick={() => setFormData({...formData, mapScope: 'SHARED'})} className={`py-2 text-[10px] font-black rounded-lg uppercase transition-all ${formData.mapScope === 'SHARED' ? 'bg-emerald-600 text-white shadow-md' : 'text-gray-500 hover:text-gray-300'}`}>Dùng chung</button>
+                                        </div>
+                                        <p className="mt-1 text-[10px] text-gray-500">Chọn trực tiếp nơi lớp này được phép xuất hiện, không cần gõ nhãn tay nữa.</p>
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

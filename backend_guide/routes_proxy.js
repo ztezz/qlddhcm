@@ -21,6 +21,36 @@ const ALLOWED_PROXY_DOMAINS = [
     'khm1.google.com'
 ];
 
+const removeNullFieldsDeep = (value) => {
+    if (Array.isArray(value)) {
+        return value.map(removeNullFieldsDeep);
+    }
+
+    if (value && typeof value === 'object') {
+        return Object.fromEntries(
+            Object.entries(value)
+                .filter(([, child]) => child !== null && child !== undefined && !(typeof child === 'string' && child.trim() === ''))
+                .map(([key, child]) => [key, removeNullFieldsDeep(child)])
+        );
+    }
+
+    return value;
+};
+
+const sanitizeFeatureInfoPayload = (payload) => {
+    if (!payload || typeof payload !== 'object' || !Array.isArray(payload.features)) {
+        return payload;
+    }
+
+    return {
+        ...payload,
+        features: payload.features.map((feature) => ({
+            ...feature,
+            properties: removeNullFieldsDeep(feature?.properties || {})
+        }))
+    };
+};
+
 router.get('/vietbando', async (req, res) => {
     const { z, x, y } = req.query;
     if (!z || !x || !y) return res.status(400).send("Missing tile coordinates");
@@ -96,11 +126,23 @@ router.get('/forward', async (req, res) => {
             return res.status(response.status).send(`Target server returned ${response.status}`);
         }
 
-        const contentType = response.headers.get('content-type');
+        const contentType = response.headers.get('content-type') || '';
         if (contentType) res.set('Content-Type', contentType);
         
         res.set('Access-Control-Allow-Origin', '*');
         res.set('Cache-Control', 'public, max-age=3600'); 
+
+        const requestType = String(finalUrl.searchParams.get('REQUEST') || '').toLowerCase();
+        if (contentType.includes('application/json') || requestType === 'getfeatureinfo') {
+            const rawText = await response.text();
+            try {
+                const parsed = JSON.parse(rawText);
+                const cleaned = sanitizeFeatureInfoPayload(parsed);
+                return res.json(cleaned);
+            } catch {
+                return res.send(rawText);
+            }
+        }
 
         const buffer = Buffer.from(await response.arrayBuffer());
         res.send(buffer);

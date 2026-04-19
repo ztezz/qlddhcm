@@ -471,10 +471,10 @@ export const useMap = (
                 gisService.getSpatialTables().catch(() => []),
                 gisService.getBasemaps().catch(() => [])
             ]);
-            setAvailableLayers(layers);
             
             const canRenderLayer = layerVisibilityFilter || (() => true);
             const eligibleLayers = layers.filter(canRenderLayer);
+            setAvailableLayers(eligibleLayers);
             const initialVisibleIds = eligibleLayers.filter(l => l.visible).map(l => l.id);
             if (initialVisibleIds.length > 0) {
                 setVisibleLayerIds(initialVisibleIds);

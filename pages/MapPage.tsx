@@ -24,6 +24,7 @@ import MapDialog from '../components/map/MapDialog';
 // Utilities
 import { highlightStyle, locationStyle, measureStyle } from '../components/map/mapUtils';
 import { MAP_CONFIG } from '../utils/mapConstants';
+import { filterLayersByMap, isLayerVisibleInMap } from '../utils/layerScope';
 
 // OpenLayers
 import Map from 'ol/Map';
@@ -45,7 +46,7 @@ register(proj4);
 const MapPage: React.FC<{ user: User | null; systemSettings?: Record<string, string> }> = ({ user, systemSettings }) => {
     const mapElement = useRef<HTMLDivElement>(null);
     const popupElement = useRef<HTMLDivElement>(null);
-    const mapPageLayerFilter = useCallback((layer: WMSLayerConfig) => String(layer.category || 'STANDARD').toUpperCase() !== 'ADMINISTRATIVE', []);
+    const mapPageLayerFilter = useCallback((layer: WMSLayerConfig) => isLayerVisibleInMap(layer, 'MAIN'), []);
 
     const {
         // Refs
@@ -100,7 +101,7 @@ const MapPage: React.FC<{ user: User | null; systemSettings?: Record<string, str
     } = useMap(user, systemSettings, mapPageLayerFilter);
 
     const mapPageLayers = useMemo(
-        () => availableLayers.filter((layer) => String(layer.category || 'STANDARD').toUpperCase() !== 'ADMINISTRATIVE'),
+        () => filterLayersByMap(availableLayers, 'MAIN'),
         [availableLayers]
     );
 
@@ -129,8 +130,7 @@ const MapPage: React.FC<{ user: User | null; systemSettings?: Record<string, str
 
     const mapPageSpatialTables = useMemo(
         () => {
-            const filtered = spatialTables.filter((table) => mapPageSearchTableSet.has(String(table.table_name || '').toLowerCase()));
-            return filtered.length > 0 ? filtered : spatialTables;
+            return spatialTables.filter((table) => mapPageSearchTableSet.has(String(table.table_name || '').toLowerCase()));
         },
         [spatialTables, mapPageSearchTableSet]
     );
