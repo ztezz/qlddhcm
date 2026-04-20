@@ -25,3 +25,10 @@ dist-ssr
 
 # Sensitive backend configuration
 backend_guide/db_config.js
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
