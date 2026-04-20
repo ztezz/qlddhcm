@@ -447,7 +447,7 @@ const CoordinateConverter: React.FC = () => {
                         <div className="bg-slate-900 rounded-[2rem] border border-slate-800 p-5 flex items-start gap-3 text-slate-300">
                             <RefreshCw size={18} className="text-blue-400 shrink-0 mt-0.5" />
                             <div className="text-sm leading-relaxed">
-                                Tôi đã mở rộng thêm nhiều preset VN-2000 theo tỉnh/thành và vẫn giữ chế độ tùy chỉnh kinh tuyến trục. Nếu file gốc dùng GPS, hãy đặt X là kinh độ và Y là vĩ độ. Sau khi chuyển đổi, hệ thống sẽ thêm hai cột mới là converted_x và converted_y.
+                                Nếu file gốc dùng GPS, hãy đặt X là kinh độ và Y là vĩ độ. Sau khi chuyển đổi, hệ thống sẽ thêm hai cột mới là converted_x và converted_y.
                             </div>
                         </div>
                     </div>

@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { LandPrice2026 } from '../../types';
+import { LandPrice2026, User } from '../../types';
 import { Calculator, Store, HardHat, FileText, Map as MapIcon, Gavel, X, Loader2 } from 'lucide-react';
 import { formatCurrency } from '../../utils/helpers';
 import { jsPDF } from 'jspdf';
@@ -9,10 +9,12 @@ import LandPricePrintTemplate from './LandPricePrintTemplate';
 
 interface LandPriceDetailModalProps {
     data: LandPrice2026;
+    user?: User | null;
+    systemSettings?: Record<string, string>;
     onClose: () => void;
 }
 
-const LandPriceDetailModal: React.FC<LandPriceDetailModalProps> = ({ data, onClose }) => {
+const LandPriceDetailModal: React.FC<LandPriceDetailModalProps> = ({ data, user, systemSettings, onClose }) => {
     const [isExporting, setIsExporting] = useState(false);
 
     const calculatePositions = (basePrice: number) => {
@@ -138,7 +140,7 @@ const LandPriceDetailModal: React.FC<LandPriceDetailModalProps> = ({ data, onClo
     return (
         <>
             {/* Template in ẩn (vẫn render trong DOM nhưng user không thấy) */}
-            <LandPricePrintTemplate data={data} />
+            <LandPricePrintTemplate data={data} user={user} systemSettings={systemSettings} />
 
             <div className="fixed inset-0 z-[1000] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
                 <div className="bg-gray-900 border border-gray-800 rounded-[2.5rem] w-full max-w-5xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">

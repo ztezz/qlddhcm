@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { adminService } from '../../services/mockBackend';
+import { adminService, hasAnyPermission } from '../../services/mockBackend';
 import { parcelApi } from '../../services/parcelApi';
 import { WMSLayerConfig, BasemapConfig } from '../../types';
 import { Layers, Database, Plus, Edit2, Trash2, X, Eye, EyeOff, Save, Table, Link2Off, RefreshCw, Map as MapIcon, CheckCircle2, Globe, AlertCircle, Check, ShieldAlert, Lock, Tags, Info, Sun, DatabaseZap, Search, Shield, Wrench, GripVertical } from 'lucide-react';
@@ -8,9 +8,10 @@ import { getLayerScope, MapScope } from '../../utils/layerScope';
 
 interface LayerManagerProps {
     dbStatus: any;
+    permissions?: string[];
 }
 
-const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
+const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus, permissions = [] }) => {
     const TIFF_MARKER = '#TIFF';
     const ACTIVE_TAB_STORAGE_KEY = 'admin.layerManager.activeTab';
 
@@ -111,6 +112,20 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
         targetName: ''
     });
 
+    const canCreateTable = hasAnyPermission(permissions, ['CREATE_TABLES', 'MANAGE_TABLES']);
+    const canEditTable = hasAnyPermission(permissions, ['EDIT_TABLES', 'MANAGE_TABLES']);
+    const canDeleteTable = hasAnyPermission(permissions, ['DELETE_TABLES', 'MANAGE_TABLES']);
+    const canSyncTable = hasAnyPermission(permissions, ['SYNC_TABLES', 'MANAGE_TABLES']);
+    const canRepairTable = hasAnyPermission(permissions, ['REPAIR_TABLES', 'MANAGE_TABLES']);
+    const canCreateLayer = hasAnyPermission(permissions, ['CREATE_LAYERS', 'MANAGE_LAYERS']);
+    const canEditLayer = hasAnyPermission(permissions, ['EDIT_LAYERS', 'MANAGE_LAYERS']);
+    const canDeleteLayer = hasAnyPermission(permissions, ['DELETE_LAYERS', 'MANAGE_LAYERS']);
+    const canToggleLayer = hasAnyPermission(permissions, ['TOGGLE_LAYERS', 'MANAGE_LAYERS']);
+    const canCreateBasemap = hasAnyPermission(permissions, ['CREATE_BASEMAPS', 'MANAGE_BASEMAPS']);
+    const canEditBasemap = hasAnyPermission(permissions, ['EDIT_BASEMAPS', 'MANAGE_BASEMAPS']);
+    const canDeleteBasemap = hasAnyPermission(permissions, ['DELETE_BASEMAPS', 'MANAGE_BASEMAPS']);
+    const canReorderMapConfig = hasAnyPermission(permissions, ['REORDER_MAP_LAYERS', 'MANAGE_LAYERS', 'MANAGE_BASEMAPS']);
+
     useEffect(() => { loadData(); }, []);
 
     useEffect(() => {
@@ -175,6 +190,15 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
     };
 
     const openModal = (type: 'LAYER' | 'TABLE' | 'BASEMAP', item?: any) => {
+        const denied = type === 'TABLE'
+            ? (item ? !canEditTable : !canCreateTable)
+            : type === 'LAYER'
+                ? (item ? !canEditLayer : !canCreateLayer)
+                : (item ? !canEditBasemap : !canCreateBasemap);
+        if (denied) {
+            setError('Bạn không có quyền thực hiện thao tác quản trị này.');
+            return;
+        }
         setModalType(type);
         setIsEditMode(!!item);
         
@@ -222,6 +246,10 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
     };
 
     const duplicateBasemap = (bm: BasemapConfig) => {
+        if (!canCreateBasemap) {
+            setError('Bạn không có quyền nhân bản hoặc thêm bản đồ nền.');
+            return;
+        }
         setModalType('BASEMAP');
         setIsEditMode(false);
         setFormData({
@@ -237,6 +265,17 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
     };
 
     const handleSave = async () => {
+        const allowed = modalType === 'TABLE'
+            ? (isEditMode ? canEditTable : canCreateTable)
+            : modalType === 'LAYER'
+                ? (isEditMode ? canEditLayer : canCreateLayer)
+                : modalType === 'BASEMAP'
+                    ? (isEditMode ? canEditBasemap : canCreateBasemap)
+                    : false;
+        if (!allowed) {
+            setError('Bạn không có quyền lưu thay đổi ở mục cấu hình này.');
+            return;
+        }
         try {
             setLoading(true);
             let finalData = { ...formData };
@@ -301,6 +340,10 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
     };
 
     const toggleWmsVisibility = async (layer: WMSLayerConfig) => {
+        if (!canToggleLayer) {
+            setError('Bạn không có quyền ẩn hoặc hiện lớp bản đồ.');
+            return;
+        }
         try {
             setLoading(true);
             await adminService.updateWmsLayer({ ...layer, visible: !layer.visible });
@@ -311,6 +354,17 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
     };
 
     const triggerConfirm = (type: typeof confirmDialog['actionType'], id: string, name: string) => {
+        const blocked = (
+            (type === 'SYNC' && !canSyncTable) ||
+            (type === 'REPAIR' && !canRepairTable) ||
+            ((type === 'UNLINK' || type === 'DROP_TABLE') && !canDeleteTable) ||
+            (type === 'DELETE_WMS' && !canDeleteLayer) ||
+            (type === 'DELETE_BASEMAP' && !canDeleteBasemap)
+        );
+        if (blocked) {
+            setError('Bạn không có quyền thực hiện thao tác đã chọn.');
+            return;
+        }
         let title = '';
         let message = '';
         let isDangerous = false;
@@ -424,7 +478,7 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
     };
 
     const handleLayerDrop = (targetId: string) => {
-        if (!draggingLayerId || draggingLayerId === targetId || loading) return;
+        if (!canReorderMapConfig || !draggingLayerId || draggingLayerId === targetId || loading) return;
         const next = reindexSortOrder(reorderById(wmsLayers, draggingLayerId, targetId));
         setWmsLayers(next);
         setDraggingLayerId(null);
@@ -433,7 +487,7 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
     };
 
     const handleBasemapDrop = (targetId: string) => {
-        if (!draggingBasemapId || draggingBasemapId === targetId || loading) return;
+        if (!canReorderMapConfig || !draggingBasemapId || draggingBasemapId === targetId || loading) return;
         const next = reindexSortOrder(reorderById(basemaps, draggingBasemapId, targetId));
         setBasemaps(next);
         setDraggingBasemapId(null);
@@ -442,8 +496,8 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
     };
 
     const normalizedQuery = globalQuery.trim().toLowerCase();
-    const canReorderLayers = !loading;
-    const canReorderBasemaps = !loading;
+    const canReorderLayers = !loading && canReorderMapConfig;
+    const canReorderBasemaps = !loading && canReorderMapConfig;
     const filteredSpatialTables = spatialTables.filter((t) => {
         if (!normalizedQuery) return true;
         return [t.table_name, t.display_name, t.description].some((v) => (v || '').toLowerCase().includes(normalizedQuery));
@@ -568,7 +622,7 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
                     <span className="font-semibold text-gray-100 flex items-center gap-2">
                         <Table size={18} className="text-green-400"/> Quản lý Bảng Dữ liệu (Registry)
                     </span>
-                    <button onClick={() => openModal('TABLE')} className="bg-green-600 hover:bg-green-500 text-white px-4 py-1.5 rounded text-sm font-bold flex items-center gap-1 transition-all">
+                    <button onClick={() => openModal('TABLE')} disabled={!canCreateTable} className="bg-green-600 hover:bg-green-500 disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-1.5 rounded text-sm font-bold flex items-center gap-1 transition-all">
                         <Plus size={16}/> Thêm / Liên kết
                     </button>
                 </div>
@@ -586,11 +640,11 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
                                     <td className="p-4 font-medium text-white">{t.display_name || t.table_name}</td>
                                     <td className="p-4 text-xs text-gray-500 truncate max-w-[200px]">{t.description || '--'}</td>
                                     <td className="p-4 flex justify-end gap-1">
-                                        <button onClick={() => triggerConfirm('SYNC', t.table_name, t.display_name || t.table_name)} className="p-2 text-emerald-400 hover:bg-emerald-400/10 rounded" title="Đồng bộ cấu trúc"><DatabaseZap size={16}/></button>
-                                        <button onClick={() => triggerConfirm('REPAIR', t.table_name, t.display_name || t.table_name)} className="p-2 text-orange-400 hover:bg-orange-400/10 rounded" title="Sửa lỗi cấu trúc (Thêm cột image_url)"><Wrench size={16}/></button>
-                                        <button onClick={() => openModal('TABLE', t)} className="p-2 text-blue-400 hover:bg-blue-400/10 rounded" title="Sửa thông số"><Edit2 size={16}/></button>
-                                        <button onClick={() => triggerConfirm('UNLINK', t.table_name, t.display_name || t.table_name)} className="p-2 text-orange-400 hover:bg-orange-400/10 rounded" title="Hủy liên kết"><Link2Off size={16}/></button>
-                                        <button onClick={() => triggerConfirm('DROP_TABLE', t.table_name, t.table_name)} className="p-2 text-red-500 hover:bg-red-500/10 rounded" title="Xóa vĩnh viễn"><Trash2 size={16}/></button>
+                                        <button onClick={() => triggerConfirm('SYNC', t.table_name, t.display_name || t.table_name)} disabled={!canSyncTable} className="p-2 text-emerald-400 hover:bg-emerald-400/10 rounded disabled:opacity-40 disabled:cursor-not-allowed" title="Đồng bộ cấu trúc"><DatabaseZap size={16}/></button>
+                                        <button onClick={() => triggerConfirm('REPAIR', t.table_name, t.display_name || t.table_name)} disabled={!canRepairTable} className="p-2 text-orange-400 hover:bg-orange-400/10 rounded disabled:opacity-40 disabled:cursor-not-allowed" title="Sửa lỗi cấu trúc (Thêm cột image_url)"><Wrench size={16}/></button>
+                                        <button onClick={() => openModal('TABLE', t)} disabled={!canEditTable} className="p-2 text-blue-400 hover:bg-blue-400/10 rounded disabled:opacity-40 disabled:cursor-not-allowed" title="Sửa thông số"><Edit2 size={16}/></button>
+                                        <button onClick={() => triggerConfirm('UNLINK', t.table_name, t.display_name || t.table_name)} disabled={!canDeleteTable} className="p-2 text-orange-400 hover:bg-orange-400/10 rounded disabled:opacity-40 disabled:cursor-not-allowed" title="Hủy liên kết"><Link2Off size={16}/></button>
+                                        <button onClick={() => triggerConfirm('DROP_TABLE', t.table_name, t.table_name)} disabled={!canDeleteTable} className="p-2 text-red-500 hover:bg-red-500/10 rounded disabled:opacity-40 disabled:cursor-not-allowed" title="Xóa vĩnh viễn"><Trash2 size={16}/></button>
                                     </td>
                                 </tr>
                             ))}
@@ -612,7 +666,7 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
                         {layerSaveState === 'saving' && <span className="text-[10px] uppercase font-black tracking-wider text-amber-400">Đang tự lưu...</span>}
                         {layerSaveState === 'saved' && <span className="text-[10px] uppercase font-black tracking-wider text-emerald-400">Đã lưu thứ tự</span>}
                         {layerSaveState === 'error' && <span className="text-[10px] uppercase font-black tracking-wider text-red-400">Lưu thất bại</span>}
-                        <button onClick={() => openModal('LAYER')} className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-1.5 rounded text-sm font-bold flex items-center gap-1 transition-all shadow-lg shadow-cyan-950/20">
+                        <button onClick={() => openModal('LAYER')} disabled={!canCreateLayer} className="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-1.5 rounded text-sm font-bold flex items-center gap-1 transition-all shadow-lg shadow-cyan-950/20">
                             <Plus size={16}/> Thêm Lớp Dữ liệu
                         </button>
                     </div>
@@ -669,7 +723,7 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
                                         </div>
                                     </td>
                                     <td className="p-4">
-                                        <button onClick={() => toggleWmsVisibility(l)} className="flex items-center gap-2">
+                                        <button onClick={() => toggleWmsVisibility(l)} disabled={!canToggleLayer} className="flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
                                             {l.visible ? (
                                                 <span className="flex items-center gap-1.5 text-green-400 text-[10px] uppercase font-black bg-green-900/20 px-2 py-1 rounded-full border border-green-800/40">
                                                     <Eye size={12}/> Đang hiện
@@ -682,8 +736,8 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
                                         </button>
                                     </td>
                                     <td className="p-4 flex justify-end gap-1">
-                                        <button onClick={() => openModal('LAYER', l)} className="p-2 text-blue-400 hover:bg-blue-400/10 rounded transition-all"><Edit2 size={16}/></button>
-                                        <button onClick={() => triggerConfirm('DELETE_WMS', l.id, l.name)} className="p-2 text-red-500 hover:bg-red-500/10 rounded transition-all"><Trash2 size={16}/></button>
+                                        <button onClick={() => openModal('LAYER', l)} disabled={!canEditLayer} className="p-2 text-blue-400 hover:bg-blue-400/10 rounded transition-all disabled:opacity-40 disabled:cursor-not-allowed"><Edit2 size={16}/></button>
+                                        <button onClick={() => triggerConfirm('DELETE_WMS', l.id, l.name)} disabled={!canDeleteLayer} className="p-2 text-red-500 hover:bg-red-500/10 rounded transition-all disabled:opacity-40 disabled:cursor-not-allowed"><Trash2 size={16}/></button>
                                     </td>
                                 </tr>
                             );
@@ -706,7 +760,7 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
                         {basemapSaveState === 'saving' && <span className="text-[10px] uppercase font-black tracking-wider text-amber-400">Đang tự lưu...</span>}
                         {basemapSaveState === 'saved' && <span className="text-[10px] uppercase font-black tracking-wider text-emerald-400">Đã lưu thứ tự</span>}
                         {basemapSaveState === 'error' && <span className="text-[10px] uppercase font-black tracking-wider text-red-400">Lưu thất bại</span>}
-                        <button onClick={() => openModal('BASEMAP')} className="bg-orange-600 hover:bg-orange-500 text-white px-4 py-1.5 rounded text-sm font-bold flex items-center gap-1 shadow-lg transition-all">
+                        <button onClick={() => openModal('BASEMAP')} disabled={!canCreateBasemap} className="bg-orange-600 hover:bg-orange-500 disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-1.5 rounded text-sm font-bold flex items-center gap-1 shadow-lg transition-all">
                             <Plus size={16}/> Thêm Bản đồ nền
                         </button>
                     </div>
@@ -752,9 +806,9 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus }) => {
                                     </td>
                                     <td className="p-4">{bm.visible ? <span className="text-green-400 text-[10px] uppercase font-bold">Hiện</span> : <span className="text-gray-500 text-[10px] uppercase font-bold">Ẩn</span>}</td>
                                     <td className="p-4 flex justify-end gap-1">
-                                        <button onClick={() => duplicateBasemap(bm)} className="p-2 text-emerald-400 hover:bg-emerald-400/10 rounded transition-all" title="Nhân bản nhanh"><Plus size={16}/></button>
-                                        <button onClick={() => openModal('BASEMAP', bm)} className="p-2 text-blue-400 hover:bg-blue-400/10 rounded transition-all"><Edit2 size={16}/></button>
-                                        <button onClick={() => triggerConfirm('DELETE_BASEMAP', bm.id, bm.name)} className="p-2 text-red-500 hover:bg-red-500/10 rounded transition-all"><Trash2 size={16}/></button>
+                                        <button onClick={() => duplicateBasemap(bm)} disabled={!canCreateBasemap} className="p-2 text-emerald-400 hover:bg-emerald-400/10 rounded transition-all disabled:opacity-40 disabled:cursor-not-allowed" title="Nhân bản nhanh"><Plus size={16}/></button>
+                                        <button onClick={() => openModal('BASEMAP', bm)} disabled={!canEditBasemap} className="p-2 text-blue-400 hover:bg-blue-400/10 rounded transition-all disabled:opacity-40 disabled:cursor-not-allowed"><Edit2 size={16}/></button>
+                                        <button onClick={() => triggerConfirm('DELETE_BASEMAP', bm.id, bm.name)} disabled={!canDeleteBasemap} className="p-2 text-red-500 hover:bg-red-500/10 rounded transition-all disabled:opacity-40 disabled:cursor-not-allowed"><Trash2 size={16}/></button>
                                     </td>
                                 </tr>
                             ))}

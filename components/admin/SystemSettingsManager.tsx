@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { adminService } from '../../services/mockBackend';
+import { adminService, hasAnyPermission } from '../../services/mockBackend';
 import { SystemSetting } from '../../types';
 import { Settings, Save, DatabaseBackup, Download, RefreshCw, AlertTriangle, Image as ImageIcon, Trash2, Map as MapIcon, CheckCircle2, X, Info, Table, CheckSquare, Square, Check, Globe, Mail, Activity, Cpu, HardDrive, Clock, FileText, Eye, EyeOff, Upload, History, Wifi, WifiOff, Zap } from 'lucide-react';
 import { PDF_TEMPLATE_PRESETS, getPdfTemplatePreset } from '../../utils/pdfTemplatePresets';
+import { formatParcelIdentifier as formatParcelValue } from '../../utils/helpers';
 
 const SETTING_METADATA: Record<string, { label: string; description: string; type: 'text' | 'number' | 'boolean' | 'image' }> = {
     'system_name': { label: 'Tên hệ thống', description: 'Tên hiển thị chính trên website và tiêu đề trình duyệt', type: 'text' },
@@ -15,7 +16,8 @@ const SETTING_METADATA: Record<string, { label: string; description: string; typ
     'seo_description': { label: 'Mô tả Meta SEO', description: 'Mô tả ngắn gọn để Google tìm kiếm và hiển thị', type: 'text' },
     'seo_keywords': { label: 'Từ khóa SEO', description: 'Các từ khóa cách nhau bởi dấu phẩy', type: 'text' },
     'seo_og_image': { label: 'Ảnh chia sẻ MXH', description: 'Ảnh hiển thị khi gửi link qua Zalo, Facebook', type: 'image' },
-    'mail_host': { label: 'SMTP Host', description: 'Địa chỉ máy chủ SMTP (Brevo: smtp-relay.brevo.com)', type: 'text' },
+    'mail_provider': { label: 'Nhà cung cấp Mail', description: 'Chọn nhanh loại máy chủ SMTP như Gmail, Outlook, Brevo hoặc cấu hình thủ công', type: 'text' },
+    'mail_host': { label: 'SMTP Host', description: 'Địa chỉ máy chủ SMTP, có thể tự điền theo nhà cung cấp đã chọn', type: 'text' },
     'mail_port': { label: 'SMTP Port', description: 'Cổng gửi thư (Brevo: 587, SSL thường dùng: 465)', type: 'number' },
     'mail_user': { label: 'Tài khoản Email', description: 'Email dùng để gửi thư hệ thống', type: 'text' },
     'mail_pass': { label: 'Mật khẩu ứng dụng', description: 'Mật khẩu ứng dụng (App Password) của Gmail/Outlook', type: 'text' },
@@ -33,6 +35,7 @@ const SETTING_METADATA: Record<string, { label: string; description: string; typ
     'thematic_map_max_zoom': { label: 'HC - Zoom tối đa', description: 'Mức zoom tối đa cho trang Đơn vị hành chính', type: 'number' },
     'thematic_map_min_zoom': { label: 'HC - Zoom tối thiểu', description: 'Mức zoom tối thiểu cho trang Đơn vị hành chính', type: 'number' },
     'thematic_default_basemap_id': { label: 'HC - Bản đồ nền mặc định', description: 'ID bản đồ nền mặc định cho trang Đơn vị hành chính', type: 'text' },
+    'parcel_identifier_format': { label: 'Cấu trúc mã định danh thửa đất', description: 'Mẫu hiển thị mã thửa. Hỗ trợ các biến {so_to}, {so_thua}, {gid}, {owner}, {land_type}, {phuong_xa}. Phường/xã sẽ lấy theo tên bảng dữ liệu. Ví dụ: {phuong_xa}-T{so_to}-TH{so_thua}', type: 'text' },
     'pdf_template_preset': { label: 'Mẫu PDF mặc định', description: 'Mẫu do quản trị hệ thống chọn và áp dụng cho toàn bộ người dùng', type: 'text' },
     'pdf_header_1': { label: 'Dòng tiêu đề 1', description: 'Ví dụ: CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM', type: 'text' },
     'pdf_header_2': { label: 'Dòng tiêu đề 2', description: 'Ví dụ: Độc lập - Tự do - Hạnh phúc', type: 'text' },
@@ -56,10 +59,10 @@ const SETTING_METADATA: Record<string, { label: string; description: string; typ
 // ─── Tab → keys mapping ──────────────────────────────────────────────────────
 const TAB_KEYS: Record<string, string[]> = {
     GENERAL: ['system_name', 'site_logo', 'site_favicon', 'maintenance_mode', 'allow_registration', 'footer_text'],
-    MAP:     ['map_center_lat', 'map_center_lng', 'default_zoom', 'map_max_zoom', 'map_min_zoom', 'thematic_map_center_lat', 'thematic_map_center_lng', 'thematic_default_zoom', 'thematic_map_max_zoom', 'thematic_map_min_zoom', 'thematic_default_basemap_id'],
+    MAP:     ['map_center_lat', 'map_center_lng', 'default_zoom', 'map_max_zoom', 'map_min_zoom', 'thematic_map_center_lat', 'thematic_map_center_lng', 'thematic_default_zoom', 'thematic_map_max_zoom', 'thematic_map_min_zoom', 'thematic_default_basemap_id', 'parcel_identifier_format'],
     PDF:     ['pdf_template_preset', 'pdf_header_1', 'pdf_header_2', 'pdf_title', 'pdf_location_text', 'pdf_signer_title', 'pdf_signer_name', 'pdf_signature_style', 'pdf_signature_width', 'pdf_signature_height', 'pdf_signature_image', 'pdf_show_signature_image', 'pdf_stamp_image', 'pdf_show_stamp', 'pdf_note_text', 'pdf_footer_text', 'pdf_show_qr', 'pdf_show_signer'],
     SEO:     ['seo_title', 'seo_description', 'seo_keywords', 'seo_og_image'],
-    MAIL:    ['mail_host', 'mail_port', 'mail_user', 'mail_pass', 'mail_from_email', 'mail_from_name'],
+    MAIL:    ['mail_provider', 'mail_host', 'mail_port', 'mail_user', 'mail_pass', 'mail_from_email', 'mail_from_name'],
 };
 
 const SETTINGS_GROUPS = [
@@ -102,6 +105,17 @@ const TAB_TITLES: Record<string, { title: string; description: string }> = {
     BACKUP: { title: 'Sao lưu và khôi phục', description: 'Xuất hoặc phục hồi dữ liệu từ tệp SQL.' }
 };
 
+const MAIL_PROVIDER_PRESETS = {
+    CUSTOM: { label: 'Tùy chỉnh thủ công', host: '', port: '', note: 'Tự nhập host và port theo nhà cung cấp riêng của bạn.' },
+    GMAIL: { label: 'Gmail', host: 'smtp.gmail.com', port: '587', note: 'Khuyên dùng App Password của Google thay cho mật khẩu đăng nhập thường.' },
+    OUTLOOK: { label: 'Outlook / Hotmail', host: 'smtp.office365.com', port: '587', note: 'Dùng cho Outlook.com, Hotmail hoặc Microsoft 365.' },
+    YAHOO: { label: 'Yahoo Mail', host: 'smtp.mail.yahoo.com', port: '587', note: 'Cần tạo App Password trong tài khoản Yahoo.' },
+    ZOHO: { label: 'Zoho Mail', host: 'smtp.zoho.com', port: '587', note: 'Phù hợp khi dùng tên miền email doanh nghiệp qua Zoho.' },
+    BREVO: { label: 'Brevo', host: 'smtp-relay.brevo.com', port: '587', note: 'Khuyên dùng cho hệ thống gửi OTP và email giao dịch.' },
+    SENDGRID: { label: 'SendGrid', host: 'smtp.sendgrid.net', port: '587', note: 'Sử dụng API Key hoặc SMTP credentials từ SendGrid.' },
+    MAILGUN: { label: 'Mailgun', host: 'smtp.mailgun.org', port: '587', note: 'Cần cấu hình domain và SMTP credentials của Mailgun.' }
+} as const;
+
 // ─── Inline validation ────────────────────────────────────────────────────────
 const validate = (key: string, value: string): string => {
     if (!value) return '';
@@ -114,9 +128,15 @@ const validate = (key: string, value: string): string => {
 };
 
 const BACKUP_HISTORY_KEY = 'geo_backup_history';
-type BackupRecord = { date: string; tables: number; filename: string };
+type BackupScope = 'ALL' | 'SYSTEM' | 'SPATIAL' | 'CUSTOM';
+type BackupFormat = 'FULL' | 'DATA_ONLY' | 'SCHEMA_ONLY';
+type BackupRecord = { date: string; tables: number; filename: string; format?: BackupFormat; scope?: BackupScope };
 
-const SystemSettingsManager: React.FC = () => {
+interface SystemSettingsManagerProps {
+    permissions?: string[];
+}
+
+const SystemSettingsManager: React.FC<SystemSettingsManagerProps> = ({ permissions = [] }) => {
     const [settings, setSettings] = useState<SystemSetting[]>([]);
     const [savedSettings, setSavedSettings] = useState<SystemSetting[]>([]); // pristine copy from server
     const [subTab, setSubTab] = useState<'GENERAL' | 'MAP' | 'PDF' | 'SEO' | 'MAIL' | 'STATUS' | 'BACKUP'>('GENERAL');
@@ -142,6 +162,8 @@ const SystemSettingsManager: React.FC = () => {
     // Backup
     const [backupTables, setBackupTables] = useState<{system: string[], spatial: string[]}>({ system: [], spatial: [] });
     const [selectedTables, setSelectedTables] = useState<string[]>([]);
+    const [backupScope, setBackupScope] = useState<BackupScope>('ALL');
+    const [backupFormat, setBackupFormat] = useState<BackupFormat>('FULL');
     const [backupHistory, setBackupHistory] = useState<BackupRecord[]>([]);
     const [restoreFile, setRestoreFile] = useState<File | null>(null);
     const [restoring, setRestoring] = useState(false);
@@ -152,6 +174,11 @@ const SystemSettingsManager: React.FC = () => {
         isOpen: false, type: 'alert', title: '', message: ''
     });
     const showDialog = (type: any, title: string, message: string) => setDialog({ isOpen: true, type, title, message });
+
+    const canSaveSettings = hasAnyPermission(permissions, ['SAVE_SYSTEM_SETTINGS', 'MANAGE_SYSTEM']);
+    const canTestServices = hasAnyPermission(permissions, ['TEST_MAIL_SERVER', 'MANAGE_SYSTEM']);
+    const canCreateBackup = hasAnyPermission(permissions, ['MANAGE_BACKUP', 'MANAGE_SYSTEM']);
+    const canRestoreBackup = hasAnyPermission(permissions, ['RESTORE_BACKUP', 'MANAGE_SYSTEM']);
 
     // ── Dirty tracking ────────────────────────────────────────────────────────
     const isDirtyKey = useCallback((key: string) => {
@@ -215,6 +242,10 @@ const SystemSettingsManager: React.FC = () => {
     };
 
     const handleTestMail = async () => {
+        if (!canTestServices) {
+            showDialog('error', 'Không đủ quyền', 'Bạn không có quyền kiểm tra máy chủ mail.');
+            return;
+        }
         setMailTestStatus('testing');
         setMailTestMsg('Đang kiểm tra SMTP và gửi email test...');
         try {
@@ -236,12 +267,25 @@ const SystemSettingsManager: React.FC = () => {
         }
     };
 
+    const resolveTablesByScope = useCallback((scope: BackupScope, tablesSource = backupTables) => {
+        if (scope === 'SYSTEM') return [...tablesSource.system];
+        if (scope === 'SPATIAL') return [...tablesSource.spatial];
+        return [...tablesSource.system, ...tablesSource.spatial];
+    }, [backupTables]);
+
+    const applyBackupScope = useCallback((scope: BackupScope, tablesSource = backupTables) => {
+        setBackupScope(scope);
+        if (scope === 'CUSTOM') return;
+        setSelectedTables(resolveTablesByScope(scope, tablesSource));
+    }, [backupTables, resolveTablesByScope]);
+
     const loadBackupTables = async () => {
         setLoading(true);
         try {
             const tables = await adminService.getBackupTables();
             setBackupTables(tables);
-            setSelectedTables([...tables.system, ...tables.spatial]);
+            setBackupScope('ALL');
+            setSelectedTables(resolveTablesByScope('ALL', tables));
         } catch (e) {
             console.error(e);
         } finally {
@@ -250,6 +294,7 @@ const SystemSettingsManager: React.FC = () => {
     };
 
     const toggleTableSelection = (tableName: string) => {
+        setBackupScope('CUSTOM');
         setSelectedTables(prev => 
             prev.includes(tableName) 
             ? prev.filter(t => t !== tableName) 
@@ -259,8 +304,10 @@ const SystemSettingsManager: React.FC = () => {
 
     const handleSelectAll = (selectAll: boolean) => {
         if (selectAll) {
-            setSelectedTables([...backupTables.system, ...backupTables.spatial]);
+            setBackupScope('ALL');
+            setSelectedTables(resolveTablesByScope('ALL'));
         } else {
+            setBackupScope('CUSTOM');
             setSelectedTables([]);
         }
     };
@@ -285,11 +332,29 @@ const SystemSettingsManager: React.FC = () => {
                 });
             }
 
+            if (key === 'mail_provider') {
+                const providerKey = String(value || 'CUSTOM').toUpperCase() as keyof typeof MAIL_PROVIDER_PRESETS;
+                const provider = MAIL_PROVIDER_PRESETS[providerKey] || MAIL_PROVIDER_PRESETS.CUSTOM;
+                if (provider.host || provider.port) {
+                    ([['mail_host', provider.host], ['mail_port', provider.port]] as const).forEach(([presetKey, presetValue]) => {
+                        if (next.some(s => s.key === presetKey)) {
+                            next = next.map(s => s.key === presetKey ? { ...s, value: presetValue } : s);
+                        } else {
+                            next.push({ key: presetKey, value: presetValue, type: SETTING_METADATA[presetKey]?.type || 'text' } as SystemSetting);
+                        }
+                    });
+                }
+            }
+
             return next;
         });
     };
 
     const handleSave = async () => {
+        if (!canSaveSettings) {
+            showDialog('error', 'Không đủ quyền', 'Bạn không có quyền lưu thay đổi cấu hình hệ thống.');
+            return;
+        }
         // Block save if any validation errors exist
         const hasErrors = Object.values(validationErrors).some(e => !!e);
         if (hasErrors) { showDialog('error', 'Lỗi xác thực', 'Vui lòng sửa các trường bị lỗi trước khi lưu.'); return; }
@@ -311,19 +376,31 @@ const SystemSettingsManager: React.FC = () => {
     };
 
     const handleStartBackup = async () => {
-        if (selectedTables.length === 0) {
+        if (!canCreateBackup) {
+            showDialog('error', 'Không đủ quyền', 'Bạn không có quyền tạo bản sao lưu SQL.');
+            return;
+        }
+        const tablesToExport = backupScope === 'CUSTOM' ? selectedTables : resolveTablesByScope(backupScope);
+        if (tablesToExport.length === 0) {
             showDialog('error', 'Lỗi', 'Vui lòng chọn ít nhất một bảng để sao lưu.');
             return;
         }
         setLoading(true);
         try {
-            await adminService.createBackup(selectedTables);
-            const filename = `backup_${new Date().toISOString().slice(0, 10)}.sql`;
-            const record: BackupRecord = { date: new Date().toLocaleString('vi-VN'), tables: selectedTables.length, filename };
+            const result = await adminService.createBackup({ tables: tablesToExport, format: backupFormat, scope: backupScope });
+            const filename = result?.fileName || `backup_${backupScope.toLowerCase()}_${backupFormat.toLowerCase()}_${new Date().toISOString().slice(0, 10)}.sql`;
+            const record: BackupRecord = {
+                date: new Date().toLocaleString('vi-VN'),
+                tables: tablesToExport.length,
+                filename,
+                format: backupFormat,
+                scope: backupScope
+            };
             const newHistory = [record, ...backupHistory].slice(0, 10);
             setBackupHistory(newHistory);
             localStorage.setItem(BACKUP_HISTORY_KEY, JSON.stringify(newHistory));
-            showDialog('success', 'Thành công', 'File SQL đã được tạo và đang tải xuống.');
+            const warningText = result?.skippedCount > 0 ? ` Tuy có ${result.skippedCount} bảng được bỏ qua do lỗi cấu trúc.` : '';
+            showDialog('success', 'Thành công', `File sao lưu SQL đã được tạo và đang tải xuống.${warningText}`);
         } catch (e: any) {
             showDialog('error', 'Lỗi Backup', e.message);
         } finally {
@@ -332,6 +409,10 @@ const SystemSettingsManager: React.FC = () => {
     };
 
     const handleRestore = async () => {
+        if (!canRestoreBackup) {
+            showDialog('error', 'Không đủ quyền', 'Bạn không có quyền khôi phục dữ liệu từ file SQL.');
+            return;
+        }
         if (!restoreFile) return;
         if (!window.confirm(`Xác nhận khôi phục từ "${restoreFile.name}"? Thao tác này sẽ ghi đè dữ liệu hiện tại.`)) return;
         setRestoring(true);
@@ -345,6 +426,10 @@ const SystemSettingsManager: React.FC = () => {
     };
 
     const handleDbTest = async () => {
+        if (!canTestServices) {
+            showDialog('error', 'Không đủ quyền', 'Bạn không có quyền kiểm tra kết nối hệ thống.');
+            return;
+        }
         setDbTestStatus('testing');
         try {
             const result = await adminService.checkDbConnection();
@@ -469,6 +554,55 @@ const SystemSettingsManager: React.FC = () => {
                         <option value="DIGITAL">Ký số màu xanh</option>
                     </select>
                     <p className="text-[10px] text-gray-500">Có thể kết hợp cùng ảnh chữ ký và ảnh mộc để tạo mẫu trình bày hoàn chỉnh.</p>
+                    {dirty && <p className="text-[10px] text-yellow-500">● Chưa lưu</p>}
+                </div>
+            );
+        }
+
+        if (key === 'parcel_identifier_format') {
+            const previewValue = formatParcelValue({
+                so_to: '12',
+                so_thua: '345',
+                gid: '6789',
+                owner: 'NGUYỄN VĂN A',
+                land_type: 'ODT',
+                table_name: 'phuong_an_khanh'
+            }, setting.value || '{so_to}/{so_thua}');
+
+            return (
+                <div className="space-y-2">
+                    <input
+                        className={`w-full bg-gray-900 border rounded p-2.5 text-white outline-none font-medium transition-colors ${dirty ? 'border-yellow-500/60 focus:border-yellow-400' : 'border-gray-600 focus:border-blue-500'}`}
+                        value={setting.value || ''}
+                        type="text"
+                        placeholder="Ví dụ: T{so_to}-TH{so_thua}"
+                        onChange={e => updateSettingValue(key, e.target.value)}
+                    />
+                    <p className="text-[10px] text-gray-500">Biến hỗ trợ: {'{so_to}'}, {'{so_thua}'}, {'{gid}'}, {'{owner}'}, {'{land_type}'}, {'{phuong_xa}'} hoặc {'{ten_bang}'}</p>
+                    <div className="rounded-lg border border-cyan-800/40 bg-cyan-950/10 p-3 text-[11px]">
+                        <div className="text-cyan-400 font-black uppercase tracking-wider mb-1">Xem trước</div>
+                        <div className="text-white font-mono">{previewValue}</div>
+                    </div>
+                    {dirty && <p className="text-[10px] text-yellow-500">● Chưa lưu</p>}
+                </div>
+            );
+        }
+
+        if (key === 'mail_provider') {
+            const providerKey = String(setting.value || 'CUSTOM').toUpperCase() as keyof typeof MAIL_PROVIDER_PRESETS;
+            const provider = MAIL_PROVIDER_PRESETS[providerKey] || MAIL_PROVIDER_PRESETS.CUSTOM;
+            return (
+                <div className="space-y-2">
+                    <select
+                        className={`w-full bg-gray-900 border rounded p-2.5 text-white outline-none font-medium transition-colors ${dirty ? 'border-yellow-500/60 focus:border-yellow-400' : 'border-gray-600 focus:border-blue-500'}`}
+                        value={setting.value || 'CUSTOM'}
+                        onChange={e => updateSettingValue(key, e.target.value)}
+                    >
+                        {Object.entries(MAIL_PROVIDER_PRESETS).map(([providerValue, providerMeta]) => (
+                            <option key={providerValue} value={providerValue}>{providerMeta.label}</option>
+                        ))}
+                    </select>
+                    <p className="text-[10px] text-rose-300">{provider.note}</p>
                     {dirty && <p className="text-[10px] text-yellow-500">● Chưa lưu</p>}
                 </div>
             );
@@ -604,7 +738,7 @@ const SystemSettingsManager: React.FC = () => {
                         ))}
 
                         <div className="text-[11px] font-black uppercase tracking-wider text-indigo-400 pt-2">Trang Đơn vị hành chính</div>
-                        {['thematic_map_center_lat', 'thematic_map_center_lng', 'thematic_default_zoom', 'thematic_map_max_zoom', 'thematic_map_min_zoom', 'thematic_default_basemap_id'].map(key => (
+                        {['thematic_map_center_lat', 'thematic_map_center_lng', 'thematic_default_zoom', 'thematic_map_max_zoom', 'thematic_map_min_zoom', 'thematic_default_basemap_id', 'parcel_identifier_format'].map(key => (
                             <div key={key} className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-gray-700/50 pb-6 last:border-0 last:pb-0">
                                 <div className="col-span-1">
                                     <label className="text-sm font-bold text-gray-200 block mb-1">{SETTING_METADATA[key]?.label || key}</label>
@@ -674,7 +808,7 @@ const SystemSettingsManager: React.FC = () => {
                                         <div className="flex items-center gap-3 text-blue-400">
                                             <HardDrive size={20}/> <h4 className="font-black uppercase tracking-tight text-sm">Cơ sở dữ liệu</h4>
                                         </div>
-                                        <button onClick={handleDbTest} disabled={dbTestStatus === 'testing'}
+                                        <button onClick={handleDbTest} disabled={dbTestStatus === 'testing' || !canTestServices}
                                             className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] rounded bg-blue-800/40 border border-blue-700/50 text-blue-300 hover:bg-blue-700/50 transition-colors disabled:opacity-50">
                                             {dbTestStatus === 'testing' ? <RefreshCw size={11} className="animate-spin" /> : <Zap size={11} />}
                                             Test kết nối
@@ -780,7 +914,7 @@ const SystemSettingsManager: React.FC = () => {
                     <div className="space-y-6 animate-in fade-in duration-300">
                         <div className="p-4 bg-rose-900/10 border border-rose-800/30 rounded flex gap-3 items-center mb-4">
                             <Mail className="text-rose-400" size={24}/>
-                            <p className="text-xs text-rose-300 italic">Cấu hình máy chủ gửi thư SMTP để gửi mã OTP. Với Brevo, dùng host smtp-relay.brevo.com và port 587.</p>
+                            <p className="text-xs text-rose-300 italic">Chọn nhanh nhà cung cấp như Gmail, Outlook, Yahoo, Zoho, Brevo, SendGrid hoặc Mailgun. Hệ thống sẽ tự điền host và port phổ biến.</p>
                         </div>
                         <div className="p-4 bg-gray-900/60 border border-gray-700 rounded-lg space-y-3">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
@@ -796,7 +930,7 @@ const SystemSettingsManager: React.FC = () => {
                                 </div>
                                 <button
                                     onClick={handleTestMail}
-                                    disabled={mailTestStatus === 'testing' || !mailTestTo}
+                                    disabled={mailTestStatus === 'testing' || !mailTestTo || !canTestServices}
                                     className="h-[42px] px-4 rounded bg-rose-700 hover:bg-rose-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-bold text-white transition-colors flex items-center justify-center gap-2"
                                 >
                                     {mailTestStatus === 'testing' ? <RefreshCw size={14} className="animate-spin" /> : <Mail size={14} />}
@@ -814,7 +948,7 @@ const SystemSettingsManager: React.FC = () => {
                             )}
                             <p className="text-[11px] text-gray-500">Nút này dùng ngay giá trị SMTP hiện tại trên form (kể cả chưa bấm Lưu).</p>
                         </div>
-                        {['mail_host', 'mail_port', 'mail_user', 'mail_pass', 'mail_from_email', 'mail_from_name'].map(key => (
+                        {['mail_provider', 'mail_host', 'mail_port', 'mail_user', 'mail_pass', 'mail_from_email', 'mail_from_name'].map(key => (
                             <div key={key} className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-gray-700/50 pb-6 last:border-0 last:pb-0">
                                 <div className="col-span-1">
                                     <label className="text-sm font-bold text-gray-200 block mb-1">{SETTING_METADATA[key]?.label || key}</label>
@@ -835,7 +969,7 @@ const SystemSettingsManager: React.FC = () => {
                                     <DatabaseBackup className="text-green-500" size={24} />
                                     <div>
                                         <h4 className="font-bold text-lg uppercase tracking-tight">Xuất SQL</h4>
-                                        <p className="text-xs text-gray-500">Chọn các bảng cần kết xuất dữ liệu</p>
+                                        <p className="text-xs text-gray-500">Có thể xuất toàn bộ bảng hoặc từng nhóm bảng trong một file SQL</p>
                                     </div>
                                 </div>
                                 <button onClick={() => handleSelectAll(!isAllSelected)} className="text-xs font-black uppercase text-blue-400 hover:text-blue-300 flex items-center gap-2">
@@ -843,6 +977,50 @@ const SystemSettingsManager: React.FC = () => {
                                     {isAllSelected ? "Bỏ chọn" : "Chọn tất cả"}
                                 </button>
                             </div>
+
+                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                                <div className="rounded-2xl border border-gray-800 bg-gray-900/40 p-4 space-y-3">
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-cyan-400">Phạm vi xuất</div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {[
+                                            { key: 'ALL', label: 'Toàn bộ CSDL' },
+                                            { key: 'SYSTEM', label: 'Chỉ bảng hệ thống' },
+                                            { key: 'SPATIAL', label: 'Chỉ bảng bản đồ' },
+                                            { key: 'CUSTOM', label: 'Tùy chọn thủ công' }
+                                        ].map((option) => (
+                                            <button
+                                                key={option.key}
+                                                onClick={() => applyBackupScope(option.key as BackupScope)}
+                                                className={`rounded-xl border px-3 py-2 text-[11px] font-black uppercase transition-all ${backupScope === option.key ? 'border-cyan-500 bg-cyan-600/20 text-cyan-300' : 'border-gray-700 bg-gray-950 text-gray-400 hover:text-white hover:border-gray-600'}`}
+                                            >
+                                                {option.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <p className="text-[11px] text-gray-500">Chọn <span className="font-bold text-white">Toàn bộ CSDL</span> để xuất tất cả bảng vào cùng một file SQL.</p>
+                                </div>
+
+                                <div className="rounded-2xl border border-gray-800 bg-gray-900/40 p-4 space-y-3">
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Dạng file xuất</div>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                        {[
+                                            { key: 'FULL', label: 'SQL đầy đủ' },
+                                            { key: 'DATA_ONLY', label: 'Chỉ dữ liệu' },
+                                            { key: 'SCHEMA_ONLY', label: 'Chỉ cấu trúc' }
+                                        ].map((option) => (
+                                            <button
+                                                key={option.key}
+                                                onClick={() => setBackupFormat(option.key as BackupFormat)}
+                                                className={`rounded-xl border px-3 py-2 text-[11px] font-black uppercase transition-all ${backupFormat === option.key ? 'border-emerald-500 bg-emerald-600/20 text-emerald-300' : 'border-gray-700 bg-gray-950 text-gray-400 hover:text-white hover:border-gray-600'}`}
+                                            >
+                                                {option.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <p className="text-[11px] text-gray-500">Phù hợp cho sao lưu đầy đủ, migration cấu trúc hoặc trích xuất dữ liệu thuần SQL.</p>
+                                </div>
+                            </div>
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div className="space-y-4">
                                     <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2"><Settings size={12}/> Hệ thống ({backupTables.system.length})</h5>
@@ -872,9 +1050,12 @@ const SystemSettingsManager: React.FC = () => {
                                 </div>
                             </div>
                             <div className="pt-6 border-t border-gray-700 flex justify-between items-center">
-                                <div className="text-xs text-gray-500">Đã chọn: <span className="text-white font-bold">{selectedTables.length}</span> bảng</div>
-                                <button onClick={handleStartBackup} disabled={loading || selectedTables.length === 0} className="bg-green-700 hover:bg-green-600 text-white px-8 py-3 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl disabled:opacity-30 transition-all flex items-center gap-2">
-                                    {loading ? <RefreshCw className="animate-spin" size={16}/> : <Download size={16}/>} Tải xuống SQL
+                                <div className="text-xs text-gray-500">
+                                    Đã chọn: <span className="text-white font-bold">{(backupScope === 'CUSTOM' ? selectedTables : resolveTablesByScope(backupScope)).length}</span> bảng
+                                    <span className="text-gray-600"> · {backupFormat === 'FULL' ? 'SQL đầy đủ' : backupFormat === 'DATA_ONLY' ? 'Chỉ dữ liệu' : 'Chỉ cấu trúc'}</span>
+                                </div>
+                                <button onClick={handleStartBackup} disabled={!canCreateBackup || loading || (backupScope === 'CUSTOM' ? selectedTables.length === 0 : resolveTablesByScope(backupScope).length === 0)} className="bg-green-700 hover:bg-green-600 text-white px-8 py-3 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl disabled:opacity-30 transition-all flex items-center gap-2">
+                                    {loading ? <RefreshCw className="animate-spin" size={16}/> : <Download size={16}/>} Xuất file SQL
                                 </button>
                             </div>
                         </div>
@@ -888,15 +1069,15 @@ const SystemSettingsManager: React.FC = () => {
                                     <p className="text-xs text-amber-600 mt-0.5">Thận trọng: thao tác này sẽ ghi đè dữ liệu hiện tại</p>
                                 </div>
                             </div>
-                            <input ref={restoreInputRef} type="file" accept=".sql" className="hidden" onChange={e => setRestoreFile(e.target.files?.[0] || null)}/>
+                            <input ref={restoreInputRef} type="file" accept=".sql,.txt" className="hidden" onChange={e => setRestoreFile(e.target.files?.[0] || null)}/>
                             <div className="flex items-center gap-3">
-                                <button onClick={() => restoreInputRef.current?.click()} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-sm rounded-lg border border-gray-600 text-gray-300 flex items-center gap-2">
+                                <button onClick={() => restoreInputRef.current?.click()} disabled={!canRestoreBackup} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed text-sm rounded-lg border border-gray-600 text-gray-300 flex items-center gap-2">
                                     <FileText size={14}/> {restoreFile ? restoreFile.name : 'Chọn tệp .sql...'}
                                 </button>
                                 {restoreFile && (
                                     <button onClick={() => setRestoreFile(null)} className="text-gray-500 hover:text-red-400"><X size={14}/></button>
                                 )}
-                                <button onClick={handleRestore} disabled={!restoreFile || restoring} className="ml-auto px-6 py-2 bg-amber-700 hover:bg-amber-600 text-white text-xs font-black uppercase rounded-xl disabled:opacity-40 flex items-center gap-2">
+                                <button onClick={handleRestore} disabled={!canRestoreBackup || !restoreFile || restoring} className="ml-auto px-6 py-2 bg-amber-700 hover:bg-amber-600 text-white text-xs font-black uppercase rounded-xl disabled:opacity-40 flex items-center gap-2">
                                     {restoring ? <RefreshCw size={14} className="animate-spin"/> : <Upload size={14}/>} Khôi phục
                                 </button>
                             </div>
@@ -922,7 +1103,7 @@ const SystemSettingsManager: React.FC = () => {
                                             <CheckCircle2 size={14} className="text-green-500 shrink-0"/>
                                             <div className="flex-1 min-w-0">
                                                 <div className="text-xs font-mono text-gray-300 truncate">{rec.filename}</div>
-                                                <div className="text-[10px] text-gray-600 mt-0.5">{rec.date} · {rec.tables} bảng</div>
+                                                <div className="text-[10px] text-gray-600 mt-0.5">{rec.date} · {rec.tables} bảng{rec.scope ? ` · ${rec.scope}` : ''}{rec.format ? ` · ${rec.format}` : ''}</div>
                                             </div>
                                         </div>
                                     ))}
@@ -940,7 +1121,7 @@ const SystemSettingsManager: React.FC = () => {
                         </span>
                         <div className="flex gap-2">
                             <button onClick={loadData} className="px-3 py-1.5 text-xs text-yellow-300 hover:text-white transition-colors">Hoàn tác</button>
-                            <button onClick={handleSave} disabled={loading} className="px-4 py-1.5 bg-yellow-500 hover:bg-yellow-400 text-gray-900 text-xs font-black rounded-lg flex items-center gap-1.5 disabled:opacity-50 transition-all">
+                            <button onClick={handleSave} disabled={loading || !canSaveSettings} className="px-4 py-1.5 bg-yellow-500 hover:bg-yellow-400 text-gray-900 text-xs font-black rounded-lg flex items-center gap-1.5 disabled:opacity-50 transition-all">
                                 {loading ? <RefreshCw size={12} className="animate-spin"/> : <Save size={12}/>} Lưu ngay
                             </button>
                         </div>
@@ -950,7 +1131,7 @@ const SystemSettingsManager: React.FC = () => {
                 <div className="mt-8 flex flex-col md:flex-row justify-end gap-3 pt-6 border-t border-gray-700">
                     <button onClick={loadData} className="px-4 py-2 text-gray-400 hover:text-white font-bold uppercase text-[10px] tracking-widest order-2 md:order-1">Làm mới</button>
                     {subTab !== 'BACKUP' && subTab !== 'STATUS' && (
-                        <button onClick={handleSave} disabled={loading} className={`px-8 py-3 md:py-2 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 order-1 md:order-2 ${hasAnyDirty ? 'bg-blue-500 hover:bg-blue-400 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}>
+                        <button onClick={handleSave} disabled={loading || !canSaveSettings} className={`px-8 py-3 md:py-2 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 order-1 md:order-2 ${hasAnyDirty ? 'bg-blue-500 hover:bg-blue-400 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}>
                             {loading ? <RefreshCw className="animate-spin" size={18}/> : <Save size={18}/>} Lưu cấu hình
                         </button>
                     )}

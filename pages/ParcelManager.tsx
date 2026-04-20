@@ -1,6 +1,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { parcelApi, ParcelDTO, SpatialTable } from '../services/parcelApi';
+import { hasAnyPermission } from '../services/mockBackend';
 import { RefreshCw, Database, Layers, CheckCircle2, AlertTriangle, Info, Plus, FileSpreadsheet } from 'lucide-react';
 import { removeAccents } from '../utils/helpers';
 
@@ -11,7 +12,11 @@ import QuickView from '../components/admin/parcel/QuickView';
 import ParcelForm from '../components/admin/parcel/ParcelForm';
 import BulkImportModal from '../components/admin/parcel/BulkImportModal';
 
-const ParcelManager: React.FC = () => {
+interface ParcelManagerProps {
+    permissions?: string[];
+}
+
+const ParcelManager: React.FC<ParcelManagerProps> = ({ permissions = [] }) => {
     const [layer, setLayer] = useState('');
     const [availableTables, setAvailableTables] = useState<SpatialTable[]>([]);
     const [parcels, setParcels] = useState<ParcelDTO[]>([]);
@@ -38,6 +43,11 @@ const ParcelManager: React.FC = () => {
     const showDialog = (type: any, title: string, message: string, onConfirm?: () => void) => {
         setDialog({ isOpen: true, type, title, message, onConfirm });
     };
+
+    const canCreateParcel = hasAnyPermission(permissions, ['CREATE_PARCELS', 'MANAGE_PARCELS', 'EDIT_MAP']);
+    const canEditParcel = hasAnyPermission(permissions, ['EDIT_PARCELS', 'MANAGE_PARCELS', 'EDIT_MAP']);
+    const canDeleteParcel = hasAnyPermission(permissions, ['DELETE_PARCELS', 'DELETE_MAP', 'MANAGE_PARCELS']);
+    const canImportParcel = hasAnyPermission(permissions, ['IMPORT_PARCELS', 'MANAGE_PARCELS']);
 
     const isAdministrativeTable = useCallback((table: SpatialTable) => {
         const haystack = removeAccents(`${table.table_name || ''} ${table.display_name || ''} ${table.description || ''}`.toLowerCase());
@@ -111,6 +121,7 @@ const ParcelManager: React.FC = () => {
     };
 
     const handleDelete = (gid: number) => {
+        if (!canDeleteParcel) return showDialog('error', 'Không đủ quyền', 'Bạn không có quyền xóa thửa đất.');
         showDialog('confirm', 'Xác nhận xóa', 'Bạn có chắc muốn xóa thửa đất này khỏi hệ thống?', async () => {
             setLoading(true);
             try {
@@ -124,6 +135,10 @@ const ParcelManager: React.FC = () => {
 
     const handleFormSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (editingId ? !canEditParcel : !canCreateParcel) {
+            showDialog('error', 'Không đủ quyền', editingId ? 'Bạn không có quyền cập nhật thửa đất.' : 'Bạn không có quyền thêm thửa đất mới.');
+            return;
+        }
         setLoading(true);
         try {
             if (editingId) {
@@ -141,6 +156,7 @@ const ParcelManager: React.FC = () => {
     };
 
     const openEdit = (p: any) => {
+        if (!canEditParcel) return showDialog('error', 'Không đủ quyền', 'Bạn không có quyền sửa thửa đất.');
         setEditingId(p.gid);
         const rawSoTo = getFieldValue(p, ['sodoto', 'so_to']);
         const rawSoThua = getFieldValue(p, ['sothua', 'so_thua']);
@@ -157,6 +173,7 @@ const ParcelManager: React.FC = () => {
     };
 
     const openAdd = () => {
+        if (!canCreateParcel) return showDialog('error', 'Không đủ quyền', 'Bạn không có quyền thêm thửa đất mới.');
         setEditingId(null);
         setFormData({ sothua: '', sodoto: '', tenchu: '', diachi: '', loaidat: '', file: null });
         setIsFormOpen(true);
@@ -180,19 +197,19 @@ const ParcelManager: React.FC = () => {
                 <div className="flex flex-wrap gap-2 w-full md:w-auto">
                     <button onClick={loadTables} className="flex-1 md:flex-none justify-center flex items-center gap-2 bg-gray-800 hover:bg-gray-700 px-4 py-2.5 rounded-xl text-xs font-black transition-all border border-gray-700"><RefreshCw size={16} className={loading ? "animate-spin" : ""} /> TẢI LẠI</button>
                     <button 
-                        onClick={() => setIsBulkOpen(true)} 
-                        disabled={!layer} 
+                        onClick={() => canImportParcel ? setIsBulkOpen(true) : showDialog('error', 'Không đủ quyền', 'Bạn không có quyền nhập dữ liệu thửa đất.')}
+                        disabled={!layer || !canImportParcel} 
                         className="flex-1 md:flex-none justify-center flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 px-5 py-2.5 rounded-xl text-xs font-black transition-all shadow-lg active:scale-95 disabled:opacity-50"
                     >
                         <FileSpreadsheet size={18} /> NHẬP TỆP
                     </button>
-                    <button onClick={openAdd} disabled={!layer} className="w-full md:w-auto justify-center flex items-center gap-2 bg-blue-600 hover:bg-blue-500 px-5 py-2.5 rounded-xl text-xs font-black transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"><Plus size={18} /> THÊM THỬA ĐẤT</button>
+                    <button onClick={openAdd} disabled={!layer || !canCreateParcel} className="w-full md:w-auto justify-center flex items-center gap-2 bg-blue-600 hover:bg-blue-500 px-5 py-2.5 rounded-xl text-xs font-black transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"><Plus size={18} /> THÊM THỬA ĐẤT</button>
                 </div>
             </div>
 
             <div className="bg-gray-900 rounded-3xl border border-gray-800 shadow-2xl overflow-hidden flex flex-col flex-1">
                 <TableFilter layer={layer} setLayer={setLayer} availableTables={availableTables} searchFilters={searchFilters} setSearchFilters={setSearchFilters} handleSearch={() => handleSearch(1)} loading={loading} />
-                <ParcelList parcels={parcels} hasSearched={hasSearched} error={error} loading={loading} onQuickView={(p)=>{setSelectedItem(p); setIsPreviewOpen(true);}} onDownload={handleDownload} onEdit={openEdit} onDelete={handleDelete} getFieldValue={getFieldValue} page={page} pages={pages} total={total} limit={limit} onPageChange={(nextPage) => handleSearch(nextPage)} onLimitChange={async (nextLimit) => { setLimit(nextLimit); await handleSearch(1); }} />
+                <ParcelList parcels={parcels} hasSearched={hasSearched} error={error} loading={loading} onQuickView={(p)=>{setSelectedItem(p); setIsPreviewOpen(true);}} onDownload={handleDownload} onEdit={openEdit} onDelete={handleDelete} canEdit={canEditParcel} canDelete={canDeleteParcel} getFieldValue={getFieldValue} page={page} pages={pages} total={total} limit={limit} onPageChange={(nextPage) => handleSearch(nextPage)} onLimitChange={async (nextLimit) => { setLimit(nextLimit); await handleSearch(1); }} />
             </div>
 
             {/* Modals */}

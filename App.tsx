@@ -301,7 +301,7 @@ const App: React.FC = () => {
             <Routes>
                 <Route path="/" element={<MapPage user={user} systemSettings={systemSettings} />} />
                 <Route path="/donvihanhchinh" element={<AdministrativeMapPage user={user} systemSettings={systemSettings} />} />
-                <Route path="/giadata" element={<LandPriceLookup />} />
+                <Route path="/giadata" element={<LandPriceLookup user={user} systemSettings={systemSettings} />} />
                 <Route path="/taomaqr" element={<QRGenerator />} />
                 <Route path="/chuyendoihetoado" element={<CoordinateConverter />} />
                 <Route path="/gioithieu" element={<About />} />
@@ -315,8 +315,8 @@ const App: React.FC = () => {
                 
                 {/* Admin Route */}
                 <Route path="/quantri" element={
-                    <ProtectedRoute requiredRole={UserRole.ADMIN}>
-                        <AdminPage systemName={systemSettings['system_name']} logoUrl={systemSettings['site_logo']} />
+                    <ProtectedRoute>
+                        <AdminPage user={user} systemName={systemSettings['system_name']} logoUrl={systemSettings['site_logo']} />
                     </ProtectedRoute>
                 } />
             </Routes>

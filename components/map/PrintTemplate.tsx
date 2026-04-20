@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { LandParcel, User } from '../../types';
 import QRCode from 'qrcode';
 import { resolvePdfTemplateSettings } from '../../utils/pdfTemplatePresets';
+import { formatParcelIdentifier } from '../../utils/helpers';
 
 interface PrintTemplateProps {
     parcel: LandParcel;
@@ -31,11 +32,13 @@ const PrintTemplate: React.FC<PrintTemplateProps> = ({ parcel, user, systemSetti
         return "";
     };
 
+    const parcelIdentifier = formatParcelIdentifier(formData, systemSettings?.parcel_identifier_format);
+
     useEffect(() => {
         // Generate QR Code for Print Verification
         const generateQR = async () => {
             try {
-                const verificationContent = `VERIFY: ${parcel.id}\nPARCEL: ${formData.so_to}/${formData.so_thua}\nWEBGIS GEOMASTER AUTHENTICATED`;
+                const verificationContent = `VERIFY: ${parcel.id}\nPARCEL: ${parcelIdentifier}\nWEBGIS GEOMASTER AUTHENTICATED`;
                 const url = await QRCode.toDataURL(verificationContent, {
                     width: 120,
                     margin: 0,
@@ -163,7 +166,7 @@ const PrintTemplate: React.FC<PrintTemplateProps> = ({ parcel, user, systemSetti
                 }
             }
         }
-    }, [parcel, formData.so_to, formData.so_thua]);
+    }, [parcel, parcelIdentifier]);
 
     // Tự động tính toán kích thước font bảng dựa trên số lượng điểm
     const getTableStyles = () => {
@@ -443,7 +446,7 @@ const PrintTemplate: React.FC<PrintTemplateProps> = ({ parcel, user, systemSetti
                                 </div>
 
                                 <div style={{ paddingTop: "10px", textAlign: "center", fontSize: "9px", color: "#333", borderTop: "0.5px solid #000" }}>
-                                    Cổng thông tin Địa chính GeoMaster - {pdfFooterText}
+                                    Cổng thông tin Địa chính QLDDHCM - {pdfFooterText}
                                 </div>
                             </>
                         )}

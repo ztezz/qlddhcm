@@ -314,12 +314,38 @@ export const adminService = {
     deleteLandPrice2026: async (id: number) => apiCall(`/land-prices-2026/${id}`, { method: 'DELETE' }),
 
     getBackupTables: async () => apiCall('/backup/tables'),
-    createBackup: async (tables: string[]) => {
-        const res = await fetch(`${API_URL}/api/backup/create`, { method: 'POST', headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ tables }) });
-        if (!res.ok) throw new Error("Tạo bản sao lưu thất bại");
+    createBackup: async (payload: string[] | { tables?: string[]; format?: string; scope?: string }) => {
+        const body = Array.isArray(payload) ? { tables: payload } : payload;
+        const res = await fetch(`${API_URL}/api/backup/create`, {
+            method: 'POST',
+            headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        if (!res.ok) {
+            const errorText = await res.text();
+            let message = "Tạo bản sao lưu thất bại";
+            try {
+                const parsed = JSON.parse(errorText);
+                message = parsed?.error || parsed?.message || message;
+            } catch {
+                if (errorText) message = errorText;
+            }
+            throw new Error(message);
+        }
         const blob = await res.blob();
         const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = `backup_${Date.now()}.sql`; a.click();
+        const header = res.headers.get('Content-disposition') || res.headers.get('Content-Disposition') || '';
+        const matched = header.match(/filename="?([^";]+)"?/i);
+        const fileName = matched?.[1] || `backup_${Date.now()}.sql`;
+        const skippedCount = Number(res.headers.get('X-Backup-Skipped') || '0');
+        const warningHeader = res.headers.get('X-Backup-Warnings') || '';
+        const warnings = warningHeader ? decodeURIComponent(warningHeader) : '';
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        return { fileName, skippedCount, warnings };
     },
     restoreDatabase: async (file: File) => {
         const formData = new FormData(); formData.append('file', file);
@@ -328,8 +354,104 @@ export const adminService = {
 };
 
 export const PERMISSIONS_LIST: PermissionDefinition[] = [
-    { code: 'VIEW_MAP', name: 'Xem Bản đồ', group: 'MAP' }, { code: 'EDIT_MAP', name: 'Thêm/Sửa/Xóa Thửa đất', group: 'MAP' }, { code: 'DELETE_MAP', name: 'Xóa Thửa đất', group: 'MAP' }, { code: 'MANAGE_TABLES', name: 'Quản lý Bảng dữ liệu', group: 'DATA' }, { code: 'VIEW_DASHBOARD', name: 'Xem Báo cáo Thống kê', group: 'REPORT' }, { code: 'EXPORT_REPORT', name: 'Xuất Excel/PDF', group: 'REPORT' }, { code: 'MANAGE_USERS', name: 'Quản lý Người dùng', group: 'SYSTEM' }, { code: 'MANAGE_SYSTEM', name: 'Cấu hình Hệ thống', group: 'SYSTEM' }, { code: 'VIEW_LOGS', name: 'Xem Nhật ký Hệ thống', group: 'SYSTEM' },
+    { code: 'VIEW_MAP', name: 'Xem bản đồ', group: 'MAP', description: 'Cho phép mở và xem bản đồ nền, lớp dữ liệu.' },
+    { code: 'SEARCH_PARCELS', name: 'Tra cứu thửa đất', group: 'MAP', description: 'Tìm kiếm thửa đất và xem popup thông tin.' },
+    { code: 'PRINT_PARCEL_PDF', name: 'In / xuất PDF thửa đất', group: 'MAP', description: 'Xuất trích lục, in biểu mẫu và mã QR.' },
+    { code: 'MANAGE_PARCELS', name: 'Truy cập quản lý thửa đất', group: 'MAP', description: 'Mở module quản trị thửa đất.' },
+    { code: 'CREATE_PARCELS', name: 'Thêm thửa đất', group: 'MAP', description: 'Tạo mới hồ sơ thửa đất.' },
+    { code: 'EDIT_PARCELS', name: 'Sửa thửa đất', group: 'MAP', description: 'Cập nhật thông tin thửa đất hiện có.' },
+    { code: 'DELETE_PARCELS', name: 'Xóa thửa đất', group: 'MAP', description: 'Xóa hồ sơ thửa đất khỏi hệ thống.' },
+    { code: 'IMPORT_PARCELS', name: 'Nhập dữ liệu thửa đất', group: 'MAP', description: 'Import dữ liệu hàng loạt cho thửa đất.' },
+
+    { code: 'MANAGE_TABLES', name: 'Quản lý bảng dữ liệu', group: 'DATA', description: 'Quản lý registry và nguồn dữ liệu bản đồ.' },
+    { code: 'CREATE_TABLES', name: 'Tạo / liên kết bảng', group: 'DATA', description: 'Tạo bảng mới hoặc liên kết bảng không gian có sẵn.' },
+    { code: 'EDIT_TABLES', name: 'Sửa registry bảng', group: 'DATA', description: 'Đổi tên hiển thị và mô tả bảng dữ liệu.' },
+    { code: 'DELETE_TABLES', name: 'Xóa / hủy liên kết bảng', group: 'DATA', description: 'Hủy liên kết hoặc xóa bảng dữ liệu không gian.' },
+    { code: 'SYNC_TABLES', name: 'Đồng bộ cấu trúc bảng', group: 'DATA', description: 'Đồng bộ metadata, SRID và các cột hệ thống.' },
+    { code: 'REPAIR_TABLES', name: 'Sửa lỗi cấu trúc bảng', group: 'DATA', description: 'Repair schema cho bảng dữ liệu không gian.' },
+    { code: 'MANAGE_LAYERS', name: 'Quản lý lớp bản đồ', group: 'DATA', description: 'Truy cập cấu hình lớp WMS/XYZ.' },
+    { code: 'CREATE_LAYERS', name: 'Thêm lớp bản đồ', group: 'DATA', description: 'Thêm cấu hình lớp mới.' },
+    { code: 'EDIT_LAYERS', name: 'Sửa lớp bản đồ', group: 'DATA', description: 'Cập nhật thông tin lớp bản đồ.' },
+    { code: 'DELETE_LAYERS', name: 'Xóa lớp bản đồ', group: 'DATA', description: 'Xóa cấu hình lớp bản đồ.' },
+    { code: 'TOGGLE_LAYERS', name: 'Ẩn/hiện lớp bản đồ', group: 'DATA', description: 'Bật hoặc tắt trạng thái hiển thị lớp.' },
+    { code: 'MANAGE_BASEMAPS', name: 'Quản lý bản đồ nền', group: 'DATA', description: 'Truy cập cấu hình basemap.' },
+    { code: 'CREATE_BASEMAPS', name: 'Thêm bản đồ nền', group: 'DATA', description: 'Tạo basemap mới.' },
+    { code: 'EDIT_BASEMAPS', name: 'Sửa bản đồ nền', group: 'DATA', description: 'Cập nhật basemap hiện có.' },
+    { code: 'DELETE_BASEMAPS', name: 'Xóa bản đồ nền', group: 'DATA', description: 'Xóa basemap khỏi hệ thống.' },
+    { code: 'REORDER_MAP_LAYERS', name: 'Sắp xếp thứ tự lớp', group: 'DATA', description: 'Đổi vị trí ưu tiên của lớp và basemap.' },
+
+    { code: 'VIEW_DASHBOARD', name: 'Xem báo cáo thống kê', group: 'REPORT', description: 'Truy cập dashboard thống kê hệ thống.' },
+    { code: 'EXPORT_REPORT', name: 'Xuất báo cáo Excel/PDF', group: 'REPORT', description: 'Xuất số liệu báo cáo ra file.' },
+
+    { code: 'MANAGE_USERS', name: 'Quản lý người dùng', group: 'USERS', description: 'Quyền tổng hợp cho module người dùng.' },
+    { code: 'VIEW_USERS', name: 'Xem danh sách người dùng', group: 'USERS', description: 'Truy cập và xem danh sách tài khoản.' },
+    { code: 'CREATE_USERS', name: 'Tạo người dùng', group: 'USERS', description: 'Tạo mới tài khoản người dùng.' },
+    { code: 'EDIT_USERS', name: 'Sửa người dùng', group: 'USERS', description: 'Cập nhật hồ sơ, trạng thái người dùng.' },
+    { code: 'DELETE_USERS', name: 'Xóa người dùng', group: 'USERS', description: 'Xóa hoặc vô hiệu hóa tài khoản.' },
+    { code: 'RESET_USER_PASSWORD', name: 'Đặt lại mật khẩu', group: 'USERS', description: 'Reset mật khẩu cho tài khoản khác.' },
+    { code: 'VERIFY_USERS', name: 'Kích hoạt / khóa người dùng', group: 'USERS', description: 'Bật tắt trạng thái xác thực tài khoản.' },
+    { code: 'TOGGLE_USER_CHAT', name: 'Quản lý quyền chat', group: 'USERS', description: 'Mở hoặc khóa chức năng nhắn tin.' },
+    { code: 'MANAGE_BRANCHES', name: 'Quản lý chi nhánh', group: 'USERS', description: 'Truy cập module chi nhánh / đơn vị.' },
+    { code: 'CREATE_BRANCHES', name: 'Thêm chi nhánh', group: 'USERS', description: 'Tạo mới chi nhánh hoặc đơn vị.' },
+    { code: 'EDIT_BRANCHES', name: 'Sửa chi nhánh', group: 'USERS', description: 'Cập nhật thông tin chi nhánh.' },
+    { code: 'DELETE_BRANCHES', name: 'Xóa chi nhánh', group: 'USERS', description: 'Xóa chi nhánh khỏi hệ thống.' },
+    { code: 'MANAGE_PERMISSIONS', name: 'Phân quyền vai trò', group: 'USERS', description: 'Quản lý ma trận phân quyền theo vai trò.' },
+
+    { code: 'MANAGE_LAND_PRICES', name: 'Quản lý bảng giá đất', group: 'CONTENT', description: 'Truy cập module giá đất.' },
+    { code: 'CREATE_LAND_PRICES', name: 'Thêm giá đất', group: 'CONTENT', description: 'Tạo mới dữ liệu bảng giá đất.' },
+    { code: 'EDIT_LAND_PRICES', name: 'Sửa giá đất', group: 'CONTENT', description: 'Cập nhật dữ liệu giá đất.' },
+    { code: 'DELETE_LAND_PRICES', name: 'Xóa giá đất', group: 'CONTENT', description: 'Xóa bản ghi giá đất.' },
+    { code: 'MANAGE_NOTIFICATIONS', name: 'Quản lý thông báo hệ thống', group: 'CONTENT', description: 'Truy cập module thông báo.' },
+    { code: 'CREATE_NOTIFICATIONS', name: 'Soạn thông báo', group: 'CONTENT', description: 'Tạo mới thông báo hệ thống.' },
+    { code: 'EDIT_NOTIFICATIONS', name: 'Sửa thông báo', group: 'CONTENT', description: 'Chỉnh sửa thông báo đã tạo.' },
+    { code: 'DELETE_NOTIFICATIONS', name: 'Xóa thông báo', group: 'CONTENT', description: 'Xóa thông báo khỏi hệ thống.' },
+    { code: 'MANAGE_MENU', name: 'Quản lý sidebar / menu', group: 'CONTENT', description: 'Truy cập module menu điều hướng.' },
+    { code: 'CREATE_MENU', name: 'Thêm mục menu', group: 'CONTENT', description: 'Tạo mục điều hướng mới.' },
+    { code: 'EDIT_MENU', name: 'Sửa mục menu', group: 'CONTENT', description: 'Cập nhật mục điều hướng hiện có.' },
+    { code: 'DELETE_MENU', name: 'Xóa mục menu', group: 'CONTENT', description: 'Xóa mục điều hướng.' },
+    { code: 'REORDER_MENU', name: 'Sắp xếp menu', group: 'CONTENT', description: 'Thay đổi thứ tự sidebar bằng kéo thả.' },
+
+    { code: 'MANAGE_SYSTEM', name: 'Thiết lập hệ thống', group: 'SYSTEM', description: 'Truy cập cấu hình hệ thống, mail, SEO, bản đồ và PDF.' },
+    { code: 'SAVE_SYSTEM_SETTINGS', name: 'Lưu thiết lập hệ thống', group: 'SYSTEM', description: 'Ghi thay đổi cấu hình hệ thống.' },
+    { code: 'TEST_MAIL_SERVER', name: 'Kiểm tra mail / kết nối', group: 'SYSTEM', description: 'Test SMTP và kiểm tra kết nối dịch vụ.' },
+    { code: 'VIEW_LOGS', name: 'Xem nhật ký hệ thống', group: 'SYSTEM', description: 'Xem log hành động và giám sát hệ thống.' },
+    { code: 'EXPORT_LOGS', name: 'Xuất nhật ký hệ thống', group: 'SYSTEM', description: 'Tải log phục vụ kiểm tra hoặc lưu trữ.' },
+    { code: 'MANAGE_BACKUP', name: 'Tạo sao lưu SQL', group: 'SYSTEM', description: 'Xuất file sao lưu SQL.' },
+    { code: 'RESTORE_BACKUP', name: 'Khôi phục SQL', group: 'SYSTEM', description: 'Khôi phục dữ liệu từ file SQL.' },
 ];
+
+export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, string[]> = {
+    [UserRole.ADMIN]: PERMISSIONS_LIST.map((item) => item.code),
+    [UserRole.EDITOR]: [
+        'VIEW_MAP', 'SEARCH_PARCELS', 'PRINT_PARCEL_PDF',
+        'MANAGE_PARCELS', 'CREATE_PARCELS', 'EDIT_PARCELS', 'IMPORT_PARCELS',
+        'VIEW_DASHBOARD', 'EXPORT_REPORT',
+        'MANAGE_LAND_PRICES', 'CREATE_LAND_PRICES', 'EDIT_LAND_PRICES',
+        'VIEW_LOGS'
+    ],
+    [UserRole.VIEWER]: [
+        'VIEW_MAP', 'SEARCH_PARCELS', 'PRINT_PARCEL_PDF', 'VIEW_DASHBOARD'
+    ]
+};
+
+export const ADMIN_TAB_PERMISSIONS: Record<string, string[]> = {
+    PARCEL_MANAGER: ['MANAGE_PARCELS', 'CREATE_PARCELS', 'EDIT_PARCELS', 'DELETE_PARCELS'],
+    MENU_MANAGER: ['MANAGE_MENU', 'CREATE_MENU', 'EDIT_MENU', 'DELETE_MENU'],
+    USERS: ['MANAGE_USERS', 'VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'DELETE_USERS'],
+    NOTIFICATIONS: ['MANAGE_NOTIFICATIONS', 'CREATE_NOTIFICATIONS', 'EDIT_NOTIFICATIONS', 'DELETE_NOTIFICATIONS'],
+    PERMISSIONS: ['MANAGE_PERMISSIONS'],
+    BRANCHES: ['MANAGE_BRANCHES', 'CREATE_BRANCHES', 'EDIT_BRANCHES', 'DELETE_BRANCHES'],
+    PRICES_2026: ['MANAGE_LAND_PRICES', 'CREATE_LAND_PRICES', 'EDIT_LAND_PRICES', 'DELETE_LAND_PRICES'],
+    DATA_LAYERS: ['MANAGE_LAYERS', 'MANAGE_TABLES', 'MANAGE_BASEMAPS'],
+    SETTINGS: ['MANAGE_SYSTEM', 'SAVE_SYSTEM_SETTINGS', 'MANAGE_BACKUP', 'RESTORE_BACKUP'],
+    LOGS: ['VIEW_LOGS', 'EXPORT_LOGS']
+};
+
+export const hasAnyPermission = (permissions: string[] = [], required: string | string[]) => {
+    const requiredList = Array.isArray(required) ? required : [required];
+    if (requiredList.length === 0) return true;
+    return requiredList.some((code) => permissions.includes(code));
+};
 
 export const authService = {
     // Sửa lại hàm login để lưu token

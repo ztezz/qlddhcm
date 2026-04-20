@@ -384,6 +384,7 @@ const MapPage: React.FC<{ user: User | null; systemSettings?: Record<string, str
                         <ParcelPopup 
                             parcel={selectedParcel} 
                             user={user} 
+                            systemSettings={systemSettings}
                             onClose={() => { overlayInstance.current?.setPosition(undefined); setSelectedParcel(null); highlightLayer.current?.getSource()?.clear(); }} 
                             onPrint={handlePrintParcel} 
                             onEdit={handleOpenEdit} 
@@ -410,6 +411,7 @@ const MapPage: React.FC<{ user: User | null; systemSettings?: Record<string, str
                 isOpen={isSearchOpen} 
                 onToggle={() => setIsSearchOpen(!isSearchOpen)} 
                 spatialTables={mapPageSpatialTables} 
+                systemSettings={systemSettings}
                 onSelectResult={handleSelectResult} 
                 onSearchCoordinate={handleSearchCoordinate} 
             />

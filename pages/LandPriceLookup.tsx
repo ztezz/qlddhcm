@@ -1,14 +1,19 @@
 
 import React, { useState, useEffect } from 'react';
 import { adminService } from '../services/mockBackend';
-import { LandPrice2026 } from '../types';
+import { LandPrice2026, User } from '../types';
 import { Search, Calculator, MapPin, RefreshCw, AlertCircle, Info, ArrowRight, Landmark, Coins } from 'lucide-react';
 import Seo from '../components/Seo';
 import AutocompleteInput from '../components/common/AutocompleteInput';
 import LandPriceDetailModal from '../components/land-price/LandPriceDetailModal';
 import { formatCurrency } from '../utils/helpers';
 
-const LandPriceLookup: React.FC = () => {
+interface LandPriceLookupProps {
+    user?: User | null;
+    systemSettings?: Record<string, string>;
+}
+
+const LandPriceLookup: React.FC<LandPriceLookupProps> = ({ user, systemSettings }) => {
     const [phuongxa, setPhuongxa] = useState('');
     const [tenduong, setTenduong] = useState('');
     const [tu, setTu] = useState('');
@@ -75,6 +80,7 @@ const LandPriceLookup: React.FC = () => {
                 title="Tra Cứu Bảng Giá Đất 2026" 
                 description="Công cụ tra cứu bảng giá đất mới nhất năm 2026 tại TP.HCM và Bình Dương. Hỗ trợ tính giá đất theo vị trí mặt tiền, hẻm chính xác."
                 keywords="bảng giá đất 2026, giá đất hcm, giá đất bình dương, tra cứu giá đất, hệ số điều chỉnh giá đất"
+                systemSettings={systemSettings}
             />
             
             <div className="p-8 bg-slate-950 h-full overflow-y-auto custom-scrollbar flex flex-col font-sans text-white">
@@ -237,6 +243,8 @@ const LandPriceLookup: React.FC = () => {
                 {selectedRow && (
                     <LandPriceDetailModal 
                         data={selectedRow} 
+                        user={user}
+                        systemSettings={systemSettings}
                         onClose={() => setSelectedRow(null)} 
                     />
                 )}

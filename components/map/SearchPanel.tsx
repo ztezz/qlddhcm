@@ -3,17 +3,18 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, Loader2, X, MapPin, User, Home, Filter, AlertCircle, AlertTriangle, Crosshair, Navigation, ChevronDown } from 'lucide-react';
 import { gisService } from '../../services/mockBackend';
 import { LandParcel } from '../../types';
-import { removeAccents } from '../../utils/helpers';
+import { formatParcelIdentifier, removeAccents } from '../../utils/helpers';
 
 interface SearchPanelProps {
     isOpen: boolean;
     onToggle: () => void;
     spatialTables: any[];
+    systemSettings?: Record<string, string>;
     onSelectResult: (parcel: LandParcel) => void;
     onSearchCoordinate?: (lat: number, lon: number) => void;
 }
 
-const SearchPanel: React.FC<SearchPanelProps> = ({ isOpen, onToggle, spatialTables, onSelectResult, onSearchCoordinate }) => {
+const SearchPanel: React.FC<SearchPanelProps> = ({ isOpen, onToggle, spatialTables, systemSettings, onSelectResult, onSearchCoordinate }) => {
     const [searchMode, setSearchMode] = useState<'ATTR' | 'COORD'>('ATTR');
     const [searchForm, setSearchForm] = useState({ table: '', soTo: '', soThua: '', owner: '', address: '' });
     const [coordInput, setCoordInput] = useState('');
@@ -277,7 +278,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ isOpen, onToggle, spatialTabl
                                     className="p-2.5 bg-white hover:bg-blue-50 border border-slate-200 rounded-xl cursor-pointer transition-all"
                                 >
                                     <div className="flex justify-between items-start mb-1.5">
-                                        <div className="font-black text-slate-950 text-[11px]">{r.properties.so_to}/{r.properties.so_thua}</div>
+                                        <div className="font-black text-slate-950 text-[11px]">{formatParcelIdentifier(r.properties, systemSettings?.parcel_identifier_format)}</div>
                                         <span className="bg-blue-100 text-blue-600 text-[8px] font-black px-1.5 py-0.5 rounded uppercase">{r.properties.landType}</span>
                                     </div>
                                     <div className="text-slate-900 text-[10px] font-bold flex items-center gap-1.5 truncate">

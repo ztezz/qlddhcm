@@ -20,6 +20,7 @@ import Collection from 'ol/Collection';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { smartMapProperties, measureStyle } from '../components/map/mapUtils';
+import { formatParcelIdentifier, toSafeFilename } from '../utils/helpers';
 
 const MAP_UI_STATE_STORAGE_PREFIX = 'qlddhcm.map.ui.';
 
@@ -348,9 +349,8 @@ export const useMap = (
                     pdf.text(`Trang ${page}/${totalPages}`, pageWidth / 2, pageHeight - 6, { align: 'center' });
                 }
 
-                const soTo = parcel.properties?.so_to || parcel.properties?.sodoto || 'UnknownTo';
-                const soThua = parcel.properties?.so_thua || parcel.properties?.sothua || 'UnknownThua';
-                pdf.save(`TrichLuc_To${soTo}_Thua${soThua}.pdf`);
+                const parcelIdentifier = formatParcelIdentifier(parcel.properties, systemSettings?.parcel_identifier_format);
+                pdf.save(`TrichLuc_${toSafeFilename(parcelIdentifier, 'parcel')}.pdf`);
             } catch (err) {
                 console.error("PDF Export Error:", err);
                 setDialog({ isOpen: true, type: 'error', title: 'Lỗi PDF', message: 'Có lỗi xảy ra khi tạo tệp trích lục.' });

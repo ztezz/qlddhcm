@@ -3,27 +3,30 @@ import React, { useState, useEffect } from 'react';
 import { LandParcel, User } from '../../types';
 import { X, Info, Map as MapIcon, Maximize2, FileText, Trash2, Edit3, Navigation, QrCode, Download, Share2 } from 'lucide-react';
 import QRCode from 'qrcode';
+import { formatParcelIdentifier, toSafeFilename } from '../../utils/helpers';
 
 interface ParcelPopupProps {
     parcel: LandParcel;
     user: User | null;
+    systemSettings?: Record<string, string>;
     onClose: () => void;
     onPrint: (parcel: LandParcel) => void;
     onEdit?: (parcel: LandParcel) => void;
     onDelete?: (parcel: LandParcel) => void;
 }
 
-const ParcelPopup: React.FC<ParcelPopupProps> = ({ parcel, user, onClose, onPrint, onEdit, onDelete }) => {
+const ParcelPopup: React.FC<ParcelPopupProps> = ({ parcel, user, systemSettings, onClose, onPrint, onEdit, onDelete }) => {
     const p = parcel.properties || {};
     const [showQR, setShowQR] = useState(false);
     const [qrDataUrl, setQrDataUrl] = useState<string>('');
+    const parcelIdentifier = formatParcelIdentifier(p, systemSettings?.parcel_identifier_format);
 
     useEffect(() => {
         if (showQR) {
             const generateQR = async () => {
                 try {
                     // Tạo nội dung mã QR: Thông tin thửa đất để tra cứu nhanh
-                    const qrText = `THỬA ĐẤT: ${p.so_thua} - TỜ: ${p.so_to}\nCHỦ: ${p.ownerName || 'N/A'}\nDIỆN TÍCH: ${Math.round(p.area || 0)} m2\nLOẠI ĐẤT: ${p.landType || 'N/A'}\nWEBGIS GEOMASTER`;
+                    const qrText = `MÃ THỬA: ${parcelIdentifier}\nCHỦ: ${p.ownerName || 'N/A'}\nDIỆN TÍCH: ${Math.round(p.area || 0)} m2\nLOẠI ĐẤT: ${p.landType || 'N/A'}\nWEBGIS GEOMASTER`;
                     const url = await QRCode.toDataURL(qrText, {
                         width: 400,
                         margin: 2,
@@ -36,7 +39,7 @@ const ParcelPopup: React.FC<ParcelPopupProps> = ({ parcel, user, onClose, onPrin
             };
             generateQR();
         }
-    }, [showQR, p]);
+    }, [showQR, p, parcelIdentifier]);
 
     return (
         <div className="bg-white rounded-xl shadow-2xl border border-gray-200 w-[calc(100vw-2rem)] md:w-80 overflow-hidden animate-in zoom-in-95 duration-200 relative">
@@ -73,12 +76,13 @@ const ParcelPopup: React.FC<ParcelPopupProps> = ({ parcel, user, onClose, onPrin
                         )}
                     </div>
                     <p className="text-[11px] font-black text-blue-600 uppercase tracking-widest mb-1">Mã định danh thửa đất</p>
+                    <p className="text-sm font-black text-slate-800 mb-1">{parcelIdentifier}</p>
                     <p className="text-[10px] text-gray-500 font-medium mb-6">Sử dụng camera điện thoại để quét</p>
                     
                     <div className="grid grid-cols-2 gap-3 w-full">
                         <a 
                             href={qrDataUrl} 
-                            download={`QR_To${p.so_to}_Thua${p.so_thua}.png`}
+                            download={`QR_${toSafeFilename(parcelIdentifier, 'parcel')}.png`}
                             className="flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all"
                         >
                             <Download size={14}/> Lưu ảnh

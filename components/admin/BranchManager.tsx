@@ -1,6 +1,6 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { adminService } from '../../services/mockBackend';
+import { adminService, hasAnyPermission } from '../../services/mockBackend';
 import { Branch } from '../../types';
 import {
     AlertTriangle,
@@ -20,7 +20,11 @@ import {
 } from 'lucide-react';
 import { removeAccents } from '../../utils/helpers';
 
-const BranchManager: React.FC = () => {
+interface BranchManagerProps {
+    permissions?: string[];
+}
+
+const BranchManager: React.FC<BranchManagerProps> = ({ permissions = [] }) => {
     const [branches, setBranches] = useState<Branch[]>([]);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -35,16 +39,10 @@ const BranchManager: React.FC = () => {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-    const canMutate = useMemo(() => {
-        try {
-            const raw = localStorage.getItem('geo_user');
-            if (!raw) return false;
-            const parsed = JSON.parse(raw);
-            return String(parsed?.role || '').toUpperCase() === 'ADMIN';
-        } catch {
-            return false;
-        }
-    }, []);
+    const canCreateBranch = useMemo(() => hasAnyPermission(permissions, ['CREATE_BRANCHES', 'MANAGE_BRANCHES']), [permissions]);
+    const canEditBranch = useMemo(() => hasAnyPermission(permissions, ['EDIT_BRANCHES', 'MANAGE_BRANCHES']), [permissions]);
+    const canDeleteBranch = useMemo(() => hasAnyPermission(permissions, ['DELETE_BRANCHES', 'MANAGE_BRANCHES']), [permissions]);
+    const canMutate = canCreateBranch || canEditBranch || canDeleteBranch;
 
     useEffect(() => { loadData(); }, []);
 
@@ -91,6 +89,10 @@ const BranchManager: React.FC = () => {
     };
 
     const openEditModal = (branch: Branch) => {
+        if (!canEditBranch) {
+            setMessage({ type: 'error', text: 'Bạn không có quyền sửa chi nhánh.' });
+            return;
+        }
         setEditingId(branch.id);
         setFormErrors({});
         setFormData({

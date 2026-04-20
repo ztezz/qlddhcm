@@ -273,30 +273,86 @@ export default function(pool, logSystemAction, dbConfig) {
     });
 
     router.post('/backup/create', authenticateToken, async (req, res) => {
-        const { tables } = req.body;
-        if (!tables || !Array.isArray(tables) || tables.length === 0) return res.status(400).json({ error: "Vui lòng chọn ít nhất một bảng để sao lưu." });
+        const { tables = [], format = 'FULL', scope = 'CUSTOM' } = req.body || {};
         try {
-            let sqlDump = `-- GeoMaster WebGIS SQL Dump\n-- Date: ${new Date().toISOString()}\n\n`;
-            for (const table of tables) {
-                const colRes = await pool.query(`SELECT column_name, data_type FROM information_schema.columns WHERE table_name = $1 ORDER BY ordinal_position`, [table]);
-                if (colRes.rows.length === 0) continue;
-                const columns = colRes.rows.map(r => r.column_name);
-                const dataQuery = `SELECT ${colRes.rows.map(r => r.data_type === 'USER-DEFINED' ? `ST_AsEWKT("${r.column_name}") as "${r.column_name}"` : `"${r.column_name}"`).join(', ')} FROM "${table}"`;
-                const dataRes = await pool.query(dataQuery);
-                sqlDump += `-- Data for: ${table}\nDELETE FROM "${table}";\n`;
-                for (const row of dataRes.rows) {
-                    const values = columns.map(col => {
-                        const val = row[col];
-                        if (val === null) return 'NULL';
-                        if (typeof val === 'string') return val.startsWith('SRID=') ? `ST_GeomFromEWKT('${val.replace(/'/g, "''")}')` : `'${val.replace(/'/g, "''")}'`;
-                        return (val instanceof Date) ? `'${val.toISOString()}'` : val;
-                    });
-                    sqlDump += `INSERT INTO "${table}" (${columns.map(c => `"${c}"`).join(', ')}) VALUES (${values.join(', ')});\n`;
+            const systemTables = ['users', 'branches', 'system_settings', 'land_prices', 'menu_items', 'wms_layers', 'basemaps', 'role_permissions', 'system_notifications', 'spatial_tables_registry'];
+            const registryRes = await pool.query(`SELECT table_name FROM spatial_tables_registry`);
+            const spatialTables = registryRes.rows.map(r => r.table_name);
+
+            let finalTables = Array.isArray(tables) ? tables.filter(Boolean) : [];
+            if (scope === 'ALL' || finalTables.length === 0) finalTables = [...systemTables, ...spatialTables];
+            if (scope === 'SYSTEM') finalTables = [...systemTables];
+            if (scope === 'SPATIAL') finalTables = [...spatialTables];
+            finalTables = [...new Set(finalTables)];
+
+            if (finalTables.length === 0) return res.status(400).json({ error: "Vui lòng chọn ít nhất một bảng để sao lưu." });
+
+            let sqlDump = `-- GeoMaster WebGIS SQL Dump\n-- Scope: ${scope}\n-- Format: ${format}\n-- Date: ${new Date().toISOString()}\n\n`;
+            const skippedTables = [];
+
+            for (const table of finalTables) {
+                try {
+                    const colRes = await pool.query(`
+                        SELECT column_name, data_type, udt_name, character_maximum_length, is_nullable
+                        FROM information_schema.columns
+                        WHERE table_schema = 'public' AND table_name = $1
+                        ORDER BY ordinal_position
+                    `, [table]);
+                    if (colRes.rows.length === 0) {
+                        skippedTables.push({ table, reason: 'Không tìm thấy cấu trúc bảng trong schema public' });
+                        sqlDump += `-- SKIPPED: ${table} (Không tìm thấy cấu trúc bảng)\n\n`;
+                        continue;
+                    }
+
+                    const columns = colRes.rows.map(r => r.column_name);
+                    const resolveType = (row) => {
+                        if (row.udt_name === 'geometry') return 'geometry';
+                        if (row.data_type === 'character varying') return `varchar(${row.character_maximum_length || 255})`;
+                        if (row.data_type === 'ARRAY') return `${String(row.udt_name || 'text').replace(/^_/, '')}[]`;
+                        if (row.data_type === 'USER-DEFINED') return 'text';
+                        return row.data_type || 'text';
+                    };
+
+                    if (format === 'FULL' || format === 'SCHEMA_ONLY') {
+                        sqlDump += `-- Structure for: ${table}\n`;
+                        sqlDump += `CREATE TABLE IF NOT EXISTS "${table}" (\n`;
+                        sqlDump += colRes.rows.map((r) => `  "${r.column_name}" ${resolveType(r)}${r.is_nullable === 'NO' ? ' NOT NULL' : ''}`).join(',\n');
+                        sqlDump += `\n);\n\n`;
+                    }
+
+                    if (format === 'FULL' || format === 'DATA_ONLY') {
+                        const dataQuery = `SELECT ${colRes.rows.map(r => r.udt_name === 'geometry' ? `ST_AsEWKT("${r.column_name}") as "${r.column_name}"` : `"${r.column_name}"`).join(', ')} FROM "${table}"`;
+                        const dataRes = await pool.query(dataQuery);
+                        sqlDump += `-- Data for: ${table}\nDELETE FROM "${table}";\n`;
+                        for (const row of dataRes.rows) {
+                            const values = columns.map(col => {
+                                const val = row[col];
+                                if (val === null || val === undefined) return 'NULL';
+                                if (typeof val === 'string') return val.startsWith('SRID=') ? `ST_GeomFromEWKT('${val.replace(/'/g, "''")}')` : `'${val.replace(/'/g, "''")}'`;
+                                if (typeof val === 'boolean') return val ? 'TRUE' : 'FALSE';
+                                if (Array.isArray(val) || (typeof val === 'object' && !(val instanceof Date))) return `'${JSON.stringify(val).replace(/'/g, "''")}'`;
+                                return (val instanceof Date) ? `'${val.toISOString()}'` : val;
+                            });
+                            sqlDump += `INSERT INTO "${table}" (${columns.map(c => `"${c}"`).join(', ')}) VALUES (${values.join(', ')});\n`;
+                        }
+                        sqlDump += `\n`;
+                    }
+                } catch (tableError) {
+                    const reason = tableError?.message || 'Lỗi không xác định';
+                    skippedTables.push({ table, reason });
+                    console.error(`[BACKUP] Skip table ${table}:`, reason);
+                    sqlDump += `-- SKIPPED: ${table}\n-- REASON: ${String(reason).replace(/\n/g, ' ')}\n\n`;
                 }
-                sqlDump += `\n`;
             }
-            res.setHeader('Content-disposition', `attachment; filename=backup_${Date.now()}.sql`);
+
+            if (skippedTables.length === finalTables.length) {
+                return res.status(500).json({ error: `Không thể tạo sao lưu. Bảng lỗi: ${skippedTables.map(item => `${item.table} (${item.reason})`).join('; ')}` });
+            }
+
+            res.setHeader('Content-disposition', `attachment; filename=backup_${String(scope).toLowerCase()}_${String(format).toLowerCase()}_${Date.now()}.sql`);
             res.setHeader('Content-type', 'text/plain');
+            res.setHeader('X-Backup-Skipped', String(skippedTables.length));
+            res.setHeader('X-Backup-Warnings', encodeURIComponent(skippedTables.map(item => `${item.table}: ${item.reason}`).join(' | ')));
             res.send(sqlDump);
         } catch (e) { res.status(500).json({ error: e.message }); }
     });

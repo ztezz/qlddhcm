@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { notificationService } from '../../services/mockBackend';
+import { notificationService, hasAnyPermission } from '../../services/mockBackend';
 import { SystemNotification, UserRole } from '../../types';
 import { Bell, Send, Trash2, Plus, X, Loader2, AlertCircle, Info, CheckCircle2, AlertTriangle, Search, RefreshCw, Users, ShieldAlert, Eye, Edit2, Clock } from 'lucide-react';
 
@@ -24,7 +24,11 @@ const isExpired = (expires_at?: string | null): boolean => {
     return new Date(expires_at) < new Date();
 };
 
-const NotificationManager: React.FC = () => {
+interface NotificationManagerProps {
+    permissions?: string[];
+}
+
+const NotificationManager: React.FC<NotificationManagerProps> = ({ permissions = [] }) => {
     const [notifications, setNotifications] = useState<SystemNotification[]>([]);
     const [loading, setLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -49,6 +53,10 @@ const NotificationManager: React.FC = () => {
     const showDialog = (type: any, title: string, message: string, onConfirm?: () => void) => {
         setDialog({ isOpen: true, type, title, message, onConfirm });
     };
+
+    const canCreateNotification = hasAnyPermission(permissions, ['CREATE_NOTIFICATIONS', 'MANAGE_NOTIFICATIONS', 'MANAGE_SYSTEM']);
+    const canEditNotification = hasAnyPermission(permissions, ['EDIT_NOTIFICATIONS', 'MANAGE_NOTIFICATIONS', 'MANAGE_SYSTEM']);
+    const canDeleteNotification = hasAnyPermission(permissions, ['DELETE_NOTIFICATIONS', 'MANAGE_NOTIFICATIONS', 'MANAGE_SYSTEM']);
 
     useEffect(() => { loadData(); }, []);
 
@@ -88,12 +96,20 @@ const NotificationManager: React.FC = () => {
     }, [notifications, searchQuery, filterType, filterTarget, filterExpiry]);
 
     const openNewModal = () => {
+        if (!canCreateNotification) {
+            showDialog('error', 'Không đủ quyền', 'Bạn không có quyền soạn thông báo mới.');
+            return;
+        }
         setEditingId(null);
         setFormData({ title: '', content: '', type: 'INFO', targetRole: 'ALL', expiresAt: '' });
         setIsModalOpen(true);
     };
 
     const openEditModal = (n: SystemNotification) => {
+        if (!canEditNotification) {
+            showDialog('error', 'Không đủ quyền', 'Bạn không có quyền chỉnh sửa thông báo.');
+            return;
+        }
         setEditingId(n.id);
         setFormData({
             title: n.title,
@@ -106,6 +122,10 @@ const NotificationManager: React.FC = () => {
     };
 
     const handleSave = async () => {
+        if (editingId !== null ? !canEditNotification : !canCreateNotification) {
+            showDialog('error', 'Không đủ quyền', editingId !== null ? 'Bạn không có quyền cập nhật thông báo.' : 'Bạn không có quyền gửi thông báo mới.');
+            return;
+        }
         if (!formData.title || !formData.content) {
             showDialog('warning', 'Thiếu dữ liệu', 'Vui lòng nhập đầy đủ tiêu đề và nội dung thông báo.');
             return;
@@ -133,6 +153,10 @@ const NotificationManager: React.FC = () => {
     };
 
     const handleDelete = (id: number) => {
+        if (!canDeleteNotification) {
+            showDialog('error', 'Không đủ quyền', 'Bạn không có quyền xóa thông báo.');
+            return;
+        }
         showDialog('confirm', 'Xác nhận xóa', 'Bạn có chắc chắn muốn xóa vĩnh viễn thông báo này khỏi hệ thống không?', async () => {
             setLoading(true);
             try {
@@ -160,7 +184,7 @@ const NotificationManager: React.FC = () => {
                         <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Gửi tin nhắn công khai đến người dùng</p>
                     </div>
                 </div>
-                <button onClick={openNewModal} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg transition-all active:scale-95">
+                <button onClick={openNewModal} disabled={!canCreateNotification} className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg transition-all active:scale-95">
                     <Plus size={18}/> SOẠN THÔNG BÁO MỚI
                 </button>
             </div>
@@ -271,16 +295,16 @@ const NotificationManager: React.FC = () => {
                                     <td className="p-4 text-right flex justify-end gap-1">
                                         <button
                                             onClick={() => openEditModal(n)}
-                                            disabled={loading}
-                                            className="p-2 text-gray-500 hover:text-blue-400 transition-colors disabled:opacity-30"
+                                            disabled={loading || !canEditNotification}
+                                            className="p-2 text-gray-500 hover:text-blue-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                                             title="Chỉnh sửa"
                                         >
                                             <Edit2 size={15}/>
                                         </button>
                                         <button 
                                             onClick={() => handleDelete(n.id)} 
-                                            disabled={loading}
-                                            className="p-2 text-gray-500 hover:text-red-500 transition-colors disabled:opacity-30"
+                                            disabled={loading || !canDeleteNotification}
+                                            className="p-2 text-gray-500 hover:text-red-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                                             title="Xóa"
                                         >
                                             <Trash2 size={15}/>
@@ -370,7 +394,7 @@ const NotificationManager: React.FC = () => {
                                     )}
                                 </div>
 
-                                <button onClick={handleSave} disabled={loading} className={`w-full py-4 rounded-2xl font-black uppercase text-xs tracking-widest flex justify-center items-center gap-2 transition-all active:scale-95 disabled:opacity-50 shadow-xl ${editingId !== null ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-900/30' : 'bg-blue-600 hover:bg-blue-500 shadow-blue-900/30'} text-white`}>
+                                <button onClick={handleSave} disabled={loading || (editingId !== null ? !canEditNotification : !canCreateNotification)} className={`w-full py-4 rounded-2xl font-black uppercase text-xs tracking-widest flex justify-center items-center gap-2 transition-all active:scale-95 disabled:opacity-50 shadow-xl ${editingId !== null ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-900/30' : 'bg-blue-600 hover:bg-blue-500 shadow-blue-900/30'} text-white`}>
                                     {loading ? <Loader2 className="animate-spin" size={20}/> : editingId !== null ? <><Edit2 size={18}/> LƯU THAY ĐỔI</> : <><Send size={18}/> PHÁT THÔNG BÁO NGAY</>}
                                 </button>
                             </div>

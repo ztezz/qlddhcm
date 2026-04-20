@@ -12,6 +12,8 @@ interface ParcelListProps {
     onDownload: (p: any) => void;
     onEdit: (p: any) => void;
     onDelete: (gid: number) => void;
+    canEdit?: boolean;
+    canDelete?: boolean;
     getFieldValue: (obj: any, aliases: string[]) => any;
     page: number;
     pages: number;
@@ -22,7 +24,7 @@ interface ParcelListProps {
 }
 
 const ParcelList: React.FC<ParcelListProps> = ({ 
-    parcels, hasSearched, error, loading, onQuickView, onDownload, onEdit, onDelete, getFieldValue, page, pages, total, limit, onPageChange, onLimitChange
+    parcels, hasSearched, error, loading, onQuickView, onDownload, onEdit, onDelete, canEdit = true, canDelete = true, getFieldValue, page, pages, total, limit, onPageChange, onLimitChange
 }) => {
     const [jumpPageInput, setJumpPageInput] = useState('');
 
@@ -92,8 +94,8 @@ const ParcelList: React.FC<ParcelListProps> = ({
                                 <div className="flex justify-center gap-2">
                                     <button onClick={() => onQuickView(p)} className="p-2 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-600 hover:text-white rounded-xl transition-all" title="Xem sơ đồ"><Eye size={16}/></button>
                                     <button onClick={() => onDownload(p)} className="p-2 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-600 hover:text-white rounded-xl transition-all" title="Tải GeoJSON"><FileDown size={16}/></button>
-                                    <button onClick={() => onEdit(p)} className="p-2 bg-blue-500/10 text-blue-400 hover:bg-blue-600 hover:text-white rounded-xl transition-all"><Edit size={16}/></button>
-                                    <button onClick={() => onDelete(p.gid!)} className="p-2 bg-red-500/10 text-red-400 hover:bg-red-600 hover:text-white rounded-xl transition-all"><Trash2 size={16}/></button>
+                                    <button onClick={() => onEdit(p)} disabled={!canEdit} className="p-2 bg-blue-500/10 text-blue-400 hover:bg-blue-600 hover:text-white rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed"><Edit size={16}/></button>
+                                    <button onClick={() => onDelete(p.gid!)} disabled={!canDelete} className="p-2 bg-red-500/10 text-red-400 hover:bg-red-600 hover:text-white rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed"><Trash2 size={16}/></button>
                                 </div>
                             </td>
                         </tr>

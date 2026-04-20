@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { adminService } from '../../services/mockBackend';
+import { adminService, hasAnyPermission } from '../../services/mockBackend';
 import { User, UserRole, Branch } from '../../types';
 import { Users, Plus, Edit2, Trash2, X, Save, Loader2, Key, Check, AlertTriangle, CheckCircle2, Info, Ban, UserCheck, MessageCircle, MessageCircleOff, Search, Filter, ShieldCheck, Eye, RefreshCw } from 'lucide-react';
 
@@ -17,7 +17,11 @@ const avatarColors: Record<string, string> = {
     [UserRole.VIEWER]: 'bg-gray-600 text-gray-200',
 };
 
-const UserManager: React.FC = () => {
+interface UserManagerProps {
+    permissions?: string[];
+}
+
+const UserManager: React.FC<UserManagerProps> = ({ permissions = [] }) => {
     const [users, setUsers] = useState<User[]>([]);
     const [branches, setBranches] = useState<Branch[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -45,6 +49,15 @@ const UserManager: React.FC = () => {
     const showDialog = (type: any, title: string, message: string, onConfirm?: () => void) => {
         setDialog({ isOpen: true, type, title, message, onConfirm });
     };
+
+    const canCreateUser = hasAnyPermission(permissions, ['CREATE_USERS', 'MANAGE_USERS']);
+    const canEditUser = hasAnyPermission(permissions, ['EDIT_USERS', 'MANAGE_USERS']);
+    const canDeleteUser = hasAnyPermission(permissions, ['DELETE_USERS', 'MANAGE_USERS']);
+    const canResetPassword = hasAnyPermission(permissions, ['RESET_USER_PASSWORD', 'MANAGE_USERS']);
+    const canVerifyUser = hasAnyPermission(permissions, ['VERIFY_USERS', 'EDIT_USERS', 'MANAGE_USERS']);
+    const canToggleChat = hasAnyPermission(permissions, ['TOGGLE_USER_CHAT', 'EDIT_USERS', 'MANAGE_USERS']);
+
+    const denyAction = (message: string) => showDialog('error', 'Không đủ quyền', message);
 
     useEffect(() => { loadData(); }, []);
 
@@ -81,6 +94,10 @@ const UserManager: React.FC = () => {
     }, [users, searchQuery, filterRole, filterStatus]);
 
     const handleSave = async () => {
+        if (editingId ? !canEditUser : !canCreateUser) {
+            denyAction(editingId ? 'Bạn không có quyền cập nhật người dùng.' : 'Bạn không có quyền tạo người dùng mới.');
+            return;
+        }
         if (!formData.name || !formData.email) {
             showDialog('error', 'Thiếu dữ liệu', "Vui lòng nhập đầy đủ Họ tên và Email");
             return;
@@ -112,6 +129,7 @@ const UserManager: React.FC = () => {
     };
 
     const handleResetPassword = async () => {
+        if (!canResetPassword) return denyAction('Bạn không có quyền đặt lại mật khẩu cho tài khoản khác.');
         if (!resetData.newPassword) return showDialog('error', 'Thiếu mật khẩu', "Vui lòng nhập mật khẩu mới");
         setLoading(true);
         try {
@@ -126,6 +144,7 @@ const UserManager: React.FC = () => {
     };
 
     const handleDelete = async (id: string) => {
+        if (!canDeleteUser) return denyAction('Bạn không có quyền xóa người dùng.');
         showDialog('confirm', 'Xác nhận xóa', "Bạn có chắc chắn muốn xóa vĩnh viễn người dùng này khỏi hệ thống?", async () => {
             try {
                 await adminService.deleteUser(id);
@@ -136,6 +155,7 @@ const UserManager: React.FC = () => {
     };
 
     const handleToggleVerification = async (u: User) => {
+        if (!canVerifyUser) return denyAction('Bạn không có quyền thay đổi trạng thái kích hoạt tài khoản.');
         const action = u.is_verified ? 'HỦY KÍCH HOẠT' : 'KÍCH HOẠT';
         showDialog('confirm', `Xác nhận ${action}`, `Bạn có muốn thay đổi trạng thái tài khoản của ${u.name}?`, async () => {
             setLoading(true);
@@ -148,6 +168,7 @@ const UserManager: React.FC = () => {
     };
 
     const handleToggleChat = async (u: User) => {
+        if (!canToggleChat) return denyAction('Bạn không có quyền thay đổi quyền chat của người dùng.');
         const action = u.can_chat ? 'HẠN CHẾ CHAT' : 'MỞ KHÓA CHAT';
         showDialog('confirm', `Xác nhận ${action}`, `Bạn có muốn thay đổi quyền nhắn tin của ${u.name}?`, async () => {
             setLoading(true);
@@ -160,6 +181,7 @@ const UserManager: React.FC = () => {
     };
 
     const openAddModal = () => {
+        if (!canCreateUser) return denyAction('Bạn không có quyền mở biểu mẫu tạo người dùng.');
         setEditingId(null);
         setConfirmPassword('');
         setFormData({
@@ -173,12 +195,14 @@ const UserManager: React.FC = () => {
     };
 
     const openEditModal = (u: User) => {
+        if (!canEditUser) return denyAction('Bạn không có quyền chỉnh sửa người dùng.');
         setEditingId(u.id);
         setFormData({ ...u });
         setIsModalOpen(true);
     };
 
     const openResetModal = (u: User) => {
+        if (!canResetPassword) return denyAction('Bạn không có quyền mở chức năng đặt lại mật khẩu.');
         setResetData({ userId: u.id, userName: u.name, newPassword: '' });
         setIsResetModalOpen(true);
     };
@@ -251,7 +275,7 @@ const UserManager: React.FC = () => {
                         <RefreshCw size={16}/>
                     </button>
 
-                    <button onClick={openAddModal} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded text-sm font-bold shadow-lg transition-all flex items-center gap-2 flex-shrink-0">
+                    <button onClick={openAddModal} disabled={!canCreateUser} className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-1.5 rounded text-sm font-bold shadow-lg transition-all flex items-center gap-2 flex-shrink-0">
                         <Plus size={16}/> Thêm mới
                     </button>
                 </div>
@@ -302,7 +326,8 @@ const UserManager: React.FC = () => {
                                 <td className="p-4 text-center">
                                     <button 
                                         onClick={() => handleToggleVerification(u)}
-                                        className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-bold border mx-auto transition-all ${u.is_verified 
+                                        disabled={!canVerifyUser}
+                                        className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-bold border mx-auto transition-all disabled:opacity-40 disabled:cursor-not-allowed ${u.is_verified 
                                             ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800 hover:bg-emerald-800/50' 
                                             : 'bg-orange-900/30 text-orange-400 border-orange-800 hover:bg-orange-800/50'}`}
                                         title={u.is_verified ? "Click để vô hiệu hóa" : "Click để kích hoạt"}
@@ -314,16 +339,17 @@ const UserManager: React.FC = () => {
                                 <td className="p-4 text-center">
                                     <button 
                                         onClick={() => handleToggleChat(u)}
-                                        className={`p-2 rounded-lg transition-all mx-auto flex items-center justify-center ${u.can_chat ? 'text-blue-400 bg-blue-900/20 hover:bg-blue-900/40' : 'text-gray-500 bg-gray-900 hover:bg-gray-700'}`}
+                                        disabled={!canToggleChat}
+                                        className={`p-2 rounded-lg transition-all mx-auto flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed ${u.can_chat ? 'text-blue-400 bg-blue-900/20 hover:bg-blue-900/40' : 'text-gray-500 bg-gray-900 hover:bg-gray-700'}`}
                                         title={u.can_chat ? "Hạn chế Chat" : "Mở khóa Chat"}
                                     >
                                         {u.can_chat ? <MessageCircle size={18}/> : <MessageCircleOff size={18}/>}
                                     </button>
                                 </td>
                                 <td className="p-4 flex justify-end gap-2">
-                                    <button onClick={() => openResetModal(u)} title="Đặt lại mật khẩu" className="p-1.5 text-orange-400 hover:bg-orange-400/10 rounded transition-colors"><Key size={16}/></button>
-                                    <button onClick={() => openEditModal(u)} className="p-1.5 text-blue-400 hover:bg-blue-400/10 rounded transition-colors"><Edit2 size={16}/></button>
-                                    <button onClick={() => handleDelete(u.id)} className="p-1.5 text-red-400 hover:bg-red-400/10 rounded transition-colors"><Trash2 size={16}/></button>
+                                    <button onClick={() => openResetModal(u)} disabled={!canResetPassword} title="Đặt lại mật khẩu" className="p-1.5 text-orange-400 hover:bg-orange-400/10 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed"><Key size={16}/></button>
+                                    <button onClick={() => openEditModal(u)} disabled={!canEditUser} className="p-1.5 text-blue-400 hover:bg-blue-400/10 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed"><Edit2 size={16}/></button>
+                                    <button onClick={() => handleDelete(u.id)} disabled={!canDeleteUser} className="p-1.5 text-red-400 hover:bg-red-400/10 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed"><Trash2 size={16}/></button>
                                 </td>
                             </tr>
                         ))}

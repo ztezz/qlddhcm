@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { adminService, PERMISSIONS_LIST } from '../../services/mockBackend';
+import { adminService, DEFAULT_ROLE_PERMISSIONS, PERMISSIONS_LIST } from '../../services/mockBackend';
 import { RoleConfig, UserRole } from '../../types';
 import {
     ShieldCheck, Loader2, Info, CheckSquare, Square,
@@ -18,10 +18,12 @@ const ROLE_META: Record<UserRole, { label: string; desc: string; color: string; 
 
 // ─── Group metadata ────────────────────────────────────────────────────────────
 const GROUP_META: Record<string, { label: string; Icon: React.FC<any>; color: string }> = {
-    MAP:    { label: 'Bản đồ & Thửa đất', Icon: Map,       color: 'text-blue-400' },
-    DATA:   { label: 'Quản lý Dữ liệu',   Icon: Database,  color: 'text-purple-400' },
-    REPORT: { label: 'Báo cáo & Thống kê', Icon: BarChart2, color: 'text-teal-400' },
-    SYSTEM: { label: 'Hệ thống',           Icon: Settings,  color: 'text-orange-400' },
+    MAP:     { label: 'Bản đồ & Thửa đất', Icon: Map,       color: 'text-blue-400' },
+    DATA:    { label: 'Dữ liệu & Lớp bản đồ', Icon: Database,  color: 'text-purple-400' },
+    REPORT:  { label: 'Báo cáo & Thống kê', Icon: BarChart2, color: 'text-teal-400' },
+    USERS:   { label: 'Người dùng & Vai trò', Icon: Users, color: 'text-amber-400' },
+    CONTENT: { label: 'Nội dung quản trị', Icon: Settings, color: 'text-pink-400' },
+    SYSTEM:  { label: 'Hệ thống & Bảo trì', Icon: Settings,  color: 'text-orange-400' },
 };
 
 const ROLES = [UserRole.ADMIN, UserRole.EDITOR, UserRole.VIEWER];
@@ -54,7 +56,7 @@ const PermissionManager: React.FC = () => {
     };
 
     const getPerms = (role: UserRole) =>
-        rolePermissions.find(rp => rp.role === role)?.permissions ?? [];
+        rolePermissions.find(rp => rp.role === role)?.permissions ?? DEFAULT_ROLE_PERMISSIONS[role] ?? [];
 
     const handleToggle = async (role: UserRole, code: string, checked: boolean) => {
         const current = getPerms(role);
@@ -232,6 +234,7 @@ const PermissionManager: React.FC = () => {
                                             <tr key={perm.code} className="hover:bg-gray-700/20 transition-colors border-b border-gray-700/30 last:border-0">
                                                 <td className="px-4 py-3">
                                                     <div className="font-medium text-gray-200 text-xs">{perm.name}</div>
+                                                    {perm.description && <div className="text-[10px] text-gray-500 mt-0.5">{perm.description}</div>}
                                                     <div className="text-[10px] text-gray-600 font-mono mt-0.5">{perm.code}</div>
                                                 </td>
                                                 {ROLES.map(role => {

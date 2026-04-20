@@ -165,7 +165,8 @@ export interface SystemSetting {
 export interface PermissionDefinition {
     code: string;
     name: string;
-    group: 'MAP' | 'DATA' | 'SYSTEM' | 'REPORT';
+    group: 'MAP' | 'DATA' | 'SYSTEM' | 'REPORT' | 'USERS' | 'CONTENT';
+    description?: string;
 }
 
 export interface RoleConfig {

@@ -1,12 +1,16 @@
 
 import React, { useState, useEffect } from 'react';
-import { adminService } from '../../services/mockBackend';
+import { adminService, hasAnyPermission } from '../../services/mockBackend';
 import { LandPrice2026 } from '../../types';
 import { Search, Plus, Edit2, Trash2, X, Save, Coins, MapPin, Landmark, ArrowRight, Loader2, AlertCircle, Filter, Database, Info } from 'lucide-react';
 import { formatCurrency } from '../../utils/helpers';
 import AutocompleteInput from '../common/AutocompleteInput';
 
-const LandPrice2026Manager: React.FC = () => {
+interface LandPrice2026ManagerProps {
+    permissions?: string[];
+}
+
+const LandPrice2026Manager: React.FC<LandPrice2026ManagerProps> = ({ permissions = [] }) => {
     const [data, setData] = useState<LandPrice2026[]>([]);
     const [loading, setLoading] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
@@ -23,6 +27,10 @@ const LandPrice2026Manager: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [formData, setFormData] = useState<any>({});
     const [editingId, setEditingId] = useState<number | null>(null);
+
+    const canCreateLandPrice = hasAnyPermission(permissions, ['CREATE_LAND_PRICES', 'MANAGE_LAND_PRICES']);
+    const canEditLandPrice = hasAnyPermission(permissions, ['EDIT_LAND_PRICES', 'MANAGE_LAND_PRICES']);
+    const canDeleteLandPrice = hasAnyPermission(permissions, ['DELETE_LAND_PRICES', 'MANAGE_LAND_PRICES']);
 
     // 1. Load danh sách phường ban đầu
     useEffect(() => {
@@ -73,6 +81,10 @@ const LandPrice2026Manager: React.FC = () => {
     };
 
     const handleSave = async () => {
+        if (editingId ? !canEditLandPrice : !canCreateLandPrice) {
+            alert(editingId ? 'Bạn không có quyền cập nhật giá đất.' : 'Bạn không có quyền thêm giá đất mới.');
+            return;
+        }
         if (!formData.phuongxa || !formData.tenduong || !formData.dato) {
             alert("Vui lòng nhập đầy đủ các trường bắt buộc (*)");
             return;
@@ -95,6 +107,10 @@ const LandPrice2026Manager: React.FC = () => {
     };
 
     const handleDelete = async (id: number, name: string) => {
+        if (!canDeleteLandPrice) {
+            alert('Bạn không có quyền xóa giá đất.');
+            return;
+        }
         if (confirm(`Xóa dòng giá đất tại đường ${name}?`)) {
             try {
                 await adminService.deleteLandPrice2026(id);
@@ -106,12 +122,20 @@ const LandPrice2026Manager: React.FC = () => {
     };
 
     const openEdit = (item: LandPrice2026) => {
+        if (!canEditLandPrice) {
+            alert('Bạn không có quyền chỉnh sửa giá đất.');
+            return;
+        }
         setEditingId(item.id);
         setFormData({ ...item });
         setIsModalOpen(true);
     };
 
     const openAdd = () => {
+        if (!canCreateLandPrice) {
+            alert('Bạn không có quyền thêm giá đất mới.');
+            return;
+        }
         setEditingId(null);
         setFormData({
             phuongxa: '', tenduong: '', tinhcu: 'TP.HCM', 
@@ -160,7 +184,8 @@ const LandPrice2026Manager: React.FC = () => {
                         </button>
                         <button 
                             onClick={openAdd}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white p-4 rounded-2xl font-black shadow-xl shadow-emerald-900/30 transition-all active:scale-95"
+                            disabled={!canCreateLandPrice}
+                            className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white p-4 rounded-2xl font-black shadow-xl shadow-emerald-900/30 transition-all active:scale-95"
                             title="Thêm tuyến đường mới"
                         >
                             <Plus size={20}/>
@@ -242,8 +267,8 @@ const LandPrice2026Manager: React.FC = () => {
                                         </td>
                                         <td className="p-4">
                                             <div className="flex justify-end gap-1">
-                                                <button onClick={() => openEdit(item)} className="p-2 text-blue-400 hover:bg-blue-400/10 rounded-xl transition-all" title="Sửa"><Edit2 size={16}/></button>
-                                                <button onClick={() => handleDelete(item.id, item.tenduong)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-all" title="Xóa"><Trash2 size={16}/></button>
+                                                <button onClick={() => openEdit(item)} disabled={!canEditLandPrice} className="p-2 text-blue-400 hover:bg-blue-400/10 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed" title="Sửa"><Edit2 size={16}/></button>
+                                                <button onClick={() => handleDelete(item.id, item.tenduong)} disabled={!canDeleteLandPrice} className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed" title="Xóa"><Trash2 size={16}/></button>
                                             </div>
                                         </td>
                                     </tr>
@@ -318,7 +343,7 @@ const LandPrice2026Manager: React.FC = () => {
                             <button onClick={() => setIsModalOpen(false)} className="px-6 py-3 text-gray-500 hover:text-white font-black uppercase text-xs tracking-widest transition-all">HỦY BỎ</button>
                             <button 
                                 onClick={handleSave} 
-                                disabled={loading}
+                                disabled={loading || (editingId ? !canEditLandPrice : !canCreateLandPrice)}
                                 className="bg-blue-600 hover:bg-blue-500 text-white px-10 py-3 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50"
                             >
                                 {loading ? <Loader2 className="animate-spin" size={18}/> : <Save size={18}/>} 

@@ -8,9 +8,10 @@ interface AdminMenuProps {
     onSelect: (tab: any) => void;
     systemName?: string;
     logoUrl?: string;
+    allowedTabs?: string[];
 }
 
-const AdminMenu: React.FC<AdminMenuProps> = ({ activeTab, onSelect, systemName, logoUrl }) => {
+const AdminMenu: React.FC<AdminMenuProps> = ({ activeTab, onSelect, systemName, logoUrl, allowedTabs }) => {
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const navigate = useNavigate();
 
@@ -36,6 +37,13 @@ const AdminMenu: React.FC<AdminMenuProps> = ({ activeTab, onSelect, systemName, 
         { header: 'Cấu hình Dữ liệu' },
         { id: 'DATA_LAYERS', icon: Layers, label: 'Lớp bản đồ & DB' },
     ];
+
+    const visibleMenuItems = menuItems.filter((item: any) => {
+        if (item.header) return true;
+        if (item.isLink) return true;
+        if (!allowedTabs || allowedTabs.length === 0) return true;
+        return allowedTabs.includes(item.id);
+    });
 
     const handleSelect = (item: any) => {
         if (item.isLink) {
@@ -92,7 +100,7 @@ const AdminMenu: React.FC<AdminMenuProps> = ({ activeTab, onSelect, systemName, 
                 </div>
                 
                 <nav className="flex-1 p-4 space-y-1 overflow-y-auto custom-scrollbar">
-                    {menuItems.map((item: any, index) => (
+                    {visibleMenuItems.map((item: any, index) => (
                         item.header ? (
                             <div key={`head-${index}`} className="mt-6 mb-2 px-4 text-xs font-black text-gray-500 uppercase tracking-widest">
                                 {item.header}

@@ -1,11 +1,15 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { adminService } from '../../services/mockBackend';
+import { adminService, hasAnyPermission } from '../../services/mockBackend';
 import { MenuItem, UserRole } from '../../types';
 import { LayoutList, Plus, Edit2, Trash2, X, Save, Info, Search, Link as LinkIcon, Globe, Monitor, Check, Loader2, AlertTriangle, CheckCircle2, GripVertical, RefreshCw } from 'lucide-react';
 import * as Icons from 'lucide-react';
 
-const MenuManager: React.FC = () => {
+interface MenuManagerProps {
+    permissions?: string[];
+}
+
+const MenuManager: React.FC<MenuManagerProps> = ({ permissions = [] }) => {
     const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
     const [loading, setLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -31,6 +35,11 @@ const MenuManager: React.FC = () => {
     const showDialog = (type: any, title: string, message: string, onConfirm?: () => void) => {
         setDialog({ isOpen: true, type, title, message, onConfirm });
     };
+
+    const canCreateMenu = hasAnyPermission(permissions, ['CREATE_MENU', 'MANAGE_MENU']);
+    const canEditMenu = hasAnyPermission(permissions, ['EDIT_MENU', 'MANAGE_MENU']);
+    const canDeleteMenu = hasAnyPermission(permissions, ['DELETE_MENU', 'MANAGE_MENU']);
+    const canReorderMenu = hasAnyPermission(permissions, ['REORDER_MENU', 'MANAGE_MENU']);
 
     const sanitizeInternalId = (id: string) => id.toLowerCase().trim().replace(/[^a-z0-9-_]/g, '');
     const normalizeOrderIndex = (value: unknown) => {
@@ -72,6 +81,9 @@ const MenuManager: React.FC = () => {
     };
 
     const handleSave = async () => {
+        if (isEditMode ? !canEditMenu : !canCreateMenu) {
+            return showDialog('error', 'Không đủ quyền', isEditMode ? 'Bạn không có quyền chỉnh sửa menu.' : 'Bạn không có quyền tạo mục menu mới.');
+        }
         const payload = {
             ...formData,
             id: sanitizeInternalId(formData.id || ''),
@@ -110,6 +122,7 @@ const MenuManager: React.FC = () => {
     };
 
     const handleDelete = async (id: string) => {
+        if (!canDeleteMenu) return showDialog('error', 'Không đủ quyền', 'Bạn không có quyền xóa menu.');
         showDialog('confirm', 'Xác nhận xóa', "Thao tác này sẽ gỡ bỏ mục menu khỏi Sidebar của toàn bộ người dùng. Bạn vẫn muốn tiếp tục?", async () => {
             try {
                 await adminService.deleteMenuItem(id);
@@ -120,6 +133,10 @@ const MenuManager: React.FC = () => {
     };
 
     const openModal = (item?: MenuItem) => {
+        if (item ? !canEditMenu : !canCreateMenu) {
+            showDialog('error', 'Không đủ quyền', item ? 'Bạn không có quyền chỉnh sửa menu.' : 'Bạn không có quyền thêm menu mới.');
+            return;
+        }
         setIsEditMode(!!item);
         setFormData(item ? { ...item } : { 
             id: '', 
@@ -180,7 +197,7 @@ const MenuManager: React.FC = () => {
     };
 
     const handleMenuDrop = (targetId: string) => {
-        if (!draggingMenuId || draggingMenuId === targetId || loading) return;
+        if (!canReorderMenu || !draggingMenuId || draggingMenuId === targetId || loading) return;
         const next = reindexMenuOrder(reorderMenuItemsById(menuItems, draggingMenuId, targetId));
         setMenuItems(next);
         setDraggingMenuId(null);
@@ -218,7 +235,7 @@ const MenuManager: React.FC = () => {
                         <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Tùy biến thanh điều hướng hệ thống</p>
                     </div>
                 </div>
-                <button onClick={() => openModal()} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-2xl text-xs font-black flex items-center gap-2 transition-all shadow-xl shadow-blue-900/40 active:scale-95">
+                <button onClick={() => openModal()} disabled={!canCreateMenu} className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white px-6 py-3 rounded-2xl text-xs font-black flex items-center gap-2 transition-all shadow-xl shadow-blue-900/40 active:scale-95">
                     <Plus size={18}/> THÊM MỤC MỚI
                 </button>
             </div>
@@ -260,7 +277,7 @@ const MenuManager: React.FC = () => {
                                 return (
                                     <tr
                                         key={item.id}
-                                        draggable={!loading}
+                                        draggable={!loading && canReorderMenu}
                                         onDragStart={() => setDraggingMenuId(item.id)}
                                         onDragOver={(e) => {
                                             if (!loading) {
@@ -308,8 +325,8 @@ const MenuManager: React.FC = () => {
                                         </td>
                                         <td className="p-5">
                                             <div className="flex justify-end gap-2">
-                                                <button onClick={() => openModal(item)} className="p-2.5 bg-blue-600/10 text-blue-400 hover:bg-blue-600 hover:text-white rounded-xl transition-all shadow-lg"><Edit2 size={16}/></button>
-                                                <button onClick={() => handleDelete(item.id)} className="p-2.5 bg-red-600/10 text-red-400 hover:bg-red-600 hover:text-white rounded-xl transition-all shadow-lg"><Trash2 size={16}/></button>
+                                                <button onClick={() => openModal(item)} disabled={!canEditMenu} className="p-2.5 bg-blue-600/10 text-blue-400 hover:bg-blue-600 hover:text-white rounded-xl transition-all shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"><Edit2 size={16}/></button>
+                                                <button onClick={() => handleDelete(item.id)} disabled={!canDeleteMenu} className="p-2.5 bg-red-600/10 text-red-400 hover:bg-red-600 hover:text-white rounded-xl transition-all shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"><Trash2 size={16}/></button>
                                             </div>
                                         </td>
                                     </tr>
@@ -482,7 +499,7 @@ const MenuManager: React.FC = () => {
 
                         <div className="flex justify-end gap-4 mt-10 pt-6 border-t border-gray-800">
                             <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-4 text-gray-500 hover:text-white font-black text-sm uppercase tracking-widest transition-colors">HỦY</button>
-                            <button type="button" onClick={handleSave} disabled={loading} className="bg-blue-600 hover:bg-blue-500 text-white px-10 py-4 rounded-2xl font-black text-sm shadow-[0_10px_30px_rgba(37,99,235,0.3)] flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50 uppercase tracking-widest">
+                            <button type="button" onClick={handleSave} disabled={loading || (isEditMode ? !canEditMenu : !canCreateMenu)} className="bg-blue-600 hover:bg-blue-500 text-white px-10 py-4 rounded-2xl font-black text-sm shadow-[0_10px_30px_rgba(37,99,235,0.3)] flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50 uppercase tracking-widest">
                                 {loading ? <Loader2 className="animate-spin" size={18}/> : <Save size={18}/>} 
                                 {isEditMode ? "Lưu thay đổi" : "Thêm mục mới"}
                             </button>
