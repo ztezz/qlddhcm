@@ -444,6 +444,47 @@ export const useMap = (
         setActiveLayerId(id);
     };
 
+    const handleFitLayerView = useCallback(async (id: string) => {
+        const config = availableLayersRef.current.find((l) => l.id === id);
+        if (!config || !mapInstance.current) return;
+
+        const tableName = config.layers.includes(':') ? config.layers.split(':').pop() : config.layers;
+        if (!tableName) return;
+
+        try {
+            const extentData = await gisService.getExtent(tableName);
+            if (extentData && extentData.xmin !== null && extentData.xmin !== undefined) {
+                const xmin = parseFloat(extentData.xmin);
+                const ymin = parseFloat(extentData.ymin);
+                const xmax = parseFloat(extentData.xmax);
+                const ymax = parseFloat(extentData.ymax);
+
+                if (!isNaN(xmin) && !isNaN(ymin) && !isNaN(xmax) && !isNaN(ymax)) {
+                    const extent = [xmin, ymin, xmax, ymax];
+
+                    let sourceProj = 'EPSG:4326';
+                    if (Math.abs(xmin) > 300000 && Math.abs(xmin) < 900000) {
+                        sourceProj = 'EPSG:9210';
+                    } else if (Math.abs(xmin) > 1000000) {
+                        sourceProj = 'EPSG:3857';
+                    }
+
+                    const transformedExtent = proj.transformExtent(extent, sourceProj, 'EPSG:3857');
+
+                    if (!transformedExtent.some((val) => isNaN(val))) {
+                        mapInstance.current.getView().fit(transformedExtent, {
+                            padding: [100, 100, 100, 100],
+                            duration: 1000,
+                            maxZoom: 20
+                        });
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Zoom to layer failed:', e);
+        }
+    }, [availableLayersRef, mapInstance]);
+
     const handleActivateLayer = async (id: string) => {
         if (!visibleLayerIds.includes(id)) {
             handleToggleWMS(id);
@@ -451,44 +492,7 @@ export const useMap = (
             setActiveLayerId(id);
         }
 
-        const config = availableLayers.find(l => l.id === id);
-        if (config && mapInstance.current) {
-            const tableName = config.layers.includes(':') ? config.layers.split(':').pop() : config.layers;
-            if (tableName) {
-                try {
-                    const extentData = await gisService.getExtent(tableName);
-                    if (extentData && extentData.xmin !== null && extentData.xmin !== undefined) {
-                        const xmin = parseFloat(extentData.xmin);
-                        const ymin = parseFloat(extentData.ymin);
-                        const xmax = parseFloat(extentData.xmax);
-                        const ymax = parseFloat(extentData.ymax);
-
-                        if (!isNaN(xmin) && !isNaN(ymin) && !isNaN(xmax) && !isNaN(ymax)) {
-                            const extent = [xmin, ymin, xmax, ymax];
-                            
-                            let sourceProj = 'EPSG:4326'; 
-                            if (Math.abs(xmin) > 300000 && Math.abs(xmin) < 900000) {
-                                sourceProj = 'EPSG:9210'; 
-                            } else if (Math.abs(xmin) > 1000000) {
-                                sourceProj = 'EPSG:3857'; 
-                            }
-
-                            const transformedExtent = proj.transformExtent(extent, sourceProj, 'EPSG:3857');
-                            
-                            if (!transformedExtent.some(val => isNaN(val))) {
-                                mapInstance.current.getView().fit(transformedExtent, { 
-                                    padding: [100, 100, 100, 100], 
-                                    duration: 1000,
-                                    maxZoom: 20 
-                                });
-                            }
-                        }
-                    }
-                } catch (e) {
-                    console.error("Zoom to layer failed:", e);
-                }
-            }
-        }
+        await handleFitLayerView(id);
     };
 
     const initData = useCallback(async () => {
@@ -691,6 +695,7 @@ export const useMap = (
         handleUpdateParcel,
         handleToggleWMS,
         handleActivateLayer,
+        handleFitLayerView,
         initData,
         handleClearAllLayers
     };

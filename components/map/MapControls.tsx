@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Plus, Minus, Compass, Crosshair, Loader2, Info, Share2 } from 'lucide-react';
+import { Plus, Minus, Compass, Crosshair, Loader2, Info, Share2, ScanSearch } from 'lucide-react';
 import Map from 'ol/Map';
 
 interface MapControlsProps {
@@ -8,7 +8,9 @@ interface MapControlsProps {
     mapRotation: number;
     isLocating: boolean;
     isLegendOpen?: boolean;
+    activeLayerId?: string | null;
     onLocate: () => void;
+    onRestoreActiveLayerView?: () => void;
     onToggleLegend?: () => void;
     onShareView?: () => void;
     showLegendToggle?: boolean;
@@ -19,13 +21,30 @@ const MapControls: React.FC<MapControlsProps> = ({
     mapRotation, 
     isLocating, 
     isLegendOpen = false, 
+    activeLayerId,
     onLocate, 
+    onRestoreActiveLayerView,
     onToggleLegend = () => {},
     onShareView,
     showLegendToggle = true
 }) => {
     return (
         <div className="absolute bottom-6 right-6 z-[400] flex flex-col gap-3">
+            {onRestoreActiveLayerView && (
+                <button
+                    onClick={onRestoreActiveLayerView}
+                    disabled={!activeLayerId}
+                    className={`p-3.5 rounded-full shadow-2xl transition-all active:scale-90 border border-slate-200 ${
+                        activeLayerId
+                            ? 'bg-white text-cyan-600 hover:bg-cyan-50'
+                            : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                    }`}
+                    title={activeLayerId ? 'Khôi phục xem lớp đang chọn' : 'Chưa có lớp đang chọn'}
+                >
+                    <ScanSearch size={22} />
+                </button>
+            )}
+
             {onShareView && (
                 <button
                     onClick={onShareView}

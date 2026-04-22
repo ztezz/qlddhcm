@@ -95,6 +95,7 @@ const MapPage: React.FC<{ user: User | null; systemSettings?: Record<string, str
         handleUpdateParcel,
         handleToggleWMS,
         handleActivateLayer,
+        handleFitLayerView,
         initData,
         handleClearAllLayers
     } = useMap(user, systemSettings, mapPageLayerFilter, 'main-map');
@@ -170,7 +171,7 @@ const MapPage: React.FC<{ user: User | null; systemSettings?: Record<string, str
         if (!mapInstance.current) return;
 
         const view = mapInstance.current.getView();
-        const center = proj.toLonLat(view.getCenter() || proj.fromLonLat(MAP_CONFIG.DEFAULT_CENTER));
+        const center = proj.toLonLat(view.getCenter() || proj.fromLonLat([...MAP_CONFIG.DEFAULT_CENTER]));
         const url = new URL(window.location.href);
         url.searchParams.set('lat', center[1].toFixed(6));
         url.searchParams.set('lng', center[0].toFixed(6));
@@ -402,7 +403,12 @@ const MapPage: React.FC<{ user: User | null; systemSettings?: Record<string, str
                 mapRotation={mapRotation} 
                 isLocating={isLocating} 
                 isLegendOpen={isLegendOpen} 
+                activeLayerId={activeLayerId}
                 onLocate={handleLocateUser} 
+                onRestoreActiveLayerView={() => {
+                    if (!activeLayerId) return;
+                    void handleFitLayerView(activeLayerId);
+                }}
                 onToggleLegend={() => setIsLegendOpen(!isLegendOpen)} 
                 onShareView={handleShareView}
             />
