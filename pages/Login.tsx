@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { authService, API_URL } from '../services/mockBackend';
 import { User, Branch } from '../types';
-import { Lock, Mail, Loader2, KeyRound, ArrowLeft, UserPlus, Building, User as UserIcon, CheckCircle, ShieldCheck, Info, CheckCircle2, AlertTriangle, Hash } from 'lucide-react';
+import { Lock, Mail, Loader2, KeyRound, ArrowLeft, UserPlus, Building, User as UserIcon, CheckCircle, ShieldCheck, Info, CheckCircle2, AlertTriangle, Hash, Eye, EyeOff, Sun, Moon, Zap, Shield, Check } from 'lucide-react';
 
 interface LoginProps {
   onLogin: (user: User) => void;
@@ -20,6 +20,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onCancel, systemName, logoUrl, f
   const [view, setView] = useState<'LOGIN' | 'FORGOT' | 'VERIFY_REG_OTP' | 'VERIFY_RESET_OTP' | 'REGISTER'>('LOGIN');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   
   // Dialog State
   const [dialog, setDialog] = useState<{
@@ -35,19 +36,27 @@ const Login: React.FC<LoginProps> = ({ onLogin, onCancel, systemName, logoUrl, f
   };
 
   // Login State
-  const [email, setEmail] = useState('');
+  const [emailOrUsername, setEmailOrUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // OTP State
   const [otpCode, setOtpCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Register State
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regBranch, setRegBranch] = useState('');
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [regPassword, setRegPassword] = useState('');
+  const [regConfirmPassword, setRegConfirmPassword] = useState('');
+  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
 
   useEffect(() => {
     if (view === 'REGISTER') {
@@ -58,18 +67,53 @@ const Login: React.FC<LoginProps> = ({ onLogin, onCancel, systemName, logoUrl, f
         };
         loadBranches();
     }
+    // Load remembered login
+    if (view === 'LOGIN') {
+        const remembered = localStorage.getItem('rememberedLogin');
+        if (remembered) {
+            setEmailOrUsername(remembered);
+            setRememberMe(true);
+        }
+    }
   }, [view]);
+
+  // Password strength checker
+  const getPasswordStrength = (pwd: string): { score: number; text: string; color: string } => {
+    let score = 0;
+    let text = 'Yếu';
+    let color = 'text-red-500';
+    
+    if (pwd.length >= 8) score++;
+    if (pwd.length >= 12) score++;
+    if (/[a-z]/.test(pwd) && /[A-Z]/.test(pwd)) score++;
+    if (/\d/.test(pwd)) score++;
+    if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pwd)) score++;
+    
+    if (score <= 1) { text = 'Yếu'; color = 'text-red-500'; }
+    else if (score <= 2) { text = 'Trung bình'; color = 'text-orange-500'; }
+    else if (score <= 3) { text = 'Khá'; color = 'text-yellow-500'; }
+    else if (score <= 4) { text = 'Mạnh'; color = 'text-green-500'; }
+    else { text = 'Rất mạnh'; color = 'text-emerald-500'; }
+    
+    return { score, text, color };
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     try {
-      const user = await authService.login(email, password);
+      // Support both email and username login
+      const user = await authService.login(emailOrUsername, password);
+      if (rememberMe) {
+        localStorage.setItem('rememberedLogin', emailOrUsername);
+      } else {
+        localStorage.removeItem('rememberedLogin');
+      }
       onLogin(user);
     } catch (err: any) {
-      setError(err.message || 'Email hoặc mật khẩu không đúng');
-      showDialog('error', 'Đăng nhập thất bại', err.message || 'Email hoặc mật khẩu không đúng');
+      setError(err.message || 'Email/Tên tài khoản hoặc mật khẩu không đúng');
+      showDialog('error', 'Đăng nhập thất bại', err.message || 'Email/Tên tài khoản hoặc mật khẩu không đúng');
     } finally {
       setLoading(false);
     }
@@ -81,6 +125,11 @@ const Login: React.FC<LoginProps> = ({ onLogin, onCancel, systemName, logoUrl, f
       setError('');
       try {
           if (!regBranch) throw new Error('Vui lòng chọn chi nhánh');
+          if (regPassword.length < 8) throw new Error('Mật khẩu phải từ 8 ký tự');
+          if (regPassword !== regConfirmPassword) throw new Error('Mật khẩu xác nhận không khớp');
+          if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(regPassword)) {
+              throw new Error('Mật khẩu phải chứa chữ hoa, chữ thường và số');
+          }
           await authService.register(regName, regEmail, regBranch);
           setOtpCode(''); // Reset OTP input
           setView('VERIFY_REG_OTP'); // Chuyển sang màn hình nhập OTP
@@ -109,7 +158,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onCancel, systemName, logoUrl, f
 
           showDialog('success', 'Kích hoạt thành công', 'Tài khoản của bạn đã sẵn sàng. Vui lòng đăng nhập.', () => {
               setView('LOGIN');
-              setEmail(regEmail);
+              setEmailOrUsername(regEmail);
           });
       } catch (e: any) {
           showDialog('error', 'Lỗi xác thực', e.message);
@@ -123,7 +172,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onCancel, systemName, logoUrl, f
     setLoading(true);
     setError('');
     try {
-      await authService.forgotPassword(email);
+      await authService.forgotPassword(emailOrUsername);
       setOtpCode('');
       setView('VERIFY_RESET_OTP');
     } catch (err: any) {
@@ -140,8 +189,12 @@ const Login: React.FC<LoginProps> = ({ onLogin, onCancel, systemName, logoUrl, f
         setError("Mật khẩu xác nhận không khớp.");
         return;
     }
-    if (newPassword.length < 6) {
-        setError("Mật khẩu phải từ 6 ký tự.");
+    if (newPassword.length < 8) {
+        setError("Mật khẩu phải từ 8 ký tự.");
+        return;
+    }
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(newPassword)) {
+        setError("Mật khẩu phải chứa chữ hoa, chữ thường và số.");
         return;
     }
 
@@ -151,7 +204,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onCancel, systemName, logoUrl, f
       const res = await fetch(`${API_URL}/api/auth/reset-password`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: email, code: otpCode, newPassword })
+          body: JSON.stringify({ email: emailOrUsername, code: otpCode, newPassword })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Đặt lại mật khẩu thất bại");
@@ -168,79 +221,175 @@ const Login: React.FC<LoginProps> = ({ onLogin, onCancel, systemName, logoUrl, f
   };
 
   return (
-    <div className="fixed inset-0 z-[1000] bg-gray-900/95 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-gray-800 rounded-xl shadow-2xl p-8 w-full max-w-md border border-gray-700 relative animate-in zoom-in-95 duration-200">
+    <div className={`fixed inset-0 z-[1000] transition-colors duration-300 ${
+      theme === 'dark' 
+        ? 'bg-gradient-to-br from-slate-950 via-blue-900 to-slate-950 backdrop-blur-sm' 
+        : 'bg-gradient-to-br from-blue-50 via-white to-blue-100 backdrop-blur-sm'
+    } flex items-center justify-center p-4`}>
+      
+      {/* Theme Toggle Button */}
+      <button 
+        onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+        className={`absolute top-6 right-6 z-50 p-3 rounded-full transition-all duration-300 ${
+          theme === 'dark'
+            ? 'bg-gray-800 hover:bg-gray-700 text-yellow-400'
+            : 'bg-white hover:bg-gray-100 text-orange-500 shadow-lg'
+        }`}
+      >
+        {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+      </button>
+
+      <div className={`${
+        theme === 'dark'
+          ? 'bg-gray-900 border border-gray-700'
+          : 'bg-white border border-blue-200 shadow-2xl'
+      } rounded-2xl shadow-2xl p-8 w-full max-w-md relative animate-in zoom-in-95 duration-300`}>
+        
         <button 
             onClick={onCancel}
-            className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors flex items-center gap-1 text-sm"
+            className={`absolute top-4 left-4 ${
+              theme === 'dark' ? 'text-gray-500 hover:text-white' : 'text-gray-600 hover:text-black'
+            } transition-colors flex items-center gap-1 text-sm font-bold`}
         >
-            Đóng
+            <ArrowLeft size={16} /> Đóng
         </button>
 
-        <div className="text-center mb-6">
+        <div className="text-center mb-8">
           {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="mx-auto h-20 mb-4 object-contain" />
+              <img src={logoUrl} alt="Logo" className="mx-auto h-24 mb-4 object-contain drop-shadow-lg" />
           ) : null}
-          <h2 className="text-3xl font-bold text-blue-400 mb-2">{systemName || 'GeoMaster'}</h2>
-          <p className="text-gray-400">Hệ thống Quản lý Đất đai Chuyên nghiệp</p>
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Zap className={theme === 'dark' ? 'text-blue-400' : 'text-blue-600'} size={28} />
+            <h2 className={`text-3xl font-black ${
+              theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
+            }`}>{systemName || 'GeoMaster'}</h2>
+          </div>
+          <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+            Hệ thống Quản lý Đất đai Chuyên nghiệp
+          </p>
         </div>
 
         {error && (
-          <div className="bg-red-500/10 border border-red-500 text-red-400 p-3 rounded mb-4 text-sm text-center">
-            {error}
+          <div className={`${
+            theme === 'dark'
+              ? 'bg-red-500/10 border border-red-500 text-red-400'
+              : 'bg-red-50 border border-red-300 text-red-700'
+          } p-3 rounded-lg mb-4 text-sm text-center animate-in shake duration-300`}>
+            <div className="flex items-center justify-center gap-2">
+              <AlertTriangle size={16} />
+              {error}
+            </div>
           </div>
         )}
 
         {/* --- VIEW: LOGIN --- */}
         {view === 'LOGIN' && (
-          <form onSubmit={handleLogin} className="space-y-6">
+          <form onSubmit={handleLogin} className="space-y-5 animate-in fade-in duration-300">
             <div>
-              <label className="block text-gray-400 text-sm mb-2 uppercase font-black tracking-widest text-[10px]">Địa chỉ Email</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-3 text-gray-500" size={18} />
+              <label className={`block text-sm mb-2 uppercase font-black tracking-widest text-[11px] ${
+                theme === 'dark' ? 'text-gray-400' : 'text-gray-700'
+              }`}>Email hoặc Tên Tài Khoản</label>
+              <div className="relative group">
+                <UserIcon className={`absolute left-4 top-3.5 ${
+                  theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                } group-focus-within:text-blue-500 transition-colors`} size={18} />
                 <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-gray-700 border border-gray-600 rounded p-2.5 pl-10 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                  type="text"
+                  value={emailOrUsername}
+                  onChange={(e) => setEmailOrUsername(e.target.value)}
+                  className={`w-full rounded-lg p-3 pl-12 text-sm font-medium transition-all duration-200 ${
+                    theme === 'dark'
+                      ? 'bg-gray-800 border border-gray-600 text-white focus:outline-none focus:border-blue-500 focus:shadow-lg focus:shadow-blue-500/20'
+                      : 'bg-gray-50 border border-gray-300 text-black focus:outline-none focus:border-blue-500 focus:shadow-lg focus:shadow-blue-500/10'
+                  }`}
                   required
-                  placeholder="Nhập Email..."
+                  placeholder="Email hoặc tên tài khoản..."
                 />
               </div>
             </div>
+
             <div>
-              <label className="block text-gray-400 text-sm mb-2 uppercase font-black tracking-widest text-[10px]">Mật khẩu</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3 text-gray-500" size={18} />
+              <label className={`block text-sm mb-2 uppercase font-black tracking-widest text-[11px] ${
+                theme === 'dark' ? 'text-gray-400' : 'text-gray-700'
+              }`}>Mật Khẩu</label>
+              <div className="relative group">
+                <Lock className={`absolute left-4 top-3.5 ${
+                  theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                } group-focus-within:text-blue-500 transition-colors`} size={18} />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-gray-700 border border-gray-600 rounded p-2.5 pl-10 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                  className={`w-full rounded-lg p-3 pl-12 pr-12 text-sm font-medium transition-all duration-200 ${
+                    theme === 'dark'
+                      ? 'bg-gray-800 border border-gray-600 text-white focus:outline-none focus:border-blue-500 focus:shadow-lg focus:shadow-blue-500/20'
+                      : 'bg-gray-50 border border-gray-300 text-black focus:outline-none focus:border-blue-500 focus:shadow-lg focus:shadow-blue-500/10'
+                  }`}
                   required
                   placeholder="Nhập mật khẩu..."
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className={`absolute right-4 top-3.5 ${
+                    theme === 'dark' ? 'text-gray-500 hover:text-white' : 'text-gray-400 hover:text-black'
+                  } transition-colors`}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-2">
+              <label className={`flex items-center gap-2 cursor-pointer text-sm font-medium ${
+                theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-700 hover:text-black'
+              } transition-colors`}>
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-300 cursor-pointer"
+                />
+                Nhớ tài khoản này
+              </label>
+              <button type="button" onClick={() => setView('FORGOT')} className={`text-xs font-bold uppercase transition-colors ${
+                theme === 'dark'
+                  ? 'text-gray-400 hover:text-white'
+                  : 'text-blue-600 hover:text-blue-700'
+              }`}>
+                Quên mật khẩu?
+              </button>
             </div>
             
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-3 rounded-xl transition-all flex justify-center items-center gap-2 shadow-lg shadow-blue-900/20 active:scale-95 uppercase tracking-widest text-xs"
+              className={`w-full font-black py-3 rounded-lg transition-all flex justify-center items-center gap-2 shadow-lg uppercase tracking-widest text-xs active:scale-95 ${
+                theme === 'dark'
+                  ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/30 disabled:opacity-50'
+                  : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20 disabled:opacity-50'
+              }`}
             >
-              {loading ? <Loader2 className="animate-spin" size={20} /> : 'Đăng nhập'}
+              {loading ? <Loader2 className="animate-spin" size={20} /> : <>
+                <Shield size={18} />
+                Đăng Nhập
+              </>}
             </button>
 
-            <div className="flex justify-between items-center text-xs mt-4">
-                <button type="button" onClick={() => setView('FORGOT')} className="text-gray-400 hover:text-white hover:underline uppercase font-bold">
-                    Quên mật khẩu?
-                </button>
-                {allowRegistration && (
-                    <button type="button" onClick={() => setView('REGISTER')} className="text-blue-400 hover:text-blue-300 hover:underline uppercase font-bold">
-                        Đăng ký tài khoản
+            {allowRegistration && (
+                <div className={`text-center pt-2 border-t ${
+                  theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
+                }`}>
+                    <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-600'} mb-2`}>Chưa có tài khoản?</p>
+                    <button type="button" onClick={() => setView('REGISTER')} className={`text-xs font-black uppercase transition-colors ${
+                      theme === 'dark'
+                        ? 'text-blue-400 hover:text-blue-300'
+                        : 'text-blue-600 hover:text-blue-700'
+                    }`}>
+                        Đăng Ký Ngay
                     </button>
-                )}
-            </div>
+                </div>
+            )}
           </form>
         )}
 
@@ -248,24 +397,40 @@ const Login: React.FC<LoginProps> = ({ onLogin, onCancel, systemName, logoUrl, f
         {view === 'VERIFY_REG_OTP' && (
             <form onSubmit={handleVerifyRegistration} className="space-y-6 animate-in fade-in duration-300">
                 <div className="text-center">
-                    <div className="w-16 h-16 bg-blue-500/20 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-500/30">
+                    <div className={`w-16 h-16 ${
+                      theme === 'dark'
+                        ? 'bg-blue-500/20 text-blue-500 border border-blue-500/30'
+                        : 'bg-blue-100 text-blue-600 border border-blue-300'
+                    } rounded-full flex items-center justify-center mx-auto mb-4`}>
                         <Mail size={32} />
                     </div>
-                    <h3 className="text-xl font-black text-white uppercase">Xác thực tài khoản</h3>
-                    <p className="text-xs text-gray-400 mt-2 px-4">
+                    <h3 className={`text-xl font-black uppercase ${
+                      theme === 'dark' ? 'text-white' : 'text-gray-900'
+                    }`}>Xác Thực Tài Khoản</h3>
+                    <p className={`text-xs mt-2 px-4 ${
+                      theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                    }`}>
                         Chúng tôi đã gửi mã xác thực 6 số đến <b>{regEmail}</b>. Vui lòng nhập mã để kích hoạt.
                     </p>
                 </div>
 
                 <div>
-                    <label className="block text-gray-400 text-[10px] uppercase font-black mb-1 text-center tracking-widest">Nhập mã xác thực</label>
+                    <label className={`block text-[11px] uppercase font-black mb-2 text-center tracking-widest ${
+                      theme === 'dark' ? 'text-gray-400' : 'text-gray-700'
+                    }`}>Nhập Mã Xác Thực</label>
                     <div className="relative">
-                        <Hash className="absolute left-3 top-3 text-blue-500" size={20} />
+                        <Hash className={`absolute left-4 top-3.5 ${
+                          theme === 'dark' ? 'text-blue-500' : 'text-blue-600'
+                        }`} size={20} />
                         <input 
                             type="text" 
                             value={otpCode} 
                             onChange={e => setOtpCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))} 
-                            className="w-full bg-gray-700 border border-gray-600 rounded-xl p-3 pl-10 text-white focus:border-blue-500 outline-none text-center font-mono text-xl tracking-[0.5em] font-bold" 
+                            className={`w-full rounded-lg p-3 pl-12 text-center font-mono text-xl tracking-[0.5em] font-black transition-all ${
+                              theme === 'dark'
+                                ? 'bg-gray-800 border border-gray-600 text-white focus:border-blue-500 focus:shadow-lg focus:shadow-blue-500/20'
+                                : 'bg-gray-50 border border-gray-300 text-black focus:border-blue-500 focus:shadow-lg focus:shadow-blue-500/10'
+                            }`}
                             required 
                             placeholder="000000"
                             autoFocus
@@ -273,11 +438,32 @@ const Login: React.FC<LoginProps> = ({ onLogin, onCancel, systemName, logoUrl, f
                     </div>
                 </div>
 
-                <button type="submit" disabled={loading || otpCode.length < 6} className="w-full bg-green-600 hover:bg-green-500 text-white font-black py-3 rounded-xl transition-all flex justify-center items-center gap-2 uppercase text-xs shadow-lg disabled:opacity-50">
-                    {loading ? <Loader2 className="animate-spin" size={20} /> : 'KÍCH HOẠT TÀI KHOẢN'}
+                <button 
+                  type="submit" 
+                  disabled={loading || otpCode.length < 6}
+                  className={`w-full font-black py-3 rounded-lg transition-all flex justify-center items-center gap-2 uppercase text-xs shadow-lg disabled:opacity-50 ${
+                    theme === 'dark'
+                      ? 'bg-green-600 hover:bg-green-500 text-white'
+                      : 'bg-green-600 hover:bg-green-700 text-white'
+                  }`}
+                >
+                    {loading ? <Loader2 className="animate-spin" size={20} /> : <>
+                      <CheckCircle2 size={18} />
+                      Kích Hoạt Tài Khoản
+                    </>}
                 </button>
                 
-                <button type="button" onClick={() => setView('REGISTER')} className="w-full text-xs text-gray-500 hover:text-gray-300 uppercase font-bold mt-2">Quay lại đăng ký</button>
+                <button 
+                  type="button" 
+                  onClick={() => setView('REGISTER')}
+                  className={`w-full text-xs uppercase font-bold mt-2 transition-colors ${
+                    theme === 'dark'
+                      ? 'text-gray-500 hover:text-gray-300'
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  ← Quay Lại Đăng Ký
+                </button>
             </form>
         )}
 
@@ -285,122 +471,464 @@ const Login: React.FC<LoginProps> = ({ onLogin, onCancel, systemName, logoUrl, f
         {view === 'VERIFY_RESET_OTP' && (
             <form onSubmit={handleResetPasswordSubmit} className="space-y-4 animate-in fade-in duration-300">
                 <div className="text-center mb-4">
-                    <ShieldCheck size={48} className="mx-auto text-orange-500 mb-2"/>
-                    <h3 className="text-xl font-black text-white uppercase">Đặt lại mật khẩu</h3>
-                    <p className="text-xs text-gray-400 mt-1">Nhập mã OTP từ email và mật khẩu mới.</p>
+                    <ShieldCheck size={48} className={`mx-auto mb-2 ${
+                      theme === 'dark' ? 'text-orange-500' : 'text-orange-600'
+                    }`}/>
+                    <h3 className={`text-xl font-black uppercase ${
+                      theme === 'dark' ? 'text-white' : 'text-gray-900'
+                    }`}>Đặt Lại Mật Khẩu</h3>
+                    <p className={`text-xs mt-1 ${
+                      theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                    }`}>Nhập mã OTP từ email và mật khẩu mới của bạn.</p>
                 </div>
                 
                 <div>
-                    <label className="block text-gray-400 text-[10px] uppercase font-black mb-1">Mã xác thực (OTP)</label>
-                    <input 
-                        type="text" 
-                        value={otpCode} 
-                        onChange={e => setOtpCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))} 
-                        className="w-full bg-gray-700 border border-gray-600 rounded p-2.5 text-white focus:border-orange-500 outline-none text-center font-mono text-lg tracking-widest font-bold" 
-                        required 
-                        placeholder="000000"
-                    />
+                    <label className={`block text-[11px] uppercase font-black mb-2 tracking-widest ${
+                      theme === 'dark' ? 'text-gray-400' : 'text-gray-700'
+                    }`}>Mã Xác Thực (OTP)</label>
+                    <div className="relative">
+                        <Hash className={`absolute left-4 top-3 ${
+                          theme === 'dark' ? 'text-orange-500' : 'text-orange-600'
+                        }`} size={18} />
+                        <input 
+                            type="text" 
+                            value={otpCode} 
+                            onChange={e => setOtpCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))} 
+                            className={`w-full rounded-lg p-2.5 pl-12 text-center font-mono text-lg tracking-widest font-bold transition-all ${
+                              theme === 'dark'
+                                ? 'bg-gray-800 border border-gray-600 text-white focus:border-orange-500'
+                                : 'bg-gray-50 border border-gray-300 text-black focus:border-orange-500'
+                            }`}
+                            required 
+                            placeholder="000000"
+                        />
+                    </div>
                 </div>
 
                 <div>
-                    <label className="block text-gray-400 text-[10px] uppercase font-black mb-1">Mật khẩu mới</label>
-                    <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded p-2.5 text-white focus:border-blue-500 outline-none" required minLength={6} placeholder="••••••" />
-                </div>
-                <div>
-                    <label className="block text-gray-400 text-[10px] uppercase font-black mb-1">Xác nhận mật khẩu</label>
-                    <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded p-2.5 text-white focus:border-blue-500 outline-none" required minLength={6} placeholder="••••••" />
+                    <label className={`block text-[11px] uppercase font-black mb-2 tracking-widest ${
+                      theme === 'dark' ? 'text-gray-400' : 'text-gray-700'
+                    }`}>Mật Khẩu Mới</label>
+                    <div className="relative group">
+                        <Lock className={`absolute left-4 top-3 ${
+                          theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                        } group-focus-within:text-orange-500 transition-colors`} size={18} />
+                        <input 
+                          type={showNewPassword ? "text" : "password"}
+                          value={newPassword} 
+                          onChange={e => setNewPassword(e.target.value)} 
+                          className={`w-full rounded-lg p-2.5 pl-12 pr-10 text-sm font-medium transition-all ${
+                            theme === 'dark'
+                              ? 'bg-gray-800 border border-gray-600 text-white focus:border-orange-500'
+                              : 'bg-gray-50 border border-gray-300 text-black focus:border-orange-500'
+                          }`}
+                          required 
+                          minLength={8}
+                          placeholder="••••••••"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          className={`absolute right-3 top-2.5 ${
+                            theme === 'dark' ? 'text-gray-500 hover:text-white' : 'text-gray-400 hover:text-black'
+                          }`}
+                        >
+                          {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                    </div>
                 </div>
 
-                <button type="submit" disabled={loading} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-black py-3 rounded-xl transition-all flex justify-center items-center gap-2 uppercase text-xs shadow-lg">
-                    {loading ? <Loader2 className="animate-spin" size={20} /> : 'XÁC NHẬN ĐỔI MẬT KHẨU'}
+                <div>
+                    <label className={`block text-[11px] uppercase font-black mb-2 tracking-widest ${
+                      theme === 'dark' ? 'text-gray-400' : 'text-gray-700'
+                    }`}>Xác Nhận Mật Khẩu</label>
+                    <div className="relative group">
+                        <Lock className={`absolute left-4 top-3 ${
+                          theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                        } group-focus-within:text-orange-500 transition-colors`} size={18} />
+                        <input 
+                          type={showConfirmPassword ? "text" : "password"}
+                          value={confirmPassword} 
+                          onChange={e => setConfirmPassword(e.target.value)} 
+                          className={`w-full rounded-lg p-2.5 pl-12 pr-10 text-sm font-medium transition-all ${
+                            theme === 'dark'
+                              ? 'bg-gray-800 border border-gray-600 text-white focus:border-orange-500'
+                              : 'bg-gray-50 border border-gray-300 text-black focus:border-orange-500'
+                          }`}
+                          required 
+                          minLength={8}
+                          placeholder="••••••••"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className={`absolute right-3 top-2.5 ${
+                            theme === 'dark' ? 'text-gray-500 hover:text-white' : 'text-gray-400 hover:text-black'
+                          }`}
+                        >
+                          {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                    </div>
+                </div>
+
+                <button 
+                  type="submit" 
+                  disabled={loading}
+                  className={`w-full font-black py-3 rounded-lg transition-all flex justify-center items-center gap-2 uppercase text-xs shadow-lg ${
+                    theme === 'dark'
+                      ? 'bg-orange-600 hover:bg-orange-500 text-white'
+                      : 'bg-orange-600 hover:bg-orange-700 text-white'
+                  }`}
+                >
+                    {loading ? <Loader2 className="animate-spin" size={20} /> : <>
+                      <ShieldCheck size={18} />
+                      Xác Nhận Đổi Mật Khẩu
+                    </>}
                 </button>
-                <button type="button" onClick={() => setView('FORGOT')} className="w-full text-xs text-gray-500 hover:text-gray-300 uppercase font-bold">Gửi lại mã</button>
+
+                <button 
+                  type="button" 
+                  onClick={() => setView('FORGOT')}
+                  className={`w-full text-xs uppercase font-bold transition-colors ${
+                    theme === 'dark'
+                      ? 'text-gray-500 hover:text-gray-300'
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  ↻ Gửi Lại Mã
+                </button>
             </form>
         )}
 
         {/* --- VIEW: FORGOT PASSWORD (EMAIL INPUT) --- */}
         {view === 'FORGOT' && (
-            <form onSubmit={handleSendResetCode} className="space-y-6">
+            <form onSubmit={handleSendResetCode} className="space-y-6 animate-in fade-in duration-300">
                 <div className="text-center mb-4">
-                    <KeyRound size={48} className="mx-auto text-orange-400 mb-2" />
-                    <h3 className="text-xl font-black text-white uppercase">Quên mật khẩu?</h3>
+                    <KeyRound size={48} className={`mx-auto mb-2 ${
+                      theme === 'dark' ? 'text-orange-400' : 'text-orange-600'
+                    }`} />
+                    <h3 className={`text-xl font-black uppercase ${
+                      theme === 'dark' ? 'text-white' : 'text-gray-900'
+                    }`}>Quên Mật Khẩu?</h3>
                 </div>
-                <p className="text-gray-300 text-sm text-center">Nhập email đã đăng ký. Chúng tôi sẽ gửi <b>Mã xác thực</b> để bạn đặt lại mật khẩu.</p>
-                <div className="relative">
-                    <Mail className="absolute left-3 top-3 text-gray-500" size={18} />
+                <p className={`text-sm text-center ${
+                  theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                }`}>Nhập email hoặc tên tài khoản đã đăng ký. Chúng tôi sẽ gửi <b>Mã xác thực</b> để bạn đặt lại mật khẩu.</p>
+                
+                <div className="relative group">
+                    <UserIcon className={`absolute left-4 top-3.5 ${
+                      theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                    } group-focus-within:text-orange-500 transition-colors`} size={18} />
                     <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full bg-gray-700 border border-gray-600 rounded p-3 pl-10 text-white focus:border-blue-500 outline-none shadow-inner"
-                      placeholder="Nhập địa chỉ email của bạn..."
+                      type="text"
+                      value={emailOrUsername}
+                      onChange={(e) => setEmailOrUsername(e.target.value)}
+                      className={`w-full rounded-lg p-3 pl-12 text-sm font-medium transition-all ${
+                        theme === 'dark'
+                          ? 'bg-gray-800 border border-gray-600 text-white focus:border-orange-500 focus:shadow-lg focus:shadow-orange-500/20'
+                          : 'bg-gray-50 border border-gray-300 text-black focus:border-orange-500 focus:shadow-lg focus:shadow-orange-500/10'
+                      }`}
+                      placeholder="Email hoặc tên tài khoản..."
                       required
                     />
                 </div>
-                <button type="submit" disabled={loading} className="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-black uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all">
-                    {loading ? <Loader2 className="animate-spin mx-auto" size={20}/> : 'Gửi mã xác thực'}
+
+                <button 
+                  type="submit" 
+                  disabled={loading}
+                  className={`w-full py-3 rounded-lg font-black uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all flex justify-center items-center gap-2 ${
+                    theme === 'dark'
+                      ? 'bg-blue-600 hover:bg-blue-500 text-white'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white'
+                  }`}
+                >
+                    {loading ? <Loader2 className="animate-spin" size={20}/> : <>
+                      <Mail size={18} />
+                      Gửi Mã Xác Thực
+                    </>}
                 </button>
-                <button type="button" onClick={() => setView('LOGIN')} className="w-full text-gray-400 text-xs font-bold uppercase hover:text-white flex items-center justify-center gap-2"><ArrowLeft size={14}/> Quay lại đăng nhập</button>
+
+                <button 
+                  type="button" 
+                  onClick={() => setView('LOGIN')}
+                  className={`w-full text-xs font-bold uppercase flex items-center justify-center gap-2 transition-colors ${
+                    theme === 'dark'
+                      ? 'text-gray-400 hover:text-white'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <ArrowLeft size={14}/> Quay Lại Đăng Nhập
+                </button>
             </form>
         )}
 
         {/* --- VIEW: REGISTER --- */}
         {view === 'REGISTER' && (
-             <form onSubmit={handleRegister} className="space-y-4">
-                <h3 className="text-xl font-black text-white text-center uppercase mb-4">Đăng ký tài khoản</h3>
+             <form onSubmit={handleRegister} className="space-y-4 animate-in fade-in duration-300">
+                <h3 className={`text-xl font-black text-center uppercase mb-4 ${
+                  theme === 'dark' ? 'text-white' : 'text-gray-900'
+                }`}>Đăng Ký Tài Khoản</h3>
+
                 <div>
-                  <label className="block text-gray-400 text-[10px] uppercase font-black mb-1">Họ và Tên</label>
-                  <div className="relative">
-                    <UserIcon className="absolute left-3 top-2.5 text-gray-500" size={16} />
-                    <input type="text" value={regName} onChange={(e) => setRegName(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded p-2 pl-10 text-white focus:border-blue-500 outline-none" required placeholder="Nguyễn Văn A" />
+                  <label className={`block text-[11px] uppercase font-black mb-2 tracking-widest ${
+                    theme === 'dark' ? 'text-gray-400' : 'text-gray-700'
+                  }`}>Họ Và Tên</label>
+                  <div className="relative group">
+                    <UserIcon className={`absolute left-4 top-2.5 ${
+                      theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                    } group-focus-within:text-blue-500 transition-colors`} size={16} />
+                    <input 
+                      type="text" 
+                      value={regName} 
+                      onChange={(e) => setRegName(e.target.value)} 
+                      className={`w-full rounded-lg p-2.5 pl-12 text-sm font-medium transition-all ${
+                        theme === 'dark'
+                          ? 'bg-gray-800 border border-gray-600 text-white focus:border-blue-500'
+                          : 'bg-gray-50 border border-gray-300 text-black focus:border-blue-500'
+                      }`}
+                      required 
+                      placeholder="Nguyễn Văn A"
+                    />
                   </div>
                 </div>
+
                 <div>
-                  <label className="block text-gray-400 text-[10px] uppercase font-black mb-1">Email</label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-2.5 text-gray-500" size={16} />
-                    <input type="email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded p-2 pl-10 text-white focus:border-blue-500 outline-none" required placeholder="email@example.com" />
+                  <label className={`block text-[11px] uppercase font-black mb-2 tracking-widest ${
+                    theme === 'dark' ? 'text-gray-400' : 'text-gray-700'
+                  }`}>Email</label>
+                  <div className="relative group">
+                    <Mail className={`absolute left-4 top-2.5 ${
+                      theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                    } group-focus-within:text-blue-500 transition-colors`} size={16} />
+                    <input 
+                      type="email" 
+                      value={regEmail} 
+                      onChange={(e) => setRegEmail(e.target.value)} 
+                      className={`w-full rounded-lg p-2.5 pl-12 text-sm font-medium transition-all ${
+                        theme === 'dark'
+                          ? 'bg-gray-800 border border-gray-600 text-white focus:border-blue-500'
+                          : 'bg-gray-50 border border-gray-300 text-black focus:border-blue-500'
+                      }`}
+                      required 
+                      placeholder="email@example.com"
+                    />
                   </div>
                 </div>
+
                 <div>
-                  <label className="block text-gray-400 text-[10px] uppercase font-black mb-1">Chi nhánh</label>
-                  <div className="relative">
-                    <Building className="absolute left-3 top-2.5 text-gray-500" size={16} />
-                    <select value={regBranch} onChange={(e) => setRegBranch(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded p-2 pl-10 text-white focus:border-blue-500 outline-none appearance-none" required>
+                  <label className={`block text-[11px] uppercase font-black mb-2 tracking-widest ${
+                    theme === 'dark' ? 'text-gray-400' : 'text-gray-700'
+                  }`}>Chi Nhánh</label>
+                  <div className="relative group">
+                    <Building className={`absolute left-4 top-2.5 ${
+                      theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                    } group-focus-within:text-blue-500 transition-colors z-10 pointer-events-none`} size={16} />
+                    <select 
+                      value={regBranch} 
+                      onChange={(e) => setRegBranch(e.target.value)}
+                      className={`w-full rounded-lg p-2.5 pl-12 text-sm font-medium transition-all appearance-none ${
+                        theme === 'dark'
+                          ? 'bg-gray-800 border border-gray-600 text-white focus:border-blue-500'
+                          : 'bg-gray-50 border border-gray-300 text-black focus:border-blue-500'
+                      }`}
+                      required
+                    >
                         {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                     </select>
                   </div>
                 </div>
-                <button type="submit" disabled={loading} className="w-full bg-green-600 hover:bg-green-500 text-white font-black py-3 rounded-xl mt-4 transition-all flex justify-center items-center gap-2 uppercase text-xs shadow-lg">
-                  {loading ? <Loader2 className="animate-spin" size={20} /> : <><UserPlus size={18} /> Đăng ký ngay</>}
+
+                <div>
+                  <label className={`block text-[11px] uppercase font-black mb-2 tracking-widest ${
+                    theme === 'dark' ? 'text-gray-400' : 'text-gray-700'
+                  }`}>Mật Khẩu</label>
+                  <div className="relative group">
+                    <Lock className={`absolute left-4 top-2.5 ${
+                      theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                    } group-focus-within:text-blue-500 transition-colors`} size={16} />
+                    <input 
+                      type={showRegPassword ? "text" : "password"}
+                      value={regPassword} 
+                      onChange={(e) => setRegPassword(e.target.value)} 
+                      className={`w-full rounded-lg p-2.5 pl-12 pr-10 text-sm font-medium transition-all ${
+                        theme === 'dark'
+                          ? 'bg-gray-800 border border-gray-600 text-white focus:border-blue-500'
+                          : 'bg-gray-50 border border-gray-300 text-black focus:border-blue-500'
+                      }`}
+                      required 
+                      minLength={8}
+                      placeholder="••••••••"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowRegPassword(!showRegPassword)}
+                      className={`absolute right-3 top-2.5 ${
+                        theme === 'dark' ? 'text-gray-500 hover:text-white' : 'text-gray-400 hover:text-black'
+                      }`}
+                    >
+                      {showRegPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  {regPassword && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <div className="h-1 flex-1 bg-gray-300 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full transition-all ${
+                            getPasswordStrength(regPassword).score <= 1 ? 'w-1/4 bg-red-500' :
+                            getPasswordStrength(regPassword).score <= 2 ? 'w-2/4 bg-orange-500' :
+                            getPasswordStrength(regPassword).score <= 3 ? 'w-3/4 bg-yellow-500' :
+                            getPasswordStrength(regPassword).score <= 4 ? 'w-full bg-green-500' :
+                            'w-full bg-emerald-500'
+                          }`}
+                        />
+                      </div>
+                      <span className={`text-xs font-bold ${getPasswordStrength(regPassword).color}`}>
+                        {getPasswordStrength(regPassword).text}
+                      </span>
+                    </div>
+                  )}
+                  <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-600'}`}>
+                    • Tối thiểu 8 ký tự • Chữ hoa, thường, số
+                  </p>
+                </div>
+
+                <div>
+                  <label className={`block text-[11px] uppercase font-black mb-2 tracking-widest ${
+                    theme === 'dark' ? 'text-gray-400' : 'text-gray-700'
+                  }`}>Xác Nhận Mật Khẩu</label>
+                  <div className="relative group">
+                    <Lock className={`absolute left-4 top-2.5 ${
+                      theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                    } group-focus-within:text-blue-500 transition-colors`} size={16} />
+                    <input 
+                      type={showRegConfirmPassword ? "text" : "password"}
+                      value={regConfirmPassword} 
+                      onChange={(e) => setRegConfirmPassword(e.target.value)} 
+                      className={`w-full rounded-lg p-2.5 pl-12 pr-10 text-sm font-medium transition-all ${
+                        theme === 'dark'
+                          ? 'bg-gray-800 border border-gray-600 text-white focus:border-blue-500'
+                          : 'bg-gray-50 border border-gray-300 text-black focus:border-blue-500'
+                      }`}
+                      required 
+                      minLength={8}
+                      placeholder="••••••••"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowRegConfirmPassword(!showRegConfirmPassword)}
+                      className={`absolute right-3 top-2.5 ${
+                        theme === 'dark' ? 'text-gray-500 hover:text-white' : 'text-gray-400 hover:text-black'
+                      }`}
+                    >
+                      {showRegConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  {regPassword && regConfirmPassword && (
+                    <div className={`mt-2 flex items-center gap-2 text-xs font-bold ${
+                      regPassword === regConfirmPassword ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {regPassword === regConfirmPassword ? (
+                        <><Check size={14} /> Mật khẩu khớp</>
+                      ) : (
+                        <><AlertTriangle size={14} /> Mật khẩu không khớp</>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <button 
+                  type="submit" 
+                  disabled={loading || regPassword !== regConfirmPassword || regPassword.length < 8}
+                  className={`w-full font-black py-3 rounded-lg mt-4 transition-all flex justify-center items-center gap-2 uppercase text-xs shadow-lg disabled:opacity-50 ${
+                    theme === 'dark'
+                      ? 'bg-green-600 hover:bg-green-500 text-white'
+                      : 'bg-green-600 hover:bg-green-700 text-white'
+                  }`}
+                >
+                  {loading ? <Loader2 className="animate-spin" size={20} /> : <>
+                    <UserPlus size={18} /> 
+                    Đăng Ký Ngay
+                  </>}
                 </button>
-                <div className="text-center mt-2">
-                    <button type="button" onClick={() => setView('LOGIN')} className="text-xs text-gray-400 hover:text-white uppercase font-bold">Quay lại đăng nhập</button>
+
+                <div className={`text-center mt-2 pt-3 border-t ${
+                  theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
+                }`}>
+                    <button 
+                      type="button" 
+                      onClick={() => setView('LOGIN')}
+                      className={`text-xs uppercase font-bold transition-colors ${
+                        theme === 'dark'
+                          ? 'text-gray-400 hover:text-white'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      ← Quay Lại Đăng Nhập
+                    </button>
                 </div>
              </form>
         )}
 
         {/* FOOTER TEXT */}
         {footerText && (
-            <div className="mt-6 pt-4 border-t border-gray-700 text-center">
-                <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">{footerText}</p>
+            <div className={`mt-6 pt-4 border-t ${
+              theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
+            }`}>
+                <p className={`text-[10px] uppercase font-bold tracking-widest text-center ${
+                  theme === 'dark' ? 'text-gray-500' : 'text-gray-600'
+                }`}>{footerText}</p>
             </div>
         )}
       </div>
 
       {/* --- SYSTEM DIALOG (MODAL) --- */}
       {dialog.isOpen && (
-          <div className="fixed inset-0 z-[2000] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
-              <div className="bg-gray-900 rounded-[2rem] w-full max-w-sm border border-gray-800 shadow-2xl overflow-hidden">
+          <div className={`fixed inset-0 z-[2000] flex items-center justify-center p-4 animate-in fade-in duration-200 ${
+            theme === 'dark'
+              ? 'bg-black/90 backdrop-blur-md'
+              : 'bg-black/40 backdrop-blur-sm'
+          }`}>
+              <div className={`rounded-3xl w-full max-w-sm border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 ${
+                theme === 'dark'
+                  ? 'bg-gray-900 border-gray-800'
+                  : 'bg-white border-gray-200'
+              }`}>
                   <div className="p-8 text-center flex flex-col items-center">
-                      {dialog.type === 'success' && <div className="w-14 h-14 bg-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center mb-4"><CheckCircle2 size={28}/></div>}
-                      {dialog.type === 'error' && <div className="w-14 h-14 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mb-4"><AlertTriangle size={28}/></div>}
-                      {dialog.type === 'info' && <div className="w-14 h-14 bg-blue-500/20 text-blue-500 rounded-full flex items-center justify-center mb-4"><Info size={28}/></div>}
+                      {dialog.type === 'success' && <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
+                        theme === 'dark'
+                          ? 'bg-emerald-500/20 text-emerald-500'
+                          : 'bg-green-100 text-green-600'
+                      }`}><CheckCircle2 size={32}/></div>}
                       
-                      <h3 className="text-lg font-black text-white uppercase tracking-tight mb-2">{dialog.title}</h3>
-                      <p className="text-gray-400 text-xs leading-relaxed mb-6">{dialog.message}</p>
+                      {dialog.type === 'error' && <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
+                        theme === 'dark'
+                          ? 'bg-red-500/20 text-red-500'
+                          : 'bg-red-100 text-red-600'
+                      }`}><AlertTriangle size={32}/></div>}
                       
-                      <button onClick={() => { setDialog({ ...dialog, isOpen: false }); dialog.onClose?.(); }} className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-900/20 transition-all active:scale-95">OK</button>
+                      {dialog.type === 'info' && <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
+                        theme === 'dark'
+                          ? 'bg-blue-500/20 text-blue-500'
+                          : 'bg-blue-100 text-blue-600'
+                      }`}><Info size={32}/></div>}
+                      
+                      <h3 className={`text-lg font-black uppercase tracking-tight mb-2 ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                      }`}>{dialog.title}</h3>
+                      <p className={`text-sm leading-relaxed mb-6 ${
+                        theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                      }`}>{dialog.message}</p>
+                      
+                      <button 
+                        onClick={() => { setDialog({ ...dialog, isOpen: false }); dialog.onClose?.(); }}
+                        className={`w-full py-3 rounded-xl font-black text-sm uppercase tracking-widest shadow-lg transition-all active:scale-95 ${
+                          theme === 'dark'
+                            ? 'bg-blue-600 hover:bg-blue-500 text-white'
+                            : 'bg-blue-600 hover:bg-blue-700 text-white'
+                        }`}
+                      >
+                        Đóng
+                      </button>
                   </div>
               </div>
           </div>
