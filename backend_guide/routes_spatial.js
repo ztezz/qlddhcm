@@ -114,6 +114,17 @@ export default function(pool, logSystemAction) {
 
             const existingCols = res.rows.map(r => r.column_name.toLowerCase());
 
+            // Chuẩn hóa bảng cũ: nếu chỉ có loaidat thì tạo kyhieumucd và sao chép dữ liệu sang.
+            if (!existingCols.includes('kyhieumucd') && existingCols.includes('loaidat')) {
+                await pool.query(`ALTER TABLE "${tableName}" ADD COLUMN IF NOT EXISTS "kyhieumucd" TEXT`);
+                await pool.query(`
+                    UPDATE "${tableName}"
+                    SET "kyhieumucd" = COALESCE(NULLIF("kyhieumucd"::text, ''), "loaidat"::text)
+                    WHERE "loaidat" IS NOT NULL
+                `);
+                existingCols.push('kyhieumucd');
+            }
+
             // 1. Kiểm tra thiếu cột thuộc tính
             const missingCols = [];
             if (currentMap.sodoto && !existingCols.includes(currentMap.sodoto.toLowerCase())) missingCols.push({ name: currentMap.sodoto, type: 'TEXT' });
@@ -125,7 +136,7 @@ export default function(pool, logSystemAction) {
             // Nếu các cột chuẩn hoàn toàn không có trong mapping (null), ta có thể ép thêm các cột mặc định nếu muốn
             if (!currentMap.sodoto && !existingCols.includes('sodoto')) missingCols.push({ name: 'sodoto', type: 'TEXT' });
             if (!currentMap.sothua && !existingCols.includes('sothua')) missingCols.push({ name: 'sothua', type: 'TEXT' });
-            if (!currentMap.loaidat && !existingCols.includes('loaidat')) missingCols.push({ name: 'loaidat', type: 'TEXT' });
+            if (!currentMap.loaidat && !existingCols.includes('kyhieumucd') && !existingCols.includes('loaidat')) missingCols.push({ name: 'kyhieumucd', type: 'TEXT' });
             if (!currentMap.tenchu && !existingCols.includes('tenchu')) missingCols.push({ name: 'tenchu', type: 'TEXT' });
             if (!currentMap.diachi && !existingCols.includes('diachi')) missingCols.push({ name: 'diachi', type: 'TEXT' });
             if (!currentMap.dientich && !existingCols.includes('dientich')) missingCols.push({ name: 'dientich', type: 'NUMERIC' });
@@ -217,7 +228,7 @@ export default function(pool, logSystemAction) {
             await pool.query(`
                 CREATE TABLE IF NOT EXISTS "${safeName}" (
                     gid SERIAL PRIMARY KEY,
-                    sodoto TEXT, sothua TEXT, tenchu TEXT, diachi TEXT, loaidat TEXT, dientich NUMERIC,
+                    sodoto TEXT, sothua TEXT, tenchu TEXT, diachi TEXT, kyhieumucd TEXT, dientich NUMERIC,
                     image_url TEXT,
                     geometry GEOMETRY(Geometry, 9210),
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -313,7 +324,7 @@ export default function(pool, logSystemAction) {
                     sothua TEXT,
                     tenchu TEXT,
                     diachi TEXT,
-                    loaidat TEXT,
+                    kyhieumucd TEXT,
                     dientich NUMERIC,
                     image_url TEXT,
                     geometry GEOMETRY(Geometry, ${sourceSrid}),
@@ -330,7 +341,11 @@ export default function(pool, logSystemAction) {
             `, [safeName, displayName, description]);
 
             const resolveValue = (props, key) => {
-                const sourceKey = String(mapping?.[key] || '').trim();
+                const sourceKey = String(
+                    mapping?.[key]
+                    || (key === 'kyhieumucd' ? mapping?.loaidat : '')
+                    || ''
+                ).trim();
                 if (!sourceKey) return null;
                 if (props[sourceKey] !== undefined && props[sourceKey] !== null) return props[sourceKey];
                 const foundKey = Object.keys(props).find((k) => String(k).toLowerCase() === sourceKey.toLowerCase());
@@ -385,7 +400,7 @@ export default function(pool, logSystemAction) {
 
                 const tenchu = resolveValue(props, 'tenchu');
                 const diachi = resolveValue(props, 'diachi');
-                const loaidat = resolveValue(props, 'loaidat');
+                const kyhieumucd = resolveValue(props, 'kyhieumucd');
                 const dientichRaw = resolveValue(props, 'dientich');
                 const dientich = (dientichRaw === null || dientichRaw === undefined || String(dientichRaw).trim() === '')
                     ? null
@@ -396,7 +411,7 @@ export default function(pool, logSystemAction) {
                     String(sothua),
                     tenchu !== null && tenchu !== undefined ? String(tenchu) : null,
                     diachi !== null && diachi !== undefined ? String(diachi) : null,
-                    loaidat !== null && loaidat !== undefined ? String(loaidat) : null,
+                    kyhieumucd !== null && kyhieumucd !== undefined ? String(kyhieumucd) : null,
                     Number.isFinite(dientich) ? dientich : null,
                     JSON.stringify(geometry)
                 ]);
@@ -427,7 +442,7 @@ export default function(pool, logSystemAction) {
                 }).join(', ');
 
                 await client.query(
-                    `INSERT INTO "${safeName}" (sodoto, sothua, tenchu, diachi, loaidat, dientich, geometry) VALUES ${valuesSql}`,
+                    `INSERT INTO "${safeName}" (sodoto, sothua, tenchu, diachi, kyhieumucd, dientich, geometry) VALUES ${valuesSql}`,
                     params
                 );
                 inserted += batch.length;

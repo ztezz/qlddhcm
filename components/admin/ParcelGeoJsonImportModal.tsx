@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { X, Upload, FileJson, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { parcelApi } from '../../services/parcelApi';
 
@@ -8,14 +8,14 @@ interface ParcelGeoJsonImportModalProps {
     onSuccess: () => void;
 }
 
-type MappingKey = 'sodoto' | 'sothua' | 'tenchu' | 'diachi' | 'loaidat' | 'dientich' | 'geom';
+type MappingKey = 'sodoto' | 'sothua' | 'tenchu' | 'diachi' | 'kyhieumucd' | 'dientich' | 'geom';
 
 const ALIAS_MAP: Record<MappingKey, string[]> = {
     sodoto: ['sodoto', 'so_to', 'shbando', 'sh_ban_do', 'to_ban_do', 'tobando'],
     sothua: ['sothua', 'so_thua', 'shthua', 'sh_thua', 'thua_dat', 'parcel_no'],
     tenchu: ['tenchu', 'ten_chu', 'owner', 'owner_name', 'chusudung'],
     diachi: ['diachi', 'dia_chi', 'address', 'vitri', 'vi_tri'],
-    loaidat: ['loaidat', 'loai_dat', 'kyhieumucd', 'mucdich', 'mdsd'],
+    kyhieumucd: ['kyhieumucd', 'ky_hieu_muc_dich', 'loaidat', 'loai_dat', 'mucdich', 'mdsd'],
     dientich: ['dientich', 'dien_tich', 'area', 'shape_area', 'st_area'],
     geom: ['geometry', 'geom', 'the_geom', 'shape', 'geojson']
 };
@@ -25,7 +25,7 @@ const FIELD_LABELS: Record<MappingKey, string> = {
     sothua: 'Số thửa (bắt buộc)',
     tenchu: 'Tên chủ',
     diachi: 'Địa chỉ',
-    loaidat: 'Loại đất',
+    kyhieumucd: 'Ký hiệu mục đích (kyhieumucd)',
     dientich: 'Diện tích',
     geom: 'Geometry (geom)'
 };
@@ -40,13 +40,23 @@ const ParcelGeoJsonImportModal: React.FC<ParcelGeoJsonImportModalProps> = ({ isO
     const [loading, setLoading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState<number | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [successResult, setSuccessResult] = useState<{ inserted: number; totalFeatures: number; tableName: string } | null>(null);
+
+    useEffect(() => {
+        if (!successResult) return;
+        const timer = setTimeout(() => {
+            setSuccessResult(null);
+            onClose();
+        }, 4000);
+        return () => clearTimeout(timer);
+    }, [successResult, onClose]);
 
     const [mapping, setMapping] = useState<Record<MappingKey, string>>({
         sodoto: '',
         sothua: '',
         tenchu: '',
         diachi: '',
-        loaidat: '',
+        kyhieumucd: '',
         dientich: '',
         geom: '__feature_geometry__'
     });
@@ -136,7 +146,7 @@ const ParcelGeoJsonImportModal: React.FC<ParcelGeoJsonImportModalProps> = ({ isO
         setError(null);
 
         try {
-            await parcelApi.manageTables.importGeoJsonParcels({
+            const result = await parcelApi.manageTables.importGeoJsonParcels({
                 file,
                 tableName,
                 displayName,
@@ -144,9 +154,13 @@ const ParcelGeoJsonImportModal: React.FC<ParcelGeoJsonImportModalProps> = ({ isO
                 sourceSrid,
                 mapping,
                 onProgress: (percent) => setUploadProgress(percent)
-            });
+            }) as { inserted?: number; totalFeatures?: number; tableName?: string };
             onSuccess();
-            onClose();
+            setSuccessResult({
+                inserted: result?.inserted ?? 0,
+                totalFeatures: result?.totalFeatures ?? 0,
+                tableName: result?.tableName || tableName
+            });
         } catch (e: any) {
             setError(e.message || 'Import GeoJSON thất bại.');
         } finally {
@@ -156,6 +170,41 @@ const ParcelGeoJsonImportModal: React.FC<ParcelGeoJsonImportModalProps> = ({ isO
     };
 
     if (!isOpen) return null;
+
+    if (successResult) {
+        return (
+            <div className="fixed inset-0 z-[650] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="w-full max-w-md bg-gray-800 border border-green-700/60 rounded-2xl shadow-2xl overflow-hidden">
+                    <div className="p-8 flex flex-col items-center text-center gap-4">
+                        <div className="w-16 h-16 rounded-full bg-green-600/20 border-2 border-green-500 flex items-center justify-center">
+                            <CheckCircle2 className="text-green-400" size={36} />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-black text-white uppercase tracking-tight">Import thành công!</h3>
+                            <p className="text-sm text-gray-400 mt-1">Bảng <span className="font-mono text-cyan-300">{successResult.tableName}</span> đã được tạo.</p>
+                        </div>
+                        <div className="flex gap-6 text-center">
+                            <div className="bg-gray-900/60 border border-gray-700 rounded-xl px-5 py-3">
+                                <div className="text-2xl font-black text-green-400">{successResult.inserted.toLocaleString()}</div>
+                                <div className="text-[11px] text-gray-500 uppercase font-bold mt-0.5">Bản ghi đã nạp</div>
+                            </div>
+                            <div className="bg-gray-900/60 border border-gray-700 rounded-xl px-5 py-3">
+                                <div className="text-2xl font-black text-cyan-400">{successResult.totalFeatures.toLocaleString()}</div>
+                                <div className="text-[11px] text-gray-500 uppercase font-bold mt-0.5">Feature hợp lệ</div>
+                            </div>
+                        </div>
+                        <p className="text-[11px] text-gray-500">Tự động đóng sau 4 giây...</p>
+                        <button
+                            onClick={() => { setSuccessResult(null); onClose(); }}
+                            className="px-6 py-2 rounded-lg bg-green-600 hover:bg-green-500 text-white text-sm font-black uppercase tracking-widest"
+                        >
+                            Đóng
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="fixed inset-0 z-[650] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
