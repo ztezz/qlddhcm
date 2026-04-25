@@ -93,7 +93,17 @@ const MenuManager: React.FC<MenuManagerProps> = ({ permissions = [] }) => {
                 setMenuItems(sorted);
                 lastSyncedMenuRef.current = sorted;
                 const toolsRaw = (settings as any[]).find((s: any) => s.key === 'sidebar_tools')?.value;
-                if (toolsRaw) { try { const p = JSON.parse(toolsRaw); if (Array.isArray(p)) setSidebarTools(p); } catch {} }
+                if (toolsRaw) {
+                    try {
+                        const parsed = JSON.parse(toolsRaw);
+                        if (Array.isArray(parsed)) {
+                            const cleanedParsed = parsed.filter((t: SidebarToolConfig) => t.id !== 'blog-gis');
+                            const knownIds = new Set(cleanedParsed.map((t: SidebarToolConfig) => t.id));
+                            const merged = [...cleanedParsed, ...DEFAULT_SIDEBAR_TOOLS.filter((t) => !knownIds.has(t.id))];
+                            setSidebarTools(merged);
+                        }
+                    } catch {}
+                }
             }
         } catch (e) { console.error(e); } finally { setLoading(false); }
     };

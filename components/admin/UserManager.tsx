@@ -84,7 +84,7 @@ const UserManager: React.FC<UserManagerProps> = ({ permissions = [] }) => {
     const filteredUsers = useMemo(() => {
         return users.filter(u => {
             const q = searchQuery.toLowerCase();
-            const matchSearch = !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+            const matchSearch = !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || (u.username || '').toLowerCase().includes(q);
             const matchRole = filterRole === 'ALL' || u.role === filterRole;
             const matchStatus = filterStatus === 'ALL'
                 || (filterStatus === 'ACTIVE' && u.is_verified)
@@ -284,7 +284,7 @@ const UserManager: React.FC<UserManagerProps> = ({ permissions = [] }) => {
                     <thead className="bg-gray-900 text-gray-400 uppercase text-[10px] tracking-wider">
                         <tr>
                             <th className="p-4">Người dùng</th>
-                            <th className="p-4">Email</th>
+                            <th className="p-4">Email / Tên đăng nhập</th>
                             <th className="p-4">Quyền</th>
                             <th className="p-4">Chi nhánh</th>
                             <th className="p-4 text-center">Trạng thái</th>
@@ -310,7 +310,10 @@ const UserManager: React.FC<UserManagerProps> = ({ permissions = [] }) => {
                                         <span className="font-medium text-white">{u.name}</span>
                                     </div>
                                 </td>
-                                <td className="p-4 text-gray-400">{u.email}</td>
+                                <td className="p-4">
+                                    <div className="text-gray-400">{u.email}</div>
+                                    {u.username && <div className="text-[11px] text-blue-400 mt-0.5">@{u.username}</div>}
+                                </td>
                                 <td className="p-4">
                                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                                         u.role === UserRole.ADMIN ? 'bg-red-900/40 text-red-300 border border-red-800' 
@@ -404,6 +407,11 @@ const UserManager: React.FC<UserManagerProps> = ({ permissions = [] }) => {
                             <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-white"><X size={20}/></button>
                         </div>
                         <div className="space-y-4">
+                    <div>
+                                <label className="text-xs text-gray-400 font-bold uppercase mb-1 block">Tên đăng nhập <span className="text-gray-500">(tùy chọn)</span></label>
+                                <input className="w-full bg-gray-900 border border-gray-600 rounded p-2.5 text-white focus:border-blue-500 outline-none" value={formData.username || ''} onChange={e => setFormData({...formData, username: e.target.value})} placeholder="VD: nguyen.van.a" />
+                                <p className="text-[10px] text-gray-500 mt-1">Dùng để đăng nhập thay thế email</p>
+                            </div>
                             <div>
                                 <label className="text-xs text-gray-400 font-bold uppercase mb-1 block">Họ tên <span className="text-red-500">*</span></label>
                                 <input className="w-full bg-gray-900 border border-gray-600 rounded p-2.5 text-white focus:border-blue-500 outline-none" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="VD: Nguyễn Văn A" />

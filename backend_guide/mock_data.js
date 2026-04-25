@@ -21,6 +21,7 @@ export const MOCK_DATA = {
         { id: 'm1', label: 'Bản đồ', icon: 'Map', roles: ['admin', 'user'], order_index: 1, is_active: true, type: 'route', url: '/map' },
         { id: 'm2', label: 'Thống kê', icon: 'BarChart', roles: ['admin'], order_index: 2, is_active: true, type: 'route', url: '/stats' },
         { id: 'm3', label: 'Cấu hình', icon: 'Settings', roles: ['admin'], order_index: 3, is_active: true, type: 'route', url: '/settings' },
+        { id: 'blog-gis', label: 'Blog GIS', icon: 'BookOpen', roles: ['GUEST', 'VIEWER', 'EDITOR', 'ADMIN'], order_index: 9, is_active: true, type: 'INTERNAL', url: '/bloggis' },
         { id: 'about', label: 'Giới thiệu', icon: 'Info', roles: ['GUEST', 'VIEWER', 'EDITOR', 'ADMIN'], order_index: 10, is_active: true, type: 'INTERNAL', url: '/gioithieu' }
     ],
     system_settings: [

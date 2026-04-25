@@ -43,14 +43,19 @@ const Sidebar: React.FC<SidebarProps> = ({
       try {
         const parsed = JSON.parse(sidebarToolsConfig);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed
-            .filter((t: any) => t.enabled)
+          const parsedWithoutBlog = parsed.filter((t: any) => t?.id !== 'blog-gis');
+          const parsedIds = new Set(parsedWithoutBlog.map((t: any) => t.id));
+          const mappedParsed = parsed
+            .filter((t: any) => t.enabled && t.id !== 'blog-gis')
             .map((t: any) => ({
               id: t.id,
               label: t.label,
               icon: ((Icons as any)[t.icon] as React.ElementType) || FolderCog,
               path: t.path
             }));
+
+          const appendedDefaults = DEFAULT_TOOL_ITEMS.filter((d) => !parsedIds.has(d.id));
+          return [...mappedParsed, ...appendedDefaults];
         }
       } catch {}
     }

@@ -14,6 +14,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onUpdateUser }) => {
     const CROP_VIEW_SIZE = 280;
     const AVATAR_OUTPUT_SIZE = 400;
     const [name, setName] = useState(user.name);
+    const [username, setUsername] = useState(user.username || '');
     const [avatarPreview, setAvatarPreview] = useState<string>('');
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     
@@ -51,12 +52,16 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onUpdateUser }) => {
     const MAX_AVATAR_SIZE_MB = 5;
     const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
     const trimmedName = name.trim();
-    const hasProfileChanges = trimmedName !== user.name.trim() || !!selectedFile;
+    const trimmedUsername = username.trim().toLowerCase().replace(/\s+/g, '');
+    const hasProfileChanges = trimmedName !== user.name.trim() || trimmedUsername !== (user.username || '').trim().toLowerCase() || !!selectedFile;
     const nameError = trimmedName.length === 0
         ? 'Họ và tên không được để trống'
         : trimmedName.length > 80
             ? 'Họ và tên tối đa 80 ký tự'
             : null;
+    const usernameError = trimmedUsername && !/^[a-z0-9._-]+$/.test(trimmedUsername)
+        ? 'Chỉ dùng chữ thường, số, dấu chấm, gạch dưới'
+        : trimmedUsername.length > 30 ? 'Tối đa 30 ký tự' : null;
 
     const passwordChecks = {
         length: newPassword.length >= 8,
@@ -89,10 +94,11 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onUpdateUser }) => {
 
     useEffect(() => {
         setName(user.name);
+        setUsername(user.username || '');
         setAvatarPreview(buildAvatarUrl(user.avatar));
         setSelectedFile(null);
         setDraftRestored(false);
-    }, [user.avatar, user.name]);
+    }, [user.avatar, user.name, user.username]);
 
     useEffect(() => {
         const savedDraft = sessionStorage.getItem(draftStorageKey);
@@ -340,6 +346,10 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onUpdateUser }) => {
             setProfileMessage({ type: 'error', text: nameError });
             return;
         }
+        if (usernameError) {
+            setProfileMessage({ type: 'error', text: usernameError });
+            return;
+        }
         if (!hasProfileChanges) {
             setProfileMessage({ type: 'error', text: 'Chưa có thay đổi nào để lưu' });
             return;
@@ -347,8 +357,8 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onUpdateUser }) => {
         setLoading(true);
         setProfileMessage(null);
         try {
-            const result = await authService.updateProfile(user.id, trimmedName, selectedFile);
-            const updatedUser = { ...user, name: trimmedName, avatar: result.avatar || user.avatar };
+            const result = await authService.updateProfile(user.id, trimmedName, selectedFile, trimmedUsername || undefined);
+            const updatedUser = { ...user, name: trimmedName, username: trimmedUsername || undefined, avatar: result.avatar || user.avatar };
             onUpdateUser(updatedUser);
             setSelectedFile(null);
             sessionStorage.removeItem(draftStorageKey);
@@ -369,6 +379,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onUpdateUser }) => {
 
     const handleResetProfileChanges = () => {
         setName(user.name);
+        setUsername(user.username || '');
         setSelectedFile(null);
         setAvatarPreview(buildAvatarUrl(user.avatar));
         sessionStorage.removeItem(draftStorageKey);
@@ -638,6 +649,28 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onUpdateUser }) => {
                                         <div className="mt-1.5 flex items-center justify-between text-[11px]">
                                             <span className={nameError ? 'text-red-400 font-bold' : 'text-gray-500'}>{nameError || 'Tên hiển thị sẽ cập nhật cho toàn hệ thống'}</span>
                                             <span className="text-gray-600">{trimmedName.length}/80</span>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-500 uppercase mb-1.5 block tracking-wider flex items-center gap-1">
+                                            <UserIcon size={12}/> Tên đăng nhập
+                                        </label>
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-mono text-sm select-none">@</span>
+                                            <input
+                                                type="text"
+                                                value={username}
+                                                onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s+/g, ''))}
+                                                className={`w-full bg-gray-950 border rounded-xl pl-7 pr-3 py-3 text-white font-mono text-sm focus:border-blue-500 outline-none transition-all ${usernameError ? 'border-red-700' : 'border-gray-700'}`}
+                                                maxLength={30}
+                                                autoComplete="username"
+                                                placeholder="vd: nguyen.van.a"
+                                            />
+                                        </div>
+                                        <div className="mt-1.5 flex items-center justify-between text-[11px]">
+                                            <span className={usernameError ? 'text-red-400 font-bold' : 'text-gray-500'}>{usernameError || 'Dùng để đăng nhập thay thế email'}</span>
+                                            <span className="text-gray-600">{trimmedUsername.length}/30</span>
                                         </div>
                                     </div>
                                     

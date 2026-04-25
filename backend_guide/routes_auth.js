@@ -261,7 +261,7 @@ export default function(pool, logSystemAction) {
             captchaStore.delete(captchaChallengeId);
 
             const result = await pool.query(
-                `SELECT * FROM users WHERE LOWER(email) = LOWER($1) OR LOWER(name) = LOWER($1) LIMIT 1`,
+                `SELECT * FROM users WHERE LOWER(email) = LOWER($1) OR LOWER(username) = LOWER($1) OR LOWER(name) = LOWER($1) LIMIT 1`,
                 [identity]
             );
             const user = result.rows[0];
@@ -282,7 +282,7 @@ export default function(pool, logSystemAction) {
             }
 
             const userData = {
-                id: user.id, email: user.email, name: user.name,
+                id: user.id, email: user.email, username: user.username, name: user.name,
                 role: user.role, branchId: user.branch_id, avatar: user.avatar
             };
             
@@ -302,7 +302,7 @@ export default function(pool, logSystemAction) {
 
     // --- REGISTER ---
     router.post('/register', async (req, res) => {
-        const { name, email, branchId, password } = req.body;
+        const { name, email, username, branchId, password } = req.body;
         const accountPassword = String(password || '123');
         const code = generateOTP();
         
@@ -310,11 +310,16 @@ export default function(pool, logSystemAction) {
             const check = await pool.query(`SELECT id FROM users WHERE email = $1`, [email]);
             if (check.rows.length > 0) return res.status(400).json({ error: "Email đã tồn tại." });
 
+            if (username) {
+                const usernameCheck = await pool.query(`SELECT id FROM users WHERE LOWER(username) = LOWER($1)`, [username]);
+                if (usernameCheck.rows.length > 0) return res.status(400).json({ error: "Tên đăng nhập đã tồn tại." });
+            }
+
             const id = 'u-' + Date.now();
             await pool.query(
-                `INSERT INTO users (id, email, password_hash, name, role, branch_id, is_verified, verification_token) 
-                 VALUES ($1, $2, $3, $4, 'VIEWER', $5, false, $6)`,
-                [id, email, accountPassword, name, branchId, code]
+                `INSERT INTO users (id, email, username, password_hash, name, role, branch_id, is_verified, verification_token) 
+                 VALUES ($1, $2, $3, $4, $5, 'VIEWER', $6, false, $7)`,
+                [id, email, username || null, accountPassword, name, branchId, code]
             );
 
             // Gửi mail async (không chặn response)
@@ -367,7 +372,7 @@ export default function(pool, logSystemAction) {
             }
 
             const userCheck = await pool.query(
-                `SELECT id, name, email FROM users WHERE LOWER(email) = LOWER($1) OR LOWER(name) = LOWER($1) LIMIT 1`,
+                `SELECT id, name, email FROM users WHERE LOWER(email) = LOWER($1) OR LOWER(username) = LOWER($1) OR LOWER(name) = LOWER($1) LIMIT 1`,
                 [identity]
             );
             if (userCheck.rows.length === 0) return res.status(404).json({ error: "Email hoặc tên tài khoản không tồn tại." });

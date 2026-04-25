@@ -31,7 +31,7 @@ export default function(pool, logSystemAction) {
     // --- LẤY DANH SÁCH USER ---
     router.get('/', async (req, res) => { 
         try {
-            const r = await pool.query(`SELECT id, email, name, role, branch_id as "branchId", is_verified, can_chat, avatar FROM users ORDER BY name ASC`); 
+            const r = await pool.query(`SELECT id, email, username, name, role, branch_id as "branchId", is_verified, can_chat, avatar FROM users ORDER BY name ASC`); 
             res.json(r.rows); 
         } catch (e) { res.status(500).json({ error: e.message }); }
     });
@@ -39,7 +39,7 @@ export default function(pool, logSystemAction) {
     // --- LẤY CHI TIẾT USER (DÙNG ĐỂ ĐỒNG BỘ) ---
     router.get('/:id', async (req, res) => {
         try {
-            const r = await pool.query(`SELECT id, email, name, role, branch_id as "branchId", is_verified, can_chat, avatar FROM users WHERE id = $1`, [req.params.id]);
+            const r = await pool.query(`SELECT id, email, username, name, role, branch_id as "branchId", is_verified, can_chat, avatar FROM users WHERE id = $1`, [req.params.id]);
             if (r.rows.length === 0) return res.status(404).json({ error: "User not found" });
             // Quan trọng: Gửi header chống cache cho API profile
             res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private'); 
@@ -47,10 +47,33 @@ export default function(pool, logSystemAction) {
         } catch (e) { res.status(500).json({ error: e.message }); }
     });
 
+    // --- TẠO USER MỚI (ADMIN) ---
+    router.post('/', async (req, res) => {
+        const { name, email, username, password, role, branchId, is_verified, can_chat } = req.body;
+        if (!name || !email || !password) return res.status(400).json({ error: 'Thiếu name, email hoặc password.' });
+        try {
+            if (username) {
+                const dupCheck = await pool.query(`SELECT id FROM users WHERE LOWER(username) = LOWER($1)`, [username]);
+                if (dupCheck.rows.length > 0) return res.status(400).json({ error: 'Tên đăng nhập đã tồn tại.' });
+            }
+            const emailCheck = await pool.query(`SELECT id FROM users WHERE LOWER(email) = LOWER($1)`, [email]);
+            if (emailCheck.rows.length > 0) return res.status(400).json({ error: 'Email đã tồn tại.' });
+            const id = 'u-' + Date.now();
+            const r = await pool.query(
+                `INSERT INTO users (id, email, username, password_hash, name, role, branch_id, is_verified, can_chat)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                 RETURNING id, email, username, name, role, branch_id as "branchId", is_verified, can_chat, avatar`,
+                [id, email, username || null, password, name, role || 'VIEWER', branchId || null, is_verified ?? true, can_chat ?? true]
+            );
+            await logSystemAction(req, 'CREATE_USER', `Admin tạo tài khoản mới: ${email}`);
+            res.status(201).json(r.rows[0]);
+        } catch (e) { res.status(500).json({ error: e.message }); }
+    });
+
     // --- CẬP NHẬT HỒ SƠ & AVATAR (XÓA FILE CŨ ĐỂ TIẾT KIỆM) ---
     router.put('/:id/profile', upload.single('avatar'), async (req, res) => {
         const { id } = req.params;
-        const { name } = req.body;
+        const { name, username } = req.body;
         try {
             // 1. Tìm đường dẫn file cũ trong DB
             const userRes = await pool.query(`SELECT avatar FROM users WHERE id = $1`, [id]);
@@ -80,15 +103,18 @@ export default function(pool, logSystemAction) {
             // 3. Cập nhật DB
             let query = `UPDATE users SET name = $1`;
             const params = [name];
-            if (avatarUrl) {
-                query += `, avatar = $2 WHERE id = $3`;
-                params.push(avatarUrl, id);
-            } else {
-                query += ` WHERE id = $2`;
-                params.push(id);
+            if (username !== undefined) {
+                params.push(username || null);
+                query += `, username = $${params.length}`;
             }
+            if (avatarUrl) {
+                params.push(avatarUrl);
+                query += `, avatar = $${params.length}`;
+            }
+            params.push(id);
+            query += ` WHERE id = $${params.length}`;
             
-            const result = await pool.query(query + ` RETURNING id, name, avatar, email, role, branch_id as "branchId", can_chat`, params);
+            const result = await pool.query(query + ` RETURNING id, name, username, avatar, email, role, branch_id as "branchId", can_chat`, params);
             await logSystemAction(req, 'UPDATE_PROFILE', `User ${id} cập nhật hồ sơ`);
             res.json(result.rows[0]);
         } catch (e) { 
@@ -134,23 +160,28 @@ export default function(pool, logSystemAction) {
         } catch (e) { res.status(500).json({ error: e.message }); }
     });
 
-    // --- CẬP NHẬT THÔNG TIN ADMIN (ROLE, BRANCH, IS_VERIFIED, NAME, EMAIL) ---
+    // --- CẬP NHẬT THÔNG TIN ADMIN (ROLE, BRANCH, IS_VERIFIED, NAME, EMAIL, USERNAME) ---
     router.put('/:id', async (req, res) => {
         const { id } = req.params;
-        const { name, email, role, branchId, is_verified, can_chat } = req.body;
+        const { name, email, username, role, branchId, is_verified, can_chat } = req.body;
         try {
+            if (username != null) {
+                const dupCheck = await pool.query(`SELECT id FROM users WHERE LOWER(username) = LOWER($1) AND id <> $2`, [username, id]);
+                if (dupCheck.rows.length > 0) return res.status(400).json({ error: 'Tên đăng nhập đã tồn tại.' });
+            }
             const r = await pool.query(
                 `UPDATE users SET
                     name        = COALESCE($1, name),
                     email       = COALESCE($2, email),
-                    role        = COALESCE($3, role),
-                    branch_id   = COALESCE($4, branch_id),
-                    is_verified = COALESCE($5, is_verified),
-                    can_chat    = COALESCE($6, can_chat)
-                 WHERE id = $7
-                 RETURNING id, email, name, role, branch_id as "branchId", is_verified, can_chat, avatar`,
-                [name ?? null, email ?? null, role ?? null, branchId ?? null,
-                 is_verified ?? null, can_chat ?? null, id]
+                    username    = CASE WHEN $3::text IS DISTINCT FROM '__SKIP__' THEN $3 ELSE username END,
+                    role        = COALESCE($4, role),
+                    branch_id   = COALESCE($5, branch_id),
+                    is_verified = COALESCE($6, is_verified),
+                    can_chat    = COALESCE($7, can_chat)
+                 WHERE id = $8
+                 RETURNING id, email, username, name, role, branch_id as "branchId", is_verified, can_chat, avatar`,
+                [name ?? null, email ?? null, username !== undefined ? (username || null) : '__SKIP__',
+                 role ?? null, branchId ?? null, is_verified ?? null, can_chat ?? null, id]
             );
             if (r.rows.length === 0) return res.status(404).json({ error: 'User not found' });
             await logSystemAction(req, 'UPDATE_USER', `Admin cập nhật thông tin user ${id}`);

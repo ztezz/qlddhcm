@@ -1,5 +1,5 @@
 
-import { User, UserRole, Branch, LandParcel, DashboardStats, SystemLog, LandPriceConfig, WMSLayerConfig, SystemSetting, RoleConfig, PermissionDefinition, BasemapConfig, MenuItem, Message, SystemNotification, LandPrice2026 } from '../types';
+import { User, UserRole, Branch, LandParcel, DashboardStats, SystemLog, LandPriceConfig, WMSLayerConfig, SystemSetting, RoleConfig, PermissionDefinition, BasemapConfig, MenuItem, Message, SystemNotification, LandPrice2026, BlogPost } from '../types';
 
 const PRODUCTION_API_URL = 'https://api.datdaihcm.pro';
 
@@ -70,6 +70,7 @@ const getAuthHeaders = () => {
             headers['x-user-id'] = u.id;
             headers['x-user-name'] = encodeURIComponent(u.name);
             headers['x-branch-id'] = u.branchId || u.branch_id;
+            headers['x-user-role'] = u.role;
         } catch (e) {}
     }
     return headers;
@@ -160,6 +161,31 @@ export const messageService = {
     restoreMessage: async (messageId: number): Promise<any> => apiCall(`/messages/restore/${messageId}`, { method: 'PUT' }),
     getUnreadCount: async (): Promise<{ count: number }> => apiCall('/messages/unread/count'),
     markAsRead: async (messageId: number): Promise<any> => apiCall(`/messages/read/${messageId}`, { method: 'PUT' })
+};
+
+export const blogService = {
+    getPosts: async (): Promise<BlogPost[]> => {
+        const data = await apiCall('/blog-posts');
+        return Array.isArray(data) ? data : [];
+    },
+    getPostById: async (id: number): Promise<BlogPost> => apiCall(`/blog-posts/${id}`),
+    createPost: async (payload: {
+        title: string;
+        summary: string;
+        content_html: string;
+        cover_image?: string;
+        tags?: string[];
+        publish_at?: string;
+    }): Promise<BlogPost> => apiCall('/blog-posts', { method: 'POST', body: JSON.stringify(payload) }),
+    updatePost: async (id: number, payload: {
+        title: string;
+        summary: string;
+        content_html: string;
+        cover_image?: string;
+        tags?: string[];
+        publish_at?: string;
+    }): Promise<BlogPost> => apiCall(`/blog-posts/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+    deletePost: async (id: number): Promise<any> => apiCall(`/blog-posts/${id}`, { method: 'DELETE' })
 };
 
 export const gisService = {
@@ -491,8 +517,11 @@ export const authService = {
     forgotPassword: async (identifier: string): Promise<any> => apiCall('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ identifier }) }),
     resetPassword: async (token: string, newPassword: string): Promise<any> => apiCall('/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, newPassword }) }),
     verifyEmail: async (token: string): Promise<any> => apiCall('/auth/verify-email', { method: 'POST', body: JSON.stringify({ token }) }),
-    updateProfile: async (id: string, name: string, file: File | null): Promise<any> => {
-        const formData = new FormData(); formData.append('name', name); if (file) formData.append('avatar', file);
+    updateProfile: async (id: string, name: string, file: File | null, username?: string): Promise<any> => {
+        const formData = new FormData();
+        formData.append('name', name);
+        if (username !== undefined) formData.append('username', username);
+        if (file) formData.append('avatar', file);
         return await apiCall(`/users/${id}/profile`, { method: 'PUT', body: formData });
     },
     changePassword: async (id: string, oldPassword: string, newPassword: string): Promise<any> => apiCall(`/users/${id}/change-password`, { method: 'PUT', body: JSON.stringify({ oldPassword, newPassword }) })
