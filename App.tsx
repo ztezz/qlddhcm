@@ -294,6 +294,7 @@ const App: React.FC = () => {
           isCollapsed={isSidebarCollapsed}
           systemName={systemSettings['system_name']}
           logoUrl={systemSettings['site_logo']}
+          sidebarToolsConfig={systemSettings['sidebar_tools'] || ''}
         />
       )}
       <main className={`flex-1 h-full relative overflow-hidden bg-gray-100 flex flex-col transition-all ${location.pathname.startsWith('/quantri') ? 'w-full' : ''}`}>

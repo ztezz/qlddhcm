@@ -15,6 +15,7 @@ import SystemSettingsManager from '../components/admin/SystemSettingsManager';
 import LogViewer from '../components/admin/LogViewer';
 import MenuManager from '../components/admin/MenuManager';
 import NotificationManager from '../components/admin/NotificationManager';
+import PdfSettingsManager from '../components/admin/PdfSettingsManager';
 import { User, UserRole } from '../types';
 
 interface AdminPageProps {
@@ -104,6 +105,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ systemName, logoUrl, user }) => {
             case 'BRANCHES': return <BranchManager permissions={currentPermissions} />;
             case 'PRICES_2026': return <LandPrice2026Manager permissions={currentPermissions} />;
             case 'DATA_LAYERS': return <LayerManager dbStatus={dbStatus} permissions={currentPermissions} />;
+            case 'PDF_SETTINGS': return <PdfSettingsManager permissions={currentPermissions} />;
             case 'SETTINGS': return <SystemSettingsManager permissions={currentPermissions} />;
             case 'LOGS': return <LogViewer />;
             default: return <div className="p-8 text-gray-500 italic">Module đang phát triển...</div>;

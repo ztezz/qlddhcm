@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { User, MenuItem } from '../types';
 import { LogOut, LogIn, ChevronLeft, ChevronRight, ChevronDown, User as UserIcon, Database, HelpCircle, ExternalLink, Bell, X, Menu, FolderCog, QrCode, ArrowRightLeft } from 'lucide-react';
 import * as Icons from 'lucide-react';
@@ -15,6 +15,7 @@ interface SidebarProps {
   isCollapsed: boolean;
   systemName?: string;
   logoUrl?: string;
+  sidebarToolsConfig?: string;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
@@ -26,22 +27,46 @@ const Sidebar: React.FC<SidebarProps> = ({
     onCollapse, 
     isCollapsed,
     systemName, 
-    logoUrl 
+    logoUrl,
+    sidebarToolsConfig
 }) => {
   const [dynamicMenu, setDynamicMenu] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [imgError, setImgError] = useState(false);
-  const [isToolsOpen, setIsToolsOpen] = useState(activePage === 'qr-generator' || activePage === 'coordinate-converter');
-  
-  // Notification badge state
-  const [unreadCount, setUnreadCount] = useState(0);
+  const DEFAULT_TOOL_ITEMS = [
+    { id: 'qr-generator', label: 'Tạo mã QR', icon: QrCode as React.ElementType, path: '/taomaqr' },
+    { id: 'coordinate-converter', label: 'Chuyển hệ tọa độ', icon: ArrowRightLeft as React.ElementType, path: '/chuyendoihetoado' }
+  ];
+
+  const toolItems = useMemo(() => {
+    if (sidebarToolsConfig) {
+      try {
+        const parsed = JSON.parse(sidebarToolsConfig);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed
+            .filter((t: any) => t.enabled)
+            .map((t: any) => ({
+              id: t.id,
+              label: t.label,
+              icon: ((Icons as any)[t.icon] as React.ElementType) || FolderCog,
+              path: t.path
+            }));
+        }
+      } catch {}
+    }
+    return DEFAULT_TOOL_ITEMS;
+  }, [sidebarToolsConfig]);
+
+  const toolItemIds = useMemo(() => toolItems.map(t => t.id), [toolItems]);
+
+  const [isToolsOpen, setIsToolsOpen] = useState(() => toolItemIds.some(id => id === activePage));  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
       setImgError(false);
   }, [user?.avatar]);
 
   useEffect(() => {
-      if (activePage === 'qr-generator' || activePage === 'coordinate-converter') {
+      if (toolItemIds.some(id => id === activePage)) {
           setIsToolsOpen(true);
       }
   }, [activePage]);
@@ -96,16 +121,11 @@ const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const visibleItems = dynamicMenu.filter(item => {
-    if (item.id === 'qr-generator' || item.id === 'coordinate-converter') return false;
+    if (toolItemIds.includes(item.id)) return false;
     if (!user && item.id === 'notifications') return false;
     if (!user) return item.roles.includes('GUEST');
     return item.roles.includes(user.role);
   });
-
-  const toolItems = [
-    { id: 'qr-generator', label: 'Tạo mã QR', icon: QrCode, path: '/taomaqr' },
-    { id: 'coordinate-converter', label: 'Chuyển hệ tọa độ', icon: ArrowRightLeft, path: '/chuyendoihetoado' }
-  ];
 
   const handleMenuClick = (item: MenuItem) => {
       if (item.type === 'EXTERNAL' && item.url) {
@@ -265,13 +285,13 @@ const Sidebar: React.FC<SidebarProps> = ({
               }}
               title={isCollapsed ? 'Tiện ích' : ''}
               className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all group ${
-                activePage === 'qr-generator' || activePage === 'coordinate-converter'
+                toolItemIds.some(id => id === activePage)
                   ? 'text-white bg-emerald-600/20 border border-emerald-500/30'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/80'
               }`}
             >
               <div className={`${isCollapsed ? 'mx-auto' : ''} transition-transform group-hover:scale-110`}>
-                <FolderCog size={20} className={activePage === 'qr-generator' || activePage === 'coordinate-converter' ? 'text-emerald-300' : 'text-slate-400 group-hover:text-emerald-400'} />
+                <FolderCog size={20} className={toolItemIds.some(id => id === activePage) ? 'text-emerald-300' : 'text-slate-400 group-hover:text-emerald-400'} />
               </div>
               {!isCollapsed && (
                 <div className="flex-1 flex items-center justify-between">

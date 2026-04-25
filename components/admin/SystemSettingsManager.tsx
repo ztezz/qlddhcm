@@ -60,7 +60,6 @@ const SETTING_METADATA: Record<string, { label: string; description: string; typ
 const TAB_KEYS: Record<string, string[]> = {
     GENERAL: ['system_name', 'site_logo', 'site_favicon', 'maintenance_mode', 'allow_registration', 'footer_text'],
     MAP:     ['map_center_lat', 'map_center_lng', 'default_zoom', 'map_max_zoom', 'map_min_zoom', 'thematic_map_center_lat', 'thematic_map_center_lng', 'thematic_default_zoom', 'thematic_map_max_zoom', 'thematic_map_min_zoom', 'thematic_default_basemap_id', 'parcel_identifier_format'],
-    PDF:     ['pdf_template_preset', 'pdf_header_1', 'pdf_header_2', 'pdf_title', 'pdf_location_text', 'pdf_signer_title', 'pdf_signer_name', 'pdf_signature_style', 'pdf_signature_width', 'pdf_signature_height', 'pdf_signature_image', 'pdf_show_signature_image', 'pdf_stamp_image', 'pdf_show_stamp', 'pdf_note_text', 'pdf_footer_text', 'pdf_show_qr', 'pdf_show_signer'],
     SEO:     ['seo_title', 'seo_description', 'seo_keywords', 'seo_og_image'],
     MAIL:    ['mail_provider', 'mail_host', 'mail_port', 'mail_user', 'mail_pass', 'mail_from_email', 'mail_from_name'],
 };
@@ -71,12 +70,6 @@ const SETTINGS_GROUPS = [
         items: [
             { key: 'GENERAL', label: 'Web & bảo mật', Icon: Settings, style: 'text-blue-400 border-blue-500/40 bg-blue-950/20', desc: 'Tên hệ thống, logo, quyền truy cập và chân trang.' },
             { key: 'MAP', label: 'Bản đồ & nền', Icon: MapIcon, style: 'text-cyan-400 border-cyan-500/40 bg-cyan-950/20', desc: 'Tâm bản đồ, zoom và nền mặc định cho từng trang.' }
-        ]
-    },
-    {
-        title: 'Nghiệp vụ đất đai',
-        items: [
-            { key: 'PDF', label: 'Tài liệu & PDF', Icon: FileText, style: 'text-orange-400 border-orange-500/40 bg-orange-950/20', desc: 'Cấu hình phần đầu và chân trang khi xuất PDF, biên bản và hồ sơ nghiệp vụ.' }
         ]
     },
     {
@@ -98,7 +91,6 @@ const SETTINGS_GROUPS = [
 const TAB_TITLES: Record<string, { title: string; description: string }> = {
     GENERAL: { title: 'Thiết lập hệ thống chung', description: 'Các cấu hình nền tảng của website và quyền truy cập.' },
     MAP: { title: 'Thiết lập bản đồ', description: 'Nhóm cấu hình điều hướng, tâm bản đồ và nền mặc định.' },
-    PDF: { title: 'Nghiệp vụ đất đai - Tài liệu PDF', description: 'Nhóm cấu hình biểu mẫu, header và footer phục vụ xuất hồ sơ PDF trong nghiệp vụ đất đai.' },
     SEO: { title: 'Thiết lập SEO', description: 'Quản lý cách website hiển thị trên Google và mạng xã hội.' },
     MAIL: { title: 'Thiết lập Mail Server', description: 'Cấu hình SMTP và thử gửi email trực tiếp.' },
     STATUS: { title: 'Trạng thái hệ thống', description: 'Theo dõi máy chủ và kiểm tra kết nối dịch vụ.' },
@@ -139,7 +131,7 @@ interface SystemSettingsManagerProps {
 const SystemSettingsManager: React.FC<SystemSettingsManagerProps> = ({ permissions = [] }) => {
     const [settings, setSettings] = useState<SystemSetting[]>([]);
     const [savedSettings, setSavedSettings] = useState<SystemSetting[]>([]); // pristine copy from server
-    const [subTab, setSubTab] = useState<'GENERAL' | 'MAP' | 'PDF' | 'SEO' | 'MAIL' | 'STATUS' | 'BACKUP'>('GENERAL');
+    const [subTab, setSubTab] = useState<'GENERAL' | 'MAP' | 'SEO' | 'MAIL' | 'STATUS' | 'BACKUP'>('GENERAL');
     const [loading, setLoading] = useState(false);
     const [serverInfo, setServerInfo] = useState<any>(null);
     const [basemapOptions, setBasemapOptions] = useState<Array<{ id: string; name: string }>>([]);
@@ -750,20 +742,6 @@ const SystemSettingsManager: React.FC<SystemSettingsManagerProps> = ({ permissio
                     </div>
                 )}
 
-                {subTab === 'PDF' && (
-                    <div className="space-y-6 animate-in fade-in duration-300">
-                        {['pdf_template_preset', 'pdf_header_1', 'pdf_header_2', 'pdf_title', 'pdf_location_text', 'pdf_signer_title', 'pdf_signer_name', 'pdf_signature_style', 'pdf_signature_width', 'pdf_signature_height', 'pdf_signature_image', 'pdf_show_signature_image', 'pdf_stamp_image', 'pdf_show_stamp', 'pdf_note_text', 'pdf_footer_text', 'pdf_show_qr', 'pdf_show_signer'].map(key => (
-                            <div key={key} className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-gray-700/50 pb-6 last:border-0 last:pb-0">
-                                <div className="col-span-1">
-                                    <label className="text-sm font-bold text-gray-200 block mb-1">{SETTING_METADATA[key]?.label || key}</label>
-                                    <span className="text-xs text-gray-500 italic">{SETTING_METADATA[key]?.description}</span>
-                                </div>
-                                <div className="col-span-2">{renderSettingInput(key)}</div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-
                 {subTab === 'STATUS' && (
                     <div className="space-y-6 animate-in fade-in duration-300">
                         {!serverInfo ? (
@@ -1112,6 +1090,7 @@ const SystemSettingsManager: React.FC<SystemSettingsManagerProps> = ({ permissio
                         </div>
                     </div>
                 )}
+
 
                 {/* Sticky save bar for dirty tabs */}
                 {hasAnyDirty && subTab !== 'BACKUP' && subTab !== 'STATUS' && (

@@ -33,6 +33,7 @@ const AdminMenu: React.FC<AdminMenuProps> = ({ activeTab, onSelect, systemName, 
 
         { header: 'Nghiệp vụ Đất đai' },
         { id: 'PARCEL_MANAGER', icon: Map, label: 'Quản lý Thửa đất', highlight: true },
+        { id: 'PDF_SETTINGS', icon: FileText, label: 'Cấu hình Tài liệu & PDF', highlight: true },
         
         { header: 'Cấu hình Dữ liệu' },
         { id: 'DATA_LAYERS', icon: Layers, label: 'Lớp bản đồ & DB' },

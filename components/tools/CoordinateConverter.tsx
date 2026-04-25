@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 import proj4 from 'proj4';
-import { ArrowRightLeft, Upload, FileSpreadsheet, Download, MapPinned, RefreshCw, AlertTriangle, CheckCircle2, Search } from 'lucide-react';
+import { ArrowRightLeft, Upload, FileSpreadsheet, Download, MapPinned, RefreshCw, AlertTriangle, CheckCircle2, Search, ArrowUpDown, MapPin } from 'lucide-react';
 import { removeAccents } from '../../utils/helpers';
 
 proj4.defs('EPSG:9210', '+proj=tmerc +lat_0=0 +lon_0=105.75 +k=0.9999 +x_0=500000 +y_0=0 +ellps=WGS84 +towgs84=-191.904,-39.303,-111.450,0,0,0,0 +units=m +no_defs');
@@ -122,7 +122,44 @@ const CoordinateConverter: React.FC = () => {
     const [sourceCustomMeridian, setSourceCustomMeridian] = useState('105.75');
     const [targetCustomMeridian, setTargetCustomMeridian] = useState('105.75');
     const [provinceQuery, setProvinceQuery] = useState('');
+    const [provinceTarget, setProvinceTarget] = useState<'SRC' | 'DST'>('DST');
     const [error, setError] = useState('');
+
+    // Single-point manual conversion state
+    const [singleX, setSingleX] = useState('');
+    const [singleY, setSingleY] = useState('');
+    const [singleResult, setSingleResult] = useState<{ x: string; y: string } | null>(null);
+    const [singleError, setSingleError] = useState('');
+
+    const handleSwapCrs = () => {
+        setSourceCrs(targetCrs);
+        setTargetCrs(sourceCrs);
+        setSourceCustomMeridian(targetCustomMeridian);
+        setTargetCustomMeridian(sourceCustomMeridian);
+    };
+
+    const handleSingleConvert = () => {
+        setSingleError('');
+        setSingleResult(null);
+        const x = toNumber(singleX);
+        const y = toNumber(singleY);
+        if (x === null || y === null) {
+            setSingleError('Vui lòng nhập giá trị X và Y hợp lệ.');
+            return;
+        }
+        const srcCode = resolveProjectionCode(sourceCrs, sourceCustomMeridian, 'SRC');
+        const dstCode = resolveProjectionCode(targetCrs, targetCustomMeridian, 'DST');
+        if (!srcCode || !dstCode) {
+            setSingleError('Hệ tọa độ chưa hợp lệ.');
+            return;
+        }
+        try {
+            const [rx, ry] = proj4(srcCode, dstCode, [x, y]);
+            setSingleResult({ x: rx.toFixed(6), y: ry.toFixed(6) });
+        } catch {
+            setSingleError('Không thể chuyển đổi. Kiểm tra lại giá trị và hệ tọa độ.');
+        }
+    };
 
     const provincePresetOptions = useMemo(() => {
         const presetOptions = CRS_OPTIONS.filter((option) => option.code.startsWith('VN2000_') || option.code === 'EPSG:9210');
@@ -223,10 +260,10 @@ const CoordinateConverter: React.FC = () => {
         XLSX.writeFile(workbook, `chuyen_he_toa_do_${Date.now()}.xlsx`);
     };
 
-    const previewRows = convertedRows.slice(0, 8);
+    const previewRows = convertedRows.slice(0, 20);
 
     return (
-        <div className="p-6 md:p-8 bg-slate-950 min-h-full animate-in fade-in duration-500">
+        <div className="p-6 md:p-8 bg-slate-950 absolute inset-0 overflow-y-auto animate-in fade-in duration-500">
             <div className="max-w-7xl mx-auto space-y-6">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-800 pb-6">
                     <div className="flex items-center gap-4">
@@ -292,6 +329,22 @@ const CoordinateConverter: React.FC = () => {
                                         placeholder="Ví dụ: Đồng Nai, Cần Thơ, Đà Nẵng..."
                                     />
                                 </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setProvinceTarget('SRC')}
+                                        className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${provinceTarget === 'SRC' ? 'bg-blue-600/20 border-blue-500/50 text-blue-300' : 'bg-slate-950 border-slate-700 text-slate-400 hover:border-slate-500'}`}
+                                    >
+                                        Áp vào hệ nguồn
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setProvinceTarget('DST')}
+                                        className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${provinceTarget === 'DST' ? 'bg-emerald-600/20 border-emerald-500/50 text-emerald-300' : 'bg-slate-950 border-slate-700 text-slate-400 hover:border-slate-500'}`}
+                                    >
+                                        Áp vào hệ đích
+                                    </button>
+                                </div>
                                 <div className="max-h-44 overflow-y-auto space-y-2 rounded-xl border border-slate-800 bg-slate-950/60 p-2">
                                     {provincePresetOptions.length === 0 ? (
                                         <div className="px-3 py-2 text-sm text-slate-400">Không tìm thấy tỉnh/thành phù hợp.</div>
@@ -300,17 +353,25 @@ const CoordinateConverter: React.FC = () => {
                                             key={option.code}
                                             type="button"
                                             onClick={() => {
-                                                setTargetCrs(option.code);
+                                                if (provinceTarget === 'SRC') {
+                                                    setSourceCrs(option.code);
+                                                } else {
+                                                    setTargetCrs(option.code);
+                                                }
                                                 setProvinceQuery(option.hint.split(',')[0] || option.label);
                                             }}
-                                            className={`w-full text-left px-3 py-2 rounded-lg transition-all border ${targetCrs === option.code ? 'bg-emerald-600/20 border-emerald-500/40 text-white' : 'bg-slate-900 border-slate-800 text-slate-200 hover:border-emerald-500/30 hover:bg-slate-800'}`}
+                                            className={`w-full text-left px-3 py-2 rounded-lg transition-all border ${
+                                                (provinceTarget === 'SRC' ? sourceCrs : targetCrs) === option.code
+                                                    ? 'bg-emerald-600/20 border-emerald-500/40 text-white'
+                                                    : 'bg-slate-900 border-slate-800 text-slate-200 hover:border-emerald-500/30 hover:bg-slate-800'
+                                            }`}
                                         >
                                             <div className="text-[11px] font-black uppercase tracking-wide">{option.label}</div>
                                             <div className="text-[10px] text-slate-400 mt-1">{option.hint}</div>
                                         </button>
                                     ))}
                                 </div>
-                                <div className="text-[10px] text-emerald-300 font-bold">Bấm một gợi ý để áp nhanh vào hệ đích.</div>
+                                <div className="text-[10px] text-emerald-300 font-bold">Chọn hệ nguồn/đích rồi bấm gợi ý để áp nhanh.</div>
                             </div>
 
                             <div className="space-y-2">
@@ -328,6 +389,17 @@ const CoordinateConverter: React.FC = () => {
                                         placeholder="Ví dụ: 105.75"
                                     />
                                 )}
+                            </div>
+
+                            <div className="flex justify-center">
+                                <button
+                                    type="button"
+                                    onClick={handleSwapCrs}
+                                    title="Hoán đổi hệ nguồn và hệ đích"
+                                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white hover:border-emerald-500/50 transition-all text-[10px] font-black uppercase tracking-widest"
+                                >
+                                    <ArrowUpDown size={14} /> Hoán đổi nguồn / đích
+                                </button>
                             </div>
 
                             <div className="space-y-2">
@@ -375,6 +447,58 @@ const CoordinateConverter: React.FC = () => {
                     </div>
 
                     <div className="xl:col-span-3 space-y-6">
+                        {/* Single-point conversion */}
+                        <div className="bg-slate-900 rounded-[2rem] border border-slate-800 p-6 shadow-2xl space-y-4">
+                            <div className="flex items-center gap-3">
+                                <MapPin size={16} className="text-emerald-400 shrink-0" />
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Chuyển đổi tọa độ đơn lẻ (nhập tay)</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                    <div className="text-[10px] uppercase tracking-widest text-slate-500 font-black">X (kinh độ / Easting)</div>
+                                    <input
+                                        value={singleX}
+                                        onChange={(e) => setSingleX(e.target.value)}
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white font-bold outline-none focus:border-emerald-500 transition-colors"
+                                        placeholder="Ví dụ: 106.660172"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="text-[10px] uppercase tracking-widest text-slate-500 font-black">Y (vĩ độ / Northing)</div>
+                                    <input
+                                        value={singleY}
+                                        onChange={(e) => setSingleY(e.target.value)}
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white font-bold outline-none focus:border-emerald-500 transition-colors"
+                                        placeholder="Ví dụ: 10.762622"
+                                    />
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleSingleConvert}
+                                className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[11px] uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+                            >
+                                <ArrowRightLeft size={14} /> Chuyển đổi ngay
+                            </button>
+                            {singleError && (
+                                <div className="flex items-center gap-2 rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-red-300">
+                                    <AlertTriangle size={14} className="shrink-0" />
+                                    <span className="text-sm font-bold">{singleError}</span>
+                                </div>
+                            )}
+                            {singleResult && (
+                                <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-4 grid grid-cols-2 gap-4">
+                                    <div>
+                                        <div className="text-[10px] uppercase tracking-widest text-emerald-300 font-black mb-1">X kết quả</div>
+                                        <div className="text-white font-black text-lg select-all">{singleResult.x}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-[10px] uppercase tracking-widest text-emerald-300 font-black mb-1">Y kết quả</div>
+                                        <div className="text-white font-black text-lg select-all">{singleResult.y}</div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
                                 <div className="text-[10px] uppercase tracking-widest text-slate-500 font-black">Tổng số dòng</div>
@@ -403,7 +527,7 @@ const CoordinateConverter: React.FC = () => {
                             <div className="flex items-center justify-between gap-3 mb-4">
                                 <div>
                                     <h3 className="text-lg font-black text-white">Bảng xem trước kết quả</h3>
-                                    <p className="text-slate-400 text-sm">Hiển thị tối đa 8 dòng đầu sau khi chuyển đổi</p>
+                                    <p className="text-slate-400 text-sm">Hiển thị tối đa 20 dòng đầu sau khi chuyển đổi</p>
                                 </div>
                                 {convertedRows.length > 0 && (
                                     <div className="flex items-center gap-2 text-emerald-300 text-sm font-bold">
@@ -419,7 +543,7 @@ const CoordinateConverter: React.FC = () => {
                                     <div className="text-slate-400 text-sm">Hãy tải file Excel và chọn đúng cột tọa độ X/Y.</div>
                                 </div>
                             ) : (
-                                <div className="overflow-auto rounded-2xl border border-slate-800">
+                                <div className="overflow-auto max-h-96 rounded-2xl border border-slate-800">
                                     <table className="min-w-full text-sm">
                                         <thead className="bg-slate-950 text-slate-300">
                                             <tr>
@@ -433,7 +557,7 @@ const CoordinateConverter: React.FC = () => {
                                                 <tr key={idx} className="border-t border-slate-800 odd:bg-slate-900 even:bg-slate-950/60">
                                                     {Object.keys(previewRows[0]).map((key) => (
                                                         <td key={key} className="px-3 py-2 text-slate-200 whitespace-nowrap">
-                                                            {row[key] as React.ReactNode}
+                                                            {(row as ParsedRow)[key] as React.ReactNode}
                                                         </td>
                                                     ))}
                                                 </tr>
