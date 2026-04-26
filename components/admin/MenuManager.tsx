@@ -97,9 +97,8 @@ const MenuManager: React.FC<MenuManagerProps> = ({ permissions = [] }) => {
                     try {
                         const parsed = JSON.parse(toolsRaw);
                         if (Array.isArray(parsed)) {
-                            const cleanedParsed = parsed.filter((t: SidebarToolConfig) => t.id !== 'blog-gis');
-                            const knownIds = new Set(cleanedParsed.map((t: SidebarToolConfig) => t.id));
-                            const merged = [...cleanedParsed, ...DEFAULT_SIDEBAR_TOOLS.filter((t) => !knownIds.has(t.id))];
+                            const knownIds = new Set(parsed.map((t: SidebarToolConfig) => t.id));
+                            const merged = [...parsed, ...DEFAULT_SIDEBAR_TOOLS.filter((t) => !knownIds.has(t.id))];
                             setSidebarTools(merged);
                         }
                     } catch {}

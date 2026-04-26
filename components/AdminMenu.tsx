@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Users, Building2, Calculator, Map, FileText, Settings, Database, Layers, ShieldCheck, LayoutList, BellRing, Coins, Menu, X, ArrowLeft } from 'lucide-react';
+import { Users, Building2, Map, FileText, Settings, Database, Layers, ShieldCheck, LayoutList, BellRing, Coins, Menu, X, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface AdminMenuProps {

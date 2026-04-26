@@ -43,10 +43,9 @@ const Sidebar: React.FC<SidebarProps> = ({
       try {
         const parsed = JSON.parse(sidebarToolsConfig);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const parsedWithoutBlog = parsed.filter((t: any) => t?.id !== 'blog-gis');
-          const parsedIds = new Set(parsedWithoutBlog.map((t: any) => t.id));
+          const parsedIds = new Set(parsed.map((t: any) => t.id));
           const mappedParsed = parsed
-            .filter((t: any) => t.enabled && t.id !== 'blog-gis')
+            .filter((t: any) => t.enabled)
             .map((t: any) => ({
               id: t.id,
               label: t.label,

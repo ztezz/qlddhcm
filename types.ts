@@ -44,20 +44,6 @@ export interface MenuItem {
     url?: string;
 }
 
-  export interface BlogPost {
-    id: number;
-    title: string;
-    summary: string;
-    content_html: string;
-    cover_image?: string;
-    tags: string[];
-    author_id: string;
-    author_name: string;
-    publish_at: string;
-    created_at: string;
-    updated_at: string;
-  }
-
 export interface Branch {
   id: string;
   name: string;

@@ -17,8 +17,6 @@ const Messaging = lazy(() => import('./pages/Messaging'));
 const Notifications = lazy(() => import('./pages/Notifications'));
 const QRGenerator = lazy(() => import('./components/tools/QRGenerator'));
 const CoordinateConverter = lazy(() => import('./components/tools/CoordinateConverter'));
-const BlogGIS = lazy(() => import('./pages/BlogGIS'));
-const BlogGISPost = lazy(() => import('./pages/BlogGISPost'));
 const EditorPage = lazy(() => import('./pages/EditorPage'));
 const LandPriceLookup = lazy(() => import('./pages/LandPriceLookup'));
 const About = lazy(() => import('./pages/About'));
@@ -49,7 +47,6 @@ const PATH_MAPPING: Record<string, string> = {
     'notifications': '/thongbao',
     'qr-generator': '/taomaqr',
     'coordinate-converter': '/chuyendoihetoado',
-    'blog-gis': '/bloggis',
     'land-price': '/giadata',
     'admin': '/quantri',
     'about': '/gioithieu'
@@ -82,7 +79,7 @@ const App: React.FC = () => {
                      (location.pathname.startsWith('/quantri') ? 'admin' : 
                      (location.pathname.startsWith('/taomaqr') ? 'qr-generator' :
                      (location.pathname.startsWith('/chuyendoihetoado') ? 'coordinate-converter' :
-                     (location.pathname.startsWith('/bloggis') ? 'blog-gis' : 'map'))));
+                     'map')));
 
   const boot = async () => {
       const runId = ++bootRunIdRef.current;
@@ -268,7 +265,7 @@ const App: React.FC = () => {
   );
 
   // Render 404 toàn màn hình — trước khi vào layout sidebar
-    const KNOWN_PATHS = ['/', '/donvihanhchinh', '/giadata', '/taomaqr', '/chuyendoihetoado', '/bloggis', '/gioithieu', '/thongke', '/chinhsuabanve', '/hoso', '/tinnhan', '/thongbao', '/quantri'];
+    const KNOWN_PATHS = ['/', '/donvihanhchinh', '/giadata', '/taomaqr', '/chuyendoihetoado', '/gioithieu', '/thongke', '/chinhsuabanve', '/hoso', '/tinnhan', '/thongbao', '/quantri'];
   const isKnownPath = KNOWN_PATHS.some(p => location.pathname === p || location.pathname.startsWith(p + '/'));
   if (!isKnownPath) return (
       <Suspense fallback={<PageLoader />}>
@@ -309,8 +306,6 @@ const App: React.FC = () => {
                 <Route path="/giadata" element={<LandPriceLookup user={user} systemSettings={systemSettings} />} />
                 <Route path="/taomaqr" element={<QRGenerator />} />
                 <Route path="/chuyendoihetoado" element={<CoordinateConverter />} />
-                <Route path="/bloggis" element={<BlogGIS user={user} />} />
-                <Route path="/bloggis/:id" element={<BlogGISPost user={user} />} />
                 <Route path="/gioithieu" element={<About />} />
                 
                 {/* Protected Routes */}

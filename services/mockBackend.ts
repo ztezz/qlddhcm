@@ -1,5 +1,5 @@
 
-import { User, UserRole, Branch, LandParcel, DashboardStats, SystemLog, LandPriceConfig, WMSLayerConfig, SystemSetting, RoleConfig, PermissionDefinition, BasemapConfig, MenuItem, Message, SystemNotification, LandPrice2026, BlogPost } from '../types';
+import { User, UserRole, Branch, LandParcel, DashboardStats, SystemLog, LandPriceConfig, WMSLayerConfig, SystemSetting, RoleConfig, PermissionDefinition, BasemapConfig, MenuItem, Message, SystemNotification, LandPrice2026 } from '../types';
 
 const PRODUCTION_API_URL = 'https://api.datdaihcm.pro';
 
@@ -163,31 +163,6 @@ export const messageService = {
     markAsRead: async (messageId: number): Promise<any> => apiCall(`/messages/read/${messageId}`, { method: 'PUT' })
 };
 
-export const blogService = {
-    getPosts: async (): Promise<BlogPost[]> => {
-        const data = await apiCall('/blog-posts');
-        return Array.isArray(data) ? data : [];
-    },
-    getPostById: async (id: number): Promise<BlogPost> => apiCall(`/blog-posts/${id}`),
-    createPost: async (payload: {
-        title: string;
-        summary: string;
-        content_html: string;
-        cover_image?: string;
-        tags?: string[];
-        publish_at?: string;
-    }): Promise<BlogPost> => apiCall('/blog-posts', { method: 'POST', body: JSON.stringify(payload) }),
-    updatePost: async (id: number, payload: {
-        title: string;
-        summary: string;
-        content_html: string;
-        cover_image?: string;
-        tags?: string[];
-        publish_at?: string;
-    }): Promise<BlogPost> => apiCall(`/blog-posts/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
-    deletePost: async (id: number): Promise<any> => apiCall(`/blog-posts/${id}`, { method: 'DELETE' })
-};
-
 export const gisService = {
     getLayers: async (): Promise<WMSLayerConfig[]> => { try { const data = await apiCall('/wms-layers'); return Array.isArray(data) ? data : []; } catch { return []; } },
     getBasemaps: async (): Promise<BasemapConfig[]> => { try { const data = await apiCall('/basemaps'); return Array.isArray(data) ? data : []; } catch { return []; } },
@@ -329,7 +304,7 @@ export const adminService = {
     addPrice: async (price: any) => apiCall('/land-prices', { method: 'POST', body: JSON.stringify(price) }),
     updatePrice: async (price: any) => apiCall(`/land-prices/${price.landType}`, { method: 'PUT', body: JSON.stringify(price) }),
     deletePrice: async (landType: string) => apiCall(`/land-prices/${landType}`, { method: 'DELETE' }),
-    
+
     // Land Price 2026 Admin & Lookup
     getLandPriceWards: async (): Promise<string[]> => { try { return await apiCall('/land-prices-2026/wards'); } catch { return []; } },
     getLandPriceSuggestions: async (phuongxa?: string): Promise<{streets: string[], fromPoints: string[], toPoints: string[]}> => {
