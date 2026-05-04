@@ -257,31 +257,31 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         const sourceStats = stats || MOCK_FALLBACK;
 
         const rows = [
-            ['BAO CAO THONG KE QUAN LY DAT DAI - GEOMASTER'],
-            ['Chi nhanh', user.branchId || 'Tru so chinh'],
-            ['Thoi diem xuat', exportedAt],
-            ['Bo loc thoi gian', selectedPeriod],
-            ['Che do loai dat', typeView === 'chart' ? 'Bieu do' : 'Bang'],
-            ['Tu khoa loc loai dat', typeQuery || '(khong)'],
-            ['Bo loc khu vuc', branchLimit === 0 ? 'Tat ca' : `Top ${branchLimit}`],
-            ['Sap xep khu vuc', branchSort],
+            ['B?O C?O TH?NG K? QU?N L? ??T ?AI - GEOMASTER'],
+            ['Chi nh?nh', user.branchId || 'Tr? s? ch?nh'],
+            ['Th?i ?i?m xu?t', exportedAt],
+            ['B? l?c th?i gian', selectedPeriod],
+            ['Ch? ?? lo?i ??t', typeView === 'chart' ? 'Bi?u ??' : 'B?ng'],
+            ['T? kh?a l?c lo?i ??t', typeQuery || '(kh?ng)'],
+            ['B? l?c khu v?c', branchLimit === 0 ? 'T?t c?' : `Top ${branchLimit}`],
+            ['S?p x?p khu v?c', branchSort],
             [''],
-            ['--- CHI SO TONG QUAN ---'],
-            ['Chi tieu', 'Gia tri', 'Don vi'],
-            ['Tong so thua dat', sourceStats.totalParcels, 'Thua'],
-            ['Tong dien tich', sourceStats.totalArea.toFixed(2), 'm2'],
-            ['Gia tri tich luy (tam tinh)', sourceStats.totalValue, 'VND'],
+            ['--- CH? S? T?NG QUAN ---'],
+            ['Ch? ti?u', 'Gi? tr?', '??n v?'],
+            ['T?ng s? th?a ??t', sourceStats.totalParcels, 'Th?a'],
+            ['T?ng di?n t?ch', sourceStats.totalArea.toFixed(2), 'm2'],
+            ['Gi? tr? t?ch l?y (t?m t?nh)', sourceStats.totalValue, 'VND'],
             [''],
-            ['--- CO CAU LOAI DAT (DU LIEU DANG LOC) ---'],
-            ['Loai dat', 'So luong thua', 'Ty trong (%)'],
+            ['--- C? C?U LO?I ??T (D? LI?U ?ANG L?C) ---'],
+            ['Lo?i ??t', 'S? l??ng th?a', 'T? tr?ng (%)'],
             ...filteredTypeData.map(item => [
                 item.name,
                 item.value,
                 totalTypeParcels > 0 ? ((item.value / totalTypeParcels) * 100).toFixed(2) : '0.00'
             ]),
             [''],
-            ['--- MAT DO THEO KHU VUC (DU LIEU DANG LOC) ---'],
-            ['Ten khu vuc/phan khu', 'So luong thua'],
+            ['--- M?T ?? THEO KHU V?C (D? LI?U ?ANG L?C) ---'],
+            ['T?n khu v?c/ph?n khu', 'S? l??ng th?a'],
             ...filteredBranchData.map(item => [item.name, item.value])
         ];
 
@@ -296,7 +296,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         );
     } catch (error) {
         console.error('CSV Export Error:', error);
-        alert('Khong the xuat file CSV. Vui long thu lai.');
+        alert('Kh?ng th? xu?t file CSV. Vui l?ng th? l?i.');
     } finally {
         setIsExporting(null);
     }
@@ -390,7 +390,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         downloadBlob(new Blob([content], { type: 'application/json;charset=utf-8;' }), `${exportFileBase()}.json`);
     } catch (error) {
         console.error('JSON Export Error:', error);
-        alert('Khong the xuat file JSON. Vui long thu lai.');
+        alert('Kh?ng th? xu?t file JSON. Vui l?ng th? l?i.');
     } finally {
         setIsExporting(null);
     }

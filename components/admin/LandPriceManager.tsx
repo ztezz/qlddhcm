@@ -301,7 +301,7 @@ const LandPrice2026Manager: React.FC<LandPrice2026ManagerProps> = ({ permissions
                                 onClick={() => handlePageChange(pagination.page + 1)}
                                 disabled={disablePaging || pagination.page >= pagination.pages}
                                 className="px-3 py-1.5 rounded-lg border border-gray-700 text-gray-300 font-black uppercase tracking-wider disabled:opacity-40"
-                            >Sau</button>
+                            >{'Sau'}</button>
                             <button
                                 onClick={() => handlePageChange(Math.max(pagination.pages, 1))}
                                 disabled={disablePaging || pagination.page >= pagination.pages}
