@@ -150,7 +150,7 @@ const PermissionManager: React.FC = () => {
                             <div className="flex items-center gap-2 mb-2">
                                 <RoleIcon size={16} className={m.color} />
                                 <span className={`font-bold text-sm ${m.color}`}>{m.label}</span>
-                                {role === UserRole.ADMIN && <Lock size={12} className="text-gray-500 ml-auto" title="Không thể giảm quyền Admin" />}
+                                {role === UserRole.ADMIN && <Lock size={12} className="text-gray-500 ml-auto" />}
                             </div>
                             <p className="text-[11px] text-gray-500 mb-3">{m.desc}</p>
                             <div className="flex items-center justify-between text-xs">

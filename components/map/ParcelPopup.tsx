@@ -16,7 +16,7 @@ interface ParcelPopupProps {
 }
 
 const ParcelPopup: React.FC<ParcelPopupProps> = ({ parcel, user, systemSettings, onClose, onPrint, onEdit, onDelete }) => {
-    const p = parcel.properties || {};
+    const p = (parcel.properties || {}) as Record<string, any>;
     const [showQR, setShowQR] = useState(false);
     const [qrDataUrl, setQrDataUrl] = useState<string>('');
     const parcelIdentifier = formatParcelIdentifier(p, systemSettings?.parcel_identifier_format);

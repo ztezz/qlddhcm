@@ -134,6 +134,11 @@ export const notificationService = {
         const data = await apiCall('/notifications');
         return Array.isArray(data) ? data : [];
     },
+    getUnreadCount: async (): Promise<{ count: number }> => {
+        const data = await apiCall('/notifications/unread/count');
+        return { count: Number(data?.count || 0) };
+    },
+    markAllAsRead: async (): Promise<any> => apiCall('/notifications/read-all', { method: 'PUT' }),
     getAllForAdmin: async (): Promise<SystemNotification[]> => {
         const data = await apiCall('/notifications/admin');
         return Array.isArray(data) ? data : [];

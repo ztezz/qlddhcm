@@ -73,6 +73,7 @@ const initDB = async () => {
         await pool.query('SELECT 1');
 
         await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT`);
+        await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_notification_read_at TIMESTAMPTZ`);
         await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS users_username_unique ON users (LOWER(username)) WHERE username IS NOT NULL`);
 
         await pool.query(`ALTER TABLE wms_layers ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'WMS'`);

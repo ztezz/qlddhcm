@@ -44,10 +44,8 @@ const Notifications: React.FC<NotificationsProps> = ({ user }) => {
 
     useEffect(() => {
         loadNotifications();
+        notificationService.markAllAsRead().catch(() => undefined);
         const interval = setInterval(loadNotifications, 60000);
-
-        // Entering the page marks current notifications as read for badge syncing in Sidebar.
-        localStorage.setItem(`last_read_noti_${user.id}`, Date.now().toString());
 
         return () => clearInterval(interval);
     }, [user.id]);

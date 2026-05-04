@@ -27,7 +27,7 @@ const PdfTemplateEditor: React.FC<PdfTemplateEditorProps> = ({
 }) => {
     if (!isOpen) return null;
 
-    const p = parcel?.properties || {};
+    const p = (parcel?.properties || {}) as Record<string, any>;
     const resolveValue = (key: string, fallback = '') => {
         return templateSettings[key] ?? systemSettings?.[key] ?? fallback;
     };

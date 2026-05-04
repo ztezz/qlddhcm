@@ -99,10 +99,8 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       const fetchUnreadCount = async () => {
           try {
-              const data = await notificationService.getNotifications();
-              const lastRead = localStorage.getItem(`last_read_noti_${user.id}`) || '0';
-              const count = data.filter(n => new Date(n.created_at).getTime() > parseInt(lastRead, 10)).length;
-              setUnreadCount(count);
+              const data = await notificationService.getUnreadCount();
+              setUnreadCount(Number(data?.count || 0));
           } catch {
               setUnreadCount(0);
           }
@@ -116,7 +114,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const handleOpenNotificationsPage = () => {
       onNavigate('notifications');
       if (user) {
-          localStorage.setItem(`last_read_noti_${user.id}`, Date.now().toString());
+          notificationService.markAllAsRead().catch(() => undefined);
       }
       setUnreadCount(0);
       if (window.innerWidth < 768 && !isCollapsed) {
