@@ -60,14 +60,23 @@ const LandPriceLookup: React.FC<LandPriceLookupProps> = ({ user, systemSettings 
 
     const handleSearch = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        const hasFilter = [phuongxa, tenduong, tu, den].some((value) => value.trim());
+        if (!hasFilter) {
+            setError('Vui long nhap it nhat mot dieu kien tra cuu.');
+            setResults([]);
+            setHasSearched(false);
+            return;
+        }
+
         setLoading(true);
         setError(null);
         setHasSearched(true);
         try {
-            const data = await adminService.searchLandPrices2026(phuongxa, tenduong, tu, den);
+            const data = await adminService.searchLandPrices2026(phuongxa, tenduong, tu, den, { limit: 200 });
             setResults(data);
         } catch (err: any) {
-            setError(err.message || "Lỗi khi tra cứu dữ liệu.");
+            setError(err.message || "Loi khi tra cuu du lieu.");
             setResults([]);
         } finally {
             setLoading(false);
@@ -219,13 +228,13 @@ const LandPriceLookup: React.FC<LandPriceLookupProps> = ({ user, systemSettings 
                                                             </div>
                                                         </td>
                                                         <td className="p-5 text-right font-mono font-bold text-emerald-400 text-base bg-emerald-950/10 whitespace-nowrap">
-                                                            {formatCurrency(r.dato)}
+                                                            {formatCurrency(r.dato, true)}
                                                         </td>
                                                         <td className="p-5 text-right font-mono font-bold text-blue-400 whitespace-nowrap">
-                                                            {formatCurrency(r.dattmdv)}
+                                                            {formatCurrency(r.dattmdv, true)}
                                                         </td>
                                                         <td className="p-5 text-right font-mono font-bold text-orange-400 whitespace-nowrap">
-                                                            {formatCurrency(r.datsxkdpnn)}
+                                                            {formatCurrency(r.datsxkdpnn, true)}
                                                         </td>
                                                     </tr>
                                                 ))}

@@ -6,6 +6,24 @@ import { authenticateToken, requireAdmin } from './middleware_auth.js';
 export default function(pool, logSystemAction) {
     const router = express.Router();
 
+    const parseWardLabel = (rawWard = '', rawTinhCu = '') => {
+        const wardText = String(rawWard || '').trim();
+        const tinhCuText = String(rawTinhCu || '').trim();
+        if (!wardText) {
+            return { phuongxa: '', tinhcu: tinhCuText };
+        }
+
+        const match = wardText.match(/^(.*)\s+\((.*)\)$/);
+        if (!match) {
+            return { phuongxa: wardText, tinhcu: tinhCuText };
+        }
+
+        return {
+            phuongxa: match[1].trim(),
+            tinhcu: tinhCuText || match[2].trim()
+        };
+    };
+
     const getEffectiveMailSettings = async (overrides = {}) => {
         const res = await pool.query(`
             SELECT key, value FROM system_settings
@@ -88,16 +106,26 @@ export default function(pool, logSystemAction) {
         }
     });
 
-    // API lấy gợi ý tổng hợp (Đường, Đoạn) dựa trên Phường/Xã (tách từ label)
+
+    // API goi y tong hop (duong, doan) theo phuong/xa + tinh cu.
     router.get('/land-prices-2026/suggestions', async (req, res) => {
-        let { phuongxa } = req.query;
-        if (phuongxa && phuongxa.includes(' (')) {
-            phuongxa = phuongxa.split(' (')[0];
-        }
+        const { phuongxa, tinhcu } = parseWardLabel(req.query.phuongxa, req.query.tinhcu);
 
         try {
-            let whereClause = phuongxa ? `WHERE phuongxa = $1` : `WHERE 1=1`;
-            const params = phuongxa ? [phuongxa] : [];
+            const filters = [];
+            const params = [];
+            let idx = 1;
+
+            if (phuongxa) {
+                filters.push(`phuongxa = $${idx++}`);
+                params.push(phuongxa);
+            }
+            if (tinhcu) {
+                filters.push(`tinhcu = $${idx++}`);
+                params.push(tinhcu);
+            }
+
+            const whereClause = filters.length > 0 ? `WHERE ${filters.join(' AND ')}` : 'WHERE 1=1';
 
             const streets = await pool.query(`SELECT DISTINCT tenduong FROM bang_gia_dat_2026 ${whereClause} AND tenduong IS NOT NULL ORDER BY tenduong ASC`, params);
             const fromPoints = await pool.query(`SELECT DISTINCT tu FROM bang_gia_dat_2026 ${whereClause} AND tu IS NOT NULL ORDER BY tu ASC`, params);
@@ -113,12 +141,12 @@ export default function(pool, logSystemAction) {
         }
     });
 
-    // Tìm kiếm giá đất mở rộng
+
+    // Tim kiem gia dat mo rong
     router.get('/land-prices-2026/search', async (req, res) => {
-        let { phuongxa, tenduong, tu, den } = req.query;
-        if (phuongxa && phuongxa.includes(' (')) {
-            phuongxa = phuongxa.split(' (')[0];
-        }
+        const { phuongxa, tinhcu } = parseWardLabel(req.query.phuongxa, req.query.tinhcu);
+        const { tenduong, tu, den } = req.query;
+        const limit = Math.min(500, Math.max(1, parseInt(req.query.limit, 10) || 200));
 
         try {
             let query = `SELECT * FROM bang_gia_dat_2026 WHERE 1=1`;
@@ -128,6 +156,10 @@ export default function(pool, logSystemAction) {
             if (phuongxa) {
                 query += ` AND phuongxa = $${idx++}`;
                 params.push(phuongxa);
+            }
+            if (tinhcu) {
+                query += ` AND tinhcu = $${idx++}`;
+                params.push(tinhcu);
             }
             if (tenduong) {
                 query += ` AND tenduong ILIKE $${idx++}`;
@@ -142,16 +174,17 @@ export default function(pool, logSystemAction) {
                 params.push(`%${den}%`);
             }
 
-            query += ` ORDER BY tinhcu ASC, phuongxa ASC, tenduong ASC, tu ASC`;
-            
+            query += ` ORDER BY tinhcu ASC, phuongxa ASC, tenduong ASC, tu ASC LIMIT $${idx}`;
+            params.push(limit);
+
             const result = await pool.query(query, params);
+            res.set('X-Search-Limit', String(limit));
             res.json(result.rows);
         } catch (e) {
-            if (e.code === '42P01') return res.status(404).json({ error: "Bảng giá đất 2026 chưa được khởi tạo." });
+            if (e.code === '42P01') return res.status(404).json({ error: "Bang gia dat 2026 chua duoc khoi tao." });
             res.status(500).json({ error: e.message });
         }
     });
-
     // Admin APIs for Land Price 2026
     router.post('/land-prices-2026', authenticateToken, async (req, res) => {
         const { phuongxa, tenduong, tinhcu, tu, den, dato, dattmdv, datsxkdpnn, nam_ap_dung, nguon_du_lieu, ghi_chu } = req.body;

@@ -48,12 +48,11 @@ const LandPrice2026Manager: React.FC<LandPrice2026ManagerProps> = ({ permissions
         const fetchStreetSuggestions = async () => {
             try {
                 // Tách tên phường nếu label có dạng "Tên Phường (Tỉnh Cũ)"
-                const cleanWard = phuongxa.includes(' (') ? phuongxa.split(' (')[0] : phuongxa;
-                const sData = await adminService.getLandPriceSuggestions(cleanWard);
+                const sData = await adminService.getLandPriceSuggestions(phuongxa);
                 setStreets(sData.streets);
                 
                 // Nếu phường thay đổi, có thể xóa tên đường cũ nếu nó không thuộc phường mới (tùy chọn)
-                // if (cleanWard && !sData.streets.includes(tenduong)) setTenduong('');
+                // if (phuongxa && !sData.streets.includes(tenduong)) setTenduong('');
             } catch (e) {
                 console.error("Lỗi lấy gợi ý đường:", e);
             }
@@ -70,8 +69,7 @@ const LandPrice2026Manager: React.FC<LandPrice2026ManagerProps> = ({ permissions
         setLoading(true);
         setHasSearched(true);
         try {
-            const cleanWard = phuongxa.includes(' (') ? phuongxa.split(' (')[0] : phuongxa;
-            const results = await adminService.searchLandPrices2026(cleanWard, tenduong);
+            const results = await adminService.searchLandPrices2026(phuongxa, tenduong, undefined, undefined, { limit: 300 });
             setData(results);
         } catch (e) {
             console.error(e);

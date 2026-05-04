@@ -307,17 +307,26 @@ export const adminService = {
 
     // Land Price 2026 Admin & Lookup
     getLandPriceWards: async (): Promise<string[]> => { try { return await apiCall('/land-prices-2026/wards'); } catch { return []; } },
-    getLandPriceSuggestions: async (phuongxa?: string): Promise<{streets: string[], fromPoints: string[], toPoints: string[]}> => {
+    getLandPriceSuggestions: async (phuongxa?: string, tinhcu?: string): Promise<{streets: string[], fromPoints: string[], toPoints: string[]}> => {
         let qs = `?t=${Date.now()}`;
         if (phuongxa) qs += `&phuongxa=${encodeURIComponent(phuongxa)}`;
+        if (tinhcu) qs += `&tinhcu=${encodeURIComponent(tinhcu)}`;
         return await apiCall(`/land-prices-2026/suggestions${qs}`);
     },
-    searchLandPrices2026: async (phuongxa: string, tenduong: string, tu?: string, den?: string): Promise<LandPrice2026[]> => {
+    searchLandPrices2026: async (
+        phuongxa: string,
+        tenduong: string,
+        tu?: string,
+        den?: string,
+        options?: { limit?: number; tinhcu?: string }
+    ): Promise<LandPrice2026[]> => {
         let qs = `?t=${Date.now()}`;
         if (phuongxa) qs += `&phuongxa=${encodeURIComponent(phuongxa)}`;
+        if (options?.tinhcu) qs += `&tinhcu=${encodeURIComponent(options.tinhcu)}`;
         if (tenduong) qs += `&tenduong=${encodeURIComponent(tenduong)}`;
         if (tu) qs += `&tu=${encodeURIComponent(tu)}`;
         if (den) qs += `&den=${encodeURIComponent(den)}`;
+        if (options?.limit) qs += `&limit=${Math.max(1, Math.min(500, Math.floor(options.limit)))}`;
         return await apiCall(`/land-prices-2026/search${qs}`);
     },
     // Các phương thức quản trị mới
