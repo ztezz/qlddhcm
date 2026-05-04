@@ -14,8 +14,15 @@ const QRGenerator: React.FC = () => {
     const [wifiEncr, setWifiEncr] = useState('WPA');
     const [showPass, setShowPass] = useState(false);
 
+    const escapeWifiField = (value: string) => value.replace(/([\\;,:])/g, '\\$1');
+
     const generateQR = async () => {
         if (!inputValue.trim() && inputType !== 'WIFI') {
+            setQrDataUrl('');
+            return;
+        }
+
+        if (inputType === 'WIFI' && !inputValue.trim()) {
             setQrDataUrl('');
             return;
         }
@@ -28,8 +35,10 @@ const QRGenerator: React.FC = () => {
         } else if (inputType === 'URL' && !inputValue.startsWith('http')) {
             finalValue = `https://${inputValue}`;
         } else if (inputType === 'WIFI') {
-            // WIFI:T:WPA;S:SSID;P:PASSWORD;;
-            finalValue = `WIFI:T:${wifiEncr};S:${inputValue};P:${wifiPass};;`;
+            // Escape reserved chars in SSID/password for QR WiFi format.
+            const ssid = escapeWifiField(inputValue.trim());
+            const passPart = wifiEncr === 'nopass' ? '' : `P:${escapeWifiField(wifiPass)};`;
+            finalValue = `WIFI:T:${wifiEncr};S:${ssid};${passPart};`;
         }
 
         try {
@@ -245,15 +254,24 @@ const QRGenerator: React.FC = () => {
                                     </div>
                                 )}
                             </div>
-
-                            <div className="w-full">
-                                <a 
-                                    href={qrDataUrl} 
-                                    download={`QR_${inputType}_${Date.now()}.png`}
-                                    className={`w-full py-4 rounded-2xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 transition-all shadow-xl ${qrDataUrl ? 'bg-blue-600 hover:bg-blue-500 text-white active:scale-95 shadow-blue-900/30' : 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-50'}`}
-                                >
-                                    <Download size={18}/> Tải ảnh PNG (HD)
-                                </a>
+                            <div className="w-full"> 
+                                {qrDataUrl ? (
+                                    <a
+                                        href={qrDataUrl}
+                                        download={`QR_${inputType}_${Date.now()}.png`}
+                                        className="w-full py-4 rounded-2xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 transition-all shadow-xl bg-blue-600 hover:bg-blue-500 text-white active:scale-95 shadow-blue-900/30"
+                                    >
+                                        <Download size={18}/> T???i ???nh PNG (HD)
+                                    </a>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        disabled
+                                        className="w-full py-4 rounded-2xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 transition-all shadow-xl bg-slate-800 text-slate-500 cursor-not-allowed opacity-50"
+                                    >
+                                        <Download size={18}/> T???i ???nh PNG (HD)
+                                    </button>
+                                )}
                             </div>
 
                             <div className="mt-8 bg-slate-950/50 p-4 rounded-2xl border border-slate-800/50 w-full">
