@@ -10,12 +10,20 @@ interface LandPrice2026ManagerProps {
     permissions?: string[];
 }
 
+const ADMIN_PAGE_SIZE_STORAGE_KEY = 'land_price_admin_page_size';
+
 const LandPrice2026Manager: React.FC<LandPrice2026ManagerProps> = ({ permissions = [] }) => {
     const [data, setData] = useState<LandPrice2026[]>([]);
     const [loading, setLoading] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
+    const [pageSize, setPageSize] = useState<number>(() => {
+        if (typeof window === 'undefined') return 50;
+        const raw = Number(window.localStorage.getItem(ADMIN_PAGE_SIZE_STORAGE_KEY) || '50');
+        if (![20, 50, 100].includes(raw)) return 50;
+        return raw;
+    });
     const [pagination, setPagination] = useState({ page: 1, limit: 50, total: 0, pages: 0 });
-    const [pageSize, setPageSize] = useState(50);
+    const [isPageTransition, setIsPageTransition] = useState(false);
     
     // Search Filters
     const [phuongxa, setPhuongxa] = useState('');
@@ -47,6 +55,10 @@ const LandPrice2026Manager: React.FC<LandPrice2026ManagerProps> = ({ permissions
 
     // 2. Tự động cập nhật gợi ý đường khi Phường/Xã thay đổi
     useEffect(() => {
+        setPagination((prev) => ({ ...prev, limit: pageSize }));
+    }, [pageSize]);
+
+    useEffect(() => {
         const fetchStreetSuggestions = async () => {
             try {
                 // Tách tên phường nếu label có dạng "Tên Phường (Tỉnh Cũ)"
@@ -67,9 +79,15 @@ const LandPrice2026Manager: React.FC<LandPrice2026ManagerProps> = ({ permissions
         return () => clearTimeout(timer);
     }, [phuongxa]);
 
-    const runSearch = async (page = 1, overridePageSize?: number) => {
+    const runSearch = async (page = 1, overridePageSize?: number, options?: { preserveTable?: boolean }) => {
         const nextLimit = overridePageSize || pageSize;
-        setLoading(true);
+        const preserveTable = !!options?.preserveTable;
+
+        if (preserveTable) {
+            setIsPageTransition(true);
+        } else {
+            setLoading(true);
+        }
         setHasSearched(true);
         try {
             const response = await adminService.searchLandPrices2026(phuongxa, tenduong, undefined, undefined, {
@@ -95,17 +113,20 @@ const LandPrice2026Manager: React.FC<LandPrice2026ManagerProps> = ({ permissions
     };
 
     const handlePageChange = async (nextPage: number) => {
-        if (loading || nextPage < 1 || nextPage > pagination.pages) return;
-        await runSearch(nextPage);
+        if (loading || isPageTransition || nextPage < 1 || nextPage > pagination.pages) return;
+        await runSearch(nextPage, undefined, { preserveTable: true });
     };
 
     const handlePageSizeChange = async (nextSize: number) => {
         setPageSize(nextSize);
+        window.localStorage.setItem(ADMIN_PAGE_SIZE_STORAGE_KEY, String(nextSize));
         setPagination((prev) => ({ ...prev, limit: nextSize }));
         if (hasSearched) {
-            await runSearch(1, nextSize);
+            await runSearch(1, nextSize, { preserveTable: true });
         }
     };
+
+    const disablePaging = loading || isPageTransition || pagination.pages <= 1;
 
     const handleSave = async () => {
         if (editingId ? !canEditLandPrice : !canCreateLandPrice) {
@@ -239,17 +260,24 @@ const LandPrice2026Manager: React.FC<LandPrice2026ManagerProps> = ({ permissions
                             <div className="bg-amber-500/20 p-2 rounded-lg"><Coins className="text-amber-500" size={18} /></div>
                             <div>
                                 <span className="font-bold text-gray-200 block leading-none">Kết quả lọc dữ liệu</span>
-                                <span className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">Tong {pagination.total} ban ghi</span>
+                                <span className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">{'T\u1ed5ng'} {pagination.total} {'b\u1ea3n ghi'}</span>
                             </div>
                         </div>
                     </div>
 
+                    {isPageTransition && (
+                        <div className="px-5 pt-3 text-[10px] text-blue-400 font-bold uppercase tracking-wider flex items-center gap-2">
+                            <Loader2 size={12} className="animate-spin" />
+                            {'\u0110ang t\u1ea3i trang d\u1eef li\u1ec7u...'}
+                        </div>
+                    )}
+
                     <div className="px-5 pb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3 text-[10px]">
                         <div className="text-gray-500 font-bold uppercase tracking-wider">
-                            Trang {pagination.page} / {Math.max(pagination.pages, 1)} - Hien thi {data.length} / {pagination.total}
+                            Trang {pagination.page} / {Math.max(pagination.pages, 1)} - {'Hi\u1ec3n th\u1ecb'} {data.length} / {pagination.total}
                         </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                            <label className="text-gray-500 font-bold uppercase tracking-wider">So dong/trang</label>
+                        <div className={`flex flex-wrap items-center gap-2 ${disablePaging ? 'opacity-60' : ''}`}>
+                            <label className="text-gray-500 font-bold uppercase tracking-wider">{'S\u1ed1 d\u00f2ng/trang'}</label>
                             <select
                                 value={pageSize}
                                 onChange={(e) => handlePageSizeChange(Number(e.target.value))}
@@ -260,15 +288,25 @@ const LandPrice2026Manager: React.FC<LandPrice2026ManagerProps> = ({ permissions
                                 <option value={100}>100</option>
                             </select>
                             <button
-                                onClick={() => handlePageChange(pagination.page - 1)}
-                                disabled={loading || pagination.page <= 1}
+                                onClick={() => handlePageChange(1)}
+                                disabled={disablePaging || pagination.page <= 1}
                                 className="px-3 py-1.5 rounded-lg border border-gray-700 text-gray-300 font-black uppercase tracking-wider disabled:opacity-40"
-                            >Truoc</button>
+                            >{'Trang \u0111\u1ea7u'}</button>
+                            <button
+                                onClick={() => handlePageChange(pagination.page - 1)}
+                                disabled={disablePaging || pagination.page <= 1}
+                                className="px-3 py-1.5 rounded-lg border border-gray-700 text-gray-300 font-black uppercase tracking-wider disabled:opacity-40"
+                            >{'Tr\u01b0\u1edbc'}</button>
                             <button
                                 onClick={() => handlePageChange(pagination.page + 1)}
-                                disabled={loading || pagination.page >= pagination.pages}
+                                disabled={disablePaging || pagination.page >= pagination.pages}
                                 className="px-3 py-1.5 rounded-lg border border-gray-700 text-gray-300 font-black uppercase tracking-wider disabled:opacity-40"
                             >Sau</button>
+                            <button
+                                onClick={() => handlePageChange(Math.max(pagination.pages, 1))}
+                                disabled={disablePaging || pagination.page >= pagination.pages}
+                                className="px-3 py-1.5 rounded-lg border border-gray-700 text-gray-300 font-black uppercase tracking-wider disabled:opacity-40"
+                            >{'Trang cu\u1ed1i'}</button>
                         </div>
                     </div>
 

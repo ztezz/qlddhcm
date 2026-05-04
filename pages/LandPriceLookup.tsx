@@ -1,5 +1,5 @@
 ﻿
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { adminService } from '../services/mockBackend';
 import { LandPrice2026, User } from '../types';
 import { Search, Calculator, MapPin, RefreshCw, AlertCircle, Info, ArrowRight, Landmark, Coins } from 'lucide-react';
@@ -12,6 +12,8 @@ interface LandPriceLookupProps {
     user?: User | null;
     systemSettings?: Record<string, string>;
 }
+
+const LOOKUP_PAGE_SIZE_STORAGE_KEY = 'land_price_lookup_page_size';
 
 const LandPriceLookup: React.FC<LandPriceLookupProps> = ({ user, systemSettings }) => {
     const [phuongxa, setPhuongxa] = useState('');
@@ -28,10 +30,17 @@ const LandPriceLookup: React.FC<LandPriceLookupProps> = ({ user, systemSettings 
     const [loading, setLoading] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [pageSize, setPageSize] = useState<number>(() => {
+        if (typeof window === 'undefined') return 50;
+        const raw = Number(window.localStorage.getItem(LOOKUP_PAGE_SIZE_STORAGE_KEY) || '50');
+        if (![20, 50, 100].includes(raw)) return 50;
+        return raw;
+    });
     const [pagination, setPagination] = useState({ page: 1, limit: 50, total: 0, pages: 0 });
     const [appliedFilters, setAppliedFilters] = useState({ phuongxa: '', tenduong: '', tu: '', den: '' });
-    const [pageSize, setPageSize] = useState(50);
     const [gotoPage, setGotoPage] = useState('');
+    const [isPageTransition, setIsPageTransition] = useState(false);
+    const jumpDebounceRef = useRef<number | null>(null);
 
     // Detail Modal State
     const [selectedRow, setSelectedRow] = useState<LandPrice2026 | null>(null);
@@ -62,13 +71,32 @@ const LandPriceLookup: React.FC<LandPriceLookupProps> = ({ user, systemSettings 
         updateSuggestions();
     }, [phuongxa]);
 
+    useEffect(() => {
+        return () => {
+            if (jumpDebounceRef.current) {
+                window.clearTimeout(jumpDebounceRef.current);
+            }
+        };
+    }, []);
+
+    useEffect(() => {
+        setPagination((prev) => ({ ...prev, limit: pageSize }));
+    }, [pageSize]);
+
     const runSearch = async (
         filters: { phuongxa: string; tenduong: string; tu: string; den: string },
         page = 1,
-        overridePageSize?: number
+        overridePageSize?: number,
+        options?: { preserveTable?: boolean }
     ) => {
         const nextLimit = overridePageSize || pageSize;
-        setLoading(true);
+        const preserveTable = !!options?.preserveTable;
+
+        if (preserveTable) {
+            setIsPageTransition(true);
+        } else {
+            setLoading(true);
+        }
         setError(null);
         setHasSearched(true);
         try {
@@ -91,7 +119,11 @@ const LandPriceLookup: React.FC<LandPriceLookupProps> = ({ user, systemSettings 
             setResults([]);
             setPagination((prev) => ({ ...prev, page: 1, limit: pageSize, total: 0, pages: 0 }));
         } finally {
-            setLoading(false);
+            if (preserveTable) {
+                setIsPageTransition(false);
+            } else {
+                setLoading(false);
+            }
         }
     };
 
@@ -119,15 +151,16 @@ const LandPriceLookup: React.FC<LandPriceLookupProps> = ({ user, systemSettings 
     };
 
     const handlePageChange = async (nextPage: number) => {
-        if (loading || nextPage < 1 || nextPage > pagination.pages) return;
-        await runSearch(appliedFilters, nextPage);
+        if (loading || isPageTransition || nextPage < 1 || nextPage > pagination.pages) return;
+        await runSearch(appliedFilters, nextPage, undefined, { preserveTable: true });
     };
 
     const handlePageSizeChange = async (nextSize: number) => {
         setPageSize(nextSize);
+        window.localStorage.setItem(LOOKUP_PAGE_SIZE_STORAGE_KEY, String(nextSize));
         setPagination((prev) => ({ ...prev, limit: nextSize }));
         if (hasSearched) {
-            await runSearch(appliedFilters, 1, nextSize);
+            await runSearch(appliedFilters, 1, nextSize, { preserveTable: true });
         }
     };
 
@@ -138,6 +171,17 @@ const LandPriceLookup: React.FC<LandPriceLookupProps> = ({ user, systemSettings 
         setGotoPage(String(safePage));
         await handlePageChange(safePage);
     };
+
+    const triggerJumpPage = () => {
+        if (jumpDebounceRef.current) {
+            window.clearTimeout(jumpDebounceRef.current);
+        }
+        jumpDebounceRef.current = window.setTimeout(() => {
+            void handleJumpPage();
+        }, 180);
+    };
+
+    const disablePaging = loading || isPageTransition || pagination.pages <= 1;
 
     return (
         <>
@@ -298,12 +342,18 @@ const LandPriceLookup: React.FC<LandPriceLookupProps> = ({ user, systemSettings 
                                         </table>
                                     </div>
                                 </div>
+                                {isPageTransition && (
+                                    <div className="px-2 text-[10px] text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-2">
+                                        <RefreshCw size={12} className="animate-spin" />
+                                        Dang tai trang du lieu...
+                                    </div>
+                                )}
                                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between px-2">
                                     <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                                        Trang {pagination.page} / {Math.max(pagination.pages, 1)} - Hien thi {results.length} / {pagination.total} ban ghi
+                                        Trang {pagination.page} / {Math.max(pagination.pages, 1)} - {'Hi\u1ec3n th\u1ecb'} {results.length} / {pagination.total} {'b\u1ea3n ghi'}
                                     </span>
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">So dong/trang</label>
+                                    <div className={`flex flex-wrap items-center gap-2 ${disablePaging ? 'opacity-60' : ''}`}>
+                                        <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{'S\u1ed1 d\u00f2ng/trang'}</label>
                                         <select
                                             value={pageSize}
                                             onChange={(e) => handlePageSizeChange(Number(e.target.value))}
@@ -315,19 +365,35 @@ const LandPriceLookup: React.FC<LandPriceLookupProps> = ({ user, systemSettings 
                                         </select>
                                         <button
                                             type="button"
+                                            onClick={() => handlePageChange(1)}
+                                            disabled={disablePaging || pagination.page <= 1}
+                                            className="px-3 py-2 rounded-xl border border-slate-700 text-slate-300 text-[10px] font-black uppercase tracking-wider hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
+                                        >
+                                            Trang dau
+                                        </button>
+                                        <button
+                                            type="button"
                                             onClick={() => handlePageChange(pagination.page - 1)}
-                                            disabled={loading || pagination.page <= 1}
+                                            disabled={disablePaging || pagination.page <= 1}
                                             className="px-4 py-2 rounded-xl border border-slate-700 text-slate-300 text-[10px] font-black uppercase tracking-wider hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
                                         >
-                                            Trang truoc
+                                            {'Trang tr\u01b0\u1edbc'}
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => handlePageChange(pagination.page + 1)}
-                                            disabled={loading || pagination.page >= pagination.pages}
+                                            disabled={disablePaging || pagination.page >= pagination.pages}
                                             className="px-4 py-2 rounded-xl border border-slate-700 text-slate-300 text-[10px] font-black uppercase tracking-wider hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
                                         >
                                             Trang sau
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handlePageChange(Math.max(pagination.pages, 1))}
+                                            disabled={disablePaging || pagination.page >= pagination.pages}
+                                            className="px-3 py-2 rounded-xl border border-slate-700 text-slate-300 text-[10px] font-black uppercase tracking-wider hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
+                                        >
+                                            Trang cuoi
                                         </button>
                                         <input
                                             type="number"
@@ -335,16 +401,17 @@ const LandPriceLookup: React.FC<LandPriceLookupProps> = ({ user, systemSettings 
                                             max={Math.max(pagination.pages, 1)}
                                             value={gotoPage}
                                             onChange={(e) => setGotoPage(e.target.value)}
+                                            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); triggerJumpPage(); } }}
                                             placeholder="Trang"
                                             className="w-20 bg-slate-900 border border-slate-700 text-slate-200 text-[11px] rounded-lg px-2 py-2"
                                         />
                                         <button
                                             type="button"
-                                            onClick={handleJumpPage}
-                                            disabled={loading || pagination.pages <= 1}
+                                            onClick={triggerJumpPage}
+                                            disabled={disablePaging || pagination.pages <= 1}
                                             className="px-3 py-2 rounded-xl border border-slate-700 text-slate-300 text-[10px] font-black uppercase tracking-wider hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
                                         >
-                                            Den trang
+                                            {'\u0110\u1ebfn trang'}
                                         </button>
                                     </div>
                                 </div>
