@@ -190,7 +190,7 @@ const App: React.FC = () => {
     setResetToken(null);
     setVerificationToken(null);
     // Điều hướng dựa trên role sau khi login
-    navigate(loggedInUser.role === UserRole.ADMIN ? '/quantri' : '/thongke');
+    navigate(loggedInUser.role === UserRole.ADMIN ? '/quantri' : '/');
   };
 
   const handleLogout = () => {

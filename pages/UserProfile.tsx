@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect, useContext } from 'react';
-import { Branch, User } from '../types';
+import { Branch, User, getRoleLabel } from '../types';
 import { authService, API_URL } from '../services/mockBackend';
 import { UNSAFE_NavigationContext } from 'react-router-dom';
 import { User as UserIcon, Camera, Save, Lock, Mail, Building, Shield, RefreshCw, CheckCircle2, AlertTriangle, Key, Loader2, Eye, EyeOff, Undo2, Copy, Check, Wand2, UploadCloud, XCircle } from 'lucide-react';
@@ -704,7 +704,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onUpdateUser }) => {
                                             <label className="text-xs font-bold text-gray-500 uppercase mb-1.5 block tracking-wider flex items-center gap-1"><Shield size={12}/> Vai trò</label>
                                             <div className="w-full bg-gray-800/50 border border-gray-800 rounded-xl p-3 flex items-center">
                                                 <div className="inline-flex items-center px-3 py-0.5 rounded-lg bg-blue-900/20 border border-blue-800 text-blue-400 text-xs font-black uppercase tracking-widest">
-                                                    {user.role}
+                                                    {getRoleLabel(user.role)}
                                                 </div>
                                             </div>
                                         </div>

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { adminService, hasAnyPermission } from '../../services/mockBackend';
-import { User, UserRole, Branch } from '../../types';
+import { User, UserRole, Branch, getRoleLabel } from '../../types';
 import { Users, Plus, Edit2, Trash2, X, Save, Loader2, Key, Check, AlertTriangle, CheckCircle2, Info, Ban, UserCheck, MessageCircle, MessageCircleOff, Search, Filter, ShieldCheck, Eye, RefreshCw } from 'lucide-react';
 
 // Lấy chữ cái đầu cho avatar
@@ -254,9 +254,9 @@ const UserManager: React.FC<UserManagerProps> = ({ permissions = [] }) => {
                         className="bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-300 focus:border-blue-500 outline-none cursor-pointer"
                     >
                         <option value="ALL">Tất cả vai trò</option>
-                        <option value={UserRole.ADMIN}>ADMIN</option>
-                        <option value={UserRole.EDITOR}>EDITOR</option>
-                        <option value={UserRole.VIEWER}>VIEWER</option>
+                        <option value={UserRole.ADMIN}>{getRoleLabel(UserRole.ADMIN)}</option>
+                        <option value={UserRole.EDITOR}>{getRoleLabel(UserRole.EDITOR)}</option>
+                        <option value={UserRole.VIEWER}>{getRoleLabel(UserRole.VIEWER)}</option>
                     </select>
 
                     {/* Filter Status */}
@@ -320,7 +320,7 @@ const UserManager: React.FC<UserManagerProps> = ({ permissions = [] }) => {
                                         : u.role === UserRole.EDITOR ? 'bg-purple-900/40 text-purple-300 border border-purple-800'
                                         : 'bg-blue-900/40 text-blue-300 border border-blue-800'
                                     }`}>
-                                        {u.role}
+                                        {getRoleLabel(u.role)}
                                     </span>
                                 </td>
                                 <td className="p-4 text-gray-400 text-xs">
@@ -444,9 +444,9 @@ const UserManager: React.FC<UserManagerProps> = ({ permissions = [] }) => {
                             <div>
                                 <label className="text-xs text-gray-400 font-bold uppercase mb-1 block">Vai trò hệ thống</label>
                                 <select className="w-full bg-gray-900 border border-gray-600 rounded p-2.5 text-white focus:border-blue-500 outline-none cursor-pointer" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}>
-                                    <option value={UserRole.ADMIN}>ADMIN (Toàn quyền)</option>
-                                    <option value={UserRole.EDITOR}>EDITOR (Biên tập dữ liệu)</option>
-                                    <option value={UserRole.VIEWER}>VIEWER (Chỉ xem)</option>
+                                    <option value={UserRole.ADMIN}>{getRoleLabel(UserRole.ADMIN)} (Toàn quyền)</option>
+                                    <option value={UserRole.EDITOR}>{getRoleLabel(UserRole.EDITOR)} (Biên tập dữ liệu)</option>
+                                    <option value={UserRole.VIEWER}>{getRoleLabel(UserRole.VIEWER)} (Chỉ xem)</option>
                                 </select>
                             </div>
                             <div>

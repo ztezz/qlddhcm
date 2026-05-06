@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { adminService, hasAnyPermission } from '../../services/mockBackend';
-import { MenuItem, UserRole } from '../../types';
+import { MenuItem, UserRole, getRoleLabel } from '../../types';
 import { LayoutList, Plus, Edit2, Trash2, X, Save, Info, Search, Link as LinkIcon, Globe, Monitor, Check, Loader2, AlertTriangle, CheckCircle2, GripVertical, RefreshCw, FolderCog, ChevronUp, ChevronDown } from 'lucide-react';
 import * as Icons from 'lucide-react';
 
@@ -618,7 +618,7 @@ const MenuManager: React.FC<MenuManagerProps> = ({ permissions = [] }) => {
                                                 className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase border transition-all flex items-center gap-2 ${isSelected ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-900/20' : 'bg-[#0d1117] border-gray-700 text-gray-600 hover:border-gray-500'}`}
                                             >
                                                 {isSelected && <Check size={12} />}
-                                                {role}
+                                                {role === 'GUEST' ? 'Khách' : getRoleLabel(role)}
                                             </button>
                                         );
                                     })}

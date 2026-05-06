@@ -5,6 +5,22 @@ export enum UserRole {
   VIEWER = 'VIEWER'
 }
 
+export const ROLE_LABELS: Record<UserRole, string> = {
+  [UserRole.ADMIN]: 'Quản trị viên',
+  [UserRole.EDITOR]: 'Biên tập viên',
+  [UserRole.VIEWER]: 'Người xem'
+};
+
+export const getRoleLabel = (role?: string): string => {
+  if (!role) return 'Không xác định';
+  if (role === 'ALL') return 'Tất cả người dùng';
+  if (role === 'GUEST') return 'Khách';
+  if (role === UserRole.ADMIN || role === UserRole.EDITOR || role === UserRole.VIEWER) {
+    return ROLE_LABELS[role];
+  }
+  return role;
+};
+
 export interface Message {
     id: number;
     sender_id: string;

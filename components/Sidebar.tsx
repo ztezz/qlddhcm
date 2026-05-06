@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { User, MenuItem } from '../types';
+import { User, MenuItem, getRoleLabel } from '../types';
 import { LogOut, LogIn, ChevronLeft, ChevronRight, ChevronDown, User as UserIcon, Database, HelpCircle, ExternalLink, Bell, X, Menu, FolderCog, QrCode, ArrowRightLeft } from 'lucide-react';
 import * as Icons from 'lucide-react';
 import { adminService, notificationService, API_URL } from '../services/mockBackend';
@@ -347,7 +347,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                         </p>
                         <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5 flex items-center gap-1">
                             <span className={`w-1.5 h-1.5 rounded-full ${user.role === 'ADMIN' ? 'bg-orange-500' : 'bg-blue-500'}`}></span>
-                            {user.role}
+                            {getRoleLabel(user.role)}
                         </p>
                     </div>
                 </div>

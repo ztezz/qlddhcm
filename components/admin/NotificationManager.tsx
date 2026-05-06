@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { notificationService, hasAnyPermission } from '../../services/mockBackend';
-import { SystemNotification, UserRole } from '../../types';
+import { SystemNotification, UserRole, getRoleLabel } from '../../types';
 import { Bell, Send, Trash2, Plus, X, Loader2, AlertCircle, Info, CheckCircle2, AlertTriangle, Search, RefreshCw, Users, ShieldAlert, Eye, Edit2, Clock } from 'lucide-react';
 
 // Config per type
@@ -232,9 +232,9 @@ const NotificationManager: React.FC<NotificationManagerProps> = ({ permissions =
                     </select>
                     <select value={filterTarget} onChange={e => setFilterTarget(e.target.value)} className="bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-sm text-gray-300 focus:border-blue-500 outline-none cursor-pointer">
                         <option value="ALL">Tất cả đối tượng</option>
-                        <option value="ADMIN">ADMIN</option>
-                        <option value="EDITOR">EDITOR</option>
-                        <option value="VIEWER">VIEWER</option>
+                        <option value="ADMIN">{getRoleLabel(UserRole.ADMIN)}</option>
+                        <option value="EDITOR">{getRoleLabel(UserRole.EDITOR)}</option>
+                        <option value="VIEWER">{getRoleLabel(UserRole.VIEWER)}</option>
                     </select>
                     <select value={filterExpiry} onChange={e => setFilterExpiry(e.target.value)} className="bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-sm text-gray-300 focus:border-blue-500 outline-none cursor-pointer">
                         <option value="ALL">Tất cả hạn</option>
@@ -280,7 +280,7 @@ const NotificationManager: React.FC<NotificationManagerProps> = ({ permissions =
                                         {n.content && <p className="text-gray-500 text-xs mt-0.5 line-clamp-1">{n.content}</p>}
                                     </td>
                                     <td className="p-4">
-                                        <span className="text-gray-400 text-[10px] font-mono bg-gray-900 px-2 py-0.5 rounded border border-gray-700">{n.target_role}</span>
+                                        <span className="text-gray-400 text-[10px] font-mono bg-gray-900 px-2 py-0.5 rounded border border-gray-700">{getRoleLabel(n.target_role)}</span>
                                     </td>
                                     <td className="p-4 text-xs text-gray-500">{new Date(n.created_at).toLocaleString('vi-VN')}</td>
                                     <td className="p-4">
@@ -418,7 +418,7 @@ const NotificationManager: React.FC<NotificationManagerProps> = ({ permissions =
                                                 <span className={`text-[9px] font-black px-2 py-0.5 rounded border ${TYPE_CONFIG[formData.type]?.badge ?? ''}`}>
                                                     {TYPE_CONFIG[formData.type]?.label}
                                                 </span>
-                                                <span className="text-[9px] text-gray-600 font-mono">→ {formData.targetRole}</span>
+                                                <span className="text-[9px] text-gray-600 font-mono">→ {getRoleLabel(formData.targetRole)}</span>
                                                 {formData.expiresAt && (
                                                     <span className="text-[9px] text-amber-500 flex items-center gap-0.5 font-mono">
                                                         <Clock size={9}/> Hết hạn: {new Date(formData.expiresAt).toLocaleString('vi-VN')}
