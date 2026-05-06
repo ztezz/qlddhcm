@@ -1,7 +1,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { User } from '../types';
-import { gisService } from '../services/mockBackend';
+import { User, UserRole } from '../types';
+import { gisService, adminService, DEFAULT_ROLE_PERMISSIONS, hasAnyPermission } from '../services/mockBackend';
 import { parcelApi } from '../services/parcelApi';
 import { getUid } from 'ol/util';
 import proj4 from "proj4";
@@ -73,6 +73,8 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     const [loading, setLoading] = useState(false);
     const [batchSaveProgress, setBatchSaveProgress] = useState({ current: 0, total: 0, isActive: false });
     const [batchSaveResult, setBatchSaveResult] = useState<{ success: number; failed: number; errors: string[] }>({ success: 0, failed: 0, errors: [] });
+    const [rolePermissions, setRolePermissions] = useState<any[]>([]);
+    const [permissionLoading, setPermissionLoading] = useState(true);
 
     // Modal States
     const [searchModal, setSearchModal] = useState({ isOpen: false, coords: { x: '', y: '' } });
@@ -113,6 +115,11 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         startAutoSave,
         stopAutoSave
     } = useEditorDraft(editSource, mapInstance, updateFeatureListState);
+
+    const currentPermissions = user?.role === UserRole.ADMIN
+        ? DEFAULT_ROLE_PERMISSIONS[UserRole.ADMIN]
+        : rolePermissions.find((rp) => rp.role === user?.role)?.permissions || (user?.role ? DEFAULT_ROLE_PERMISSIONS[user.role] || [] : []);
+    const canSaveToDb = !permissionLoading && hasAnyPermission(currentPermissions, ['SAVE_MAP_TO_DB']);
 
     // Layers Refs
     const baseLayerRef = useRef<TileLayer<any>>(new TileLayer({
@@ -423,6 +430,20 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     };
 
     useEffect(() => {
+        const loadPermissions = async () => {
+            try {
+                const data = await adminService.getRolePermissions();
+                setRolePermissions(Array.isArray(data) ? data : []);
+            } catch {
+                setRolePermissions([]);
+            } finally {
+                setPermissionLoading(false);
+            }
+        };
+        loadPermissions();
+    }, []);
+
+    useEffect(() => {
         initMap();
         return () => {
             mapInitVersion.current += 1;
@@ -673,6 +694,10 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     };
 
     const handleSaveFeature = async (feature: Feature) => {
+        if (!canSaveToDb) {
+            setDialog({ isOpen: true, type: 'error', title: 'Không có quyền', message: 'Bạn không có quyền lưu bản vẽ vào cơ sở dữ liệu.' });
+            return;
+        }
         if (!targetTable || !feature) return;
         const fSoTo = feature.get('sodoto');
         const fSoThua = feature.get('sothua');
@@ -726,11 +751,19 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
 
     // Save CURRENT selected feature
     const handleSaveToDB = () => {
+        if (!canSaveToDb) {
+            setDialog({ isOpen: true, type: 'error', title: 'Không có quyền', message: 'Bạn không có quyền lưu bản vẽ vào cơ sở dữ liệu.' });
+            return;
+        }
         if (selectedFeature) handleSaveFeature(selectedFeature);
     };
 
     // Batch save all features with retry logic
     const handleBatchSaveAll = async () => {
+        if (!canSaveToDb) {
+            setDialog({ isOpen: true, type: 'error', title: 'Không có quyền', message: 'Bạn không có quyền lưu bản vẽ vào cơ sở dữ liệu.' });
+            return;
+        }
         const features = editSource.current.getFeatures();
         if (features.length === 0) {
             setDialog({ isOpen: true, type: 'info', title: 'Thông báo', message: 'Không có đối tượng nào để lưu.' });
@@ -854,6 +887,10 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     };
 
     const handleSaveFeatureFromList = (uid: string) => {
+        if (!canSaveToDb) {
+            setDialog({ isOpen: true, type: 'error', title: 'Không có quyền', message: 'Bạn không có quyền lưu bản vẽ vào cơ sở dữ liệu.' });
+            return;
+        }
         const feature = editSource.current.getFeatures().find(f => getUid(f) === uid);
         if (feature) handleSaveFeature(feature);
     };
@@ -890,6 +927,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                 spatialTables={spatialTables}
                 targetTable={targetTable} setTargetTable={setTargetTable}
                 onSaveToDB={handleSaveToDB}
+                canSaveToDb={canSaveToDb}
                 loading={loading}
                 vertices={vertices}
                 onUpdateVertex={handleUpdateVertex}

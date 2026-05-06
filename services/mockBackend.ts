@@ -414,6 +414,8 @@ export const PERMISSIONS_LIST: PermissionDefinition[] = [
     { code: 'EDIT_PARCELS', name: 'Sửa thửa đất', group: 'MAP', description: 'Cập nhật thông tin thửa đất hiện có.' },
     { code: 'DELETE_PARCELS', name: 'Xóa thửa đất', group: 'MAP', description: 'Xóa hồ sơ thửa đất khỏi hệ thống.' },
     { code: 'IMPORT_PARCELS', name: 'Nhập dữ liệu thửa đất', group: 'MAP', description: 'Import dữ liệu hàng loạt cho thửa đất.' },
+    { code: 'EDIT_MAP', name: 'Biên tập bản vẽ', group: 'MAP', description: 'Sử dụng công cụ chỉnh sửa bản vẽ tại trang chỉnh sửa bản vẽ.' },
+    { code: 'SAVE_MAP_TO_DB', name: 'Lưu bản vẽ vào CSDL', group: 'MAP', description: 'Lưu thửa đất từ trang chỉnh sửa bản vẽ vào cơ sở dữ liệu.' },
 
     { code: 'MANAGE_TABLES', name: 'Quản lý bảng dữ liệu', group: 'DATA', description: 'Quản lý registry và nguồn dữ liệu bản đồ.' },
     { code: 'CREATE_TABLES', name: 'Tạo / liên kết bảng', group: 'DATA', description: 'Tạo bảng mới hoặc liên kết bảng không gian có sẵn.' },
@@ -476,7 +478,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     [UserRole.ADMIN]: PERMISSIONS_LIST.map((item) => item.code),
     [UserRole.EDITOR]: [
         'VIEW_MAP', 'SEARCH_PARCELS', 'PRINT_PARCEL_PDF',
-        'MANAGE_PARCELS', 'CREATE_PARCELS', 'EDIT_PARCELS', 'IMPORT_PARCELS',
+        'MANAGE_PARCELS', 'CREATE_PARCELS', 'EDIT_PARCELS', 'IMPORT_PARCELS', 'EDIT_MAP', 'SAVE_MAP_TO_DB',
         'VIEW_DASHBOARD', 'EXPORT_REPORT',
         'MANAGE_LAND_PRICES', 'CREATE_LAND_PRICES', 'EDIT_LAND_PRICES',
         'VIEW_LOGS'

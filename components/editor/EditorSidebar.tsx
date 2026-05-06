@@ -18,6 +18,7 @@ interface EditorSidebarProps {
     targetTable: string;
     setTargetTable: (val: string) => void;
     onSaveToDB: () => void;
+    canSaveToDb: boolean;
     loading: boolean;
     vertices: {x: number, y: number}[];
     onUpdateVertex: (index: number, axis: 'x' | 'y', val: string) => void;
@@ -102,24 +103,26 @@ const EditorSidebar: React.FC<EditorSidebarProps> = (props) => {
                         <select className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs font-bold text-white outline-none" value={props.targetTable} onChange={e => props.setTargetTable(e.target.value)}>
                             {props.spatialTables.map(t => <option key={t.table_name} value={t.table_name}>{t.display_name || t.table_name}</option>)}
                         </select>
-                        <div className="flex gap-2">
-                            <button 
-                                onClick={props.onSaveToDB} 
-                                disabled={props.loading || !props.hasSelected || !props.soTo.trim() || !props.soThua.trim()} 
-                                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-30 shadow-xl"
-                                title="Lưu thửa được chọn"
-                            >
-                                {props.loading ? <RefreshCw className="animate-spin" size={14}/> : <Save size={14}/>} Lưu đơn
-                            </button>
-                            <button 
-                                onClick={props.onBatchSave} 
-                                disabled={props.loading || props.featuresList.length === 0} 
-                                className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-30 shadow-xl"
-                                title={`Lưu ${props.featuresList.length} thửa cùng lúc`}
-                            >
-                                {props.batchProgress.isActive ? <RefreshCw className="animate-spin" size={14}/> : <Save size={14}/>} Lưu lô ({props.featuresList.length})
-                            </button>
-                        </div>
+                        {props.canSaveToDb && (
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={props.onSaveToDB}
+                                    disabled={props.loading || !props.hasSelected || !props.soTo.trim() || !props.soThua.trim()}
+                                    className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-30 shadow-xl"
+                                    title="Lưu thửa được chọn"
+                                >
+                                    {props.loading ? <RefreshCw className="animate-spin" size={14}/> : <Save size={14}/>} Lưu đơn
+                                </button>
+                                <button
+                                    onClick={props.onBatchSave}
+                                    disabled={props.loading || props.featuresList.length === 0}
+                                    className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-30 shadow-xl"
+                                    title={`Lưu ${props.featuresList.length} thửa cùng lúc`}
+                                >
+                                    {props.batchProgress.isActive ? <RefreshCw className="animate-spin" size={14}/> : <Save size={14}/>} Lưu lô ({props.featuresList.length})
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     <div className="space-y-4">
@@ -215,15 +218,17 @@ const EditorSidebar: React.FC<EditorSidebarProps> = (props) => {
                                     </div>
                                     
                                     <div className="flex items-center gap-1">
-                                        <button 
-                                            onClick={(e) => { e.stopPropagation(); props.onSaveFeature(f.uid); }}
-                                            disabled={props.loading}
-                                            className="p-2 text-slate-500 hover:text-white hover:bg-blue-600 rounded-lg transition-all"
-                                            title="Upload lên Database"
-                                        >
-                                            <CloudUpload size={14}/>
-                                        </button>
-                                        <button 
+                                        {props.canSaveToDb && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); props.onSaveFeature(f.uid); }}
+                                                disabled={props.loading}
+                                                className="p-2 text-slate-500 hover:text-white hover:bg-blue-600 rounded-lg transition-all"
+                                                title="Upload lên Database"
+                                            >
+                                                <CloudUpload size={14}/>
+                                            </button>
+                                        )}
+                                        <button
                                             onClick={(e) => { e.stopPropagation(); props.onDeleteFeature(f.uid); }}
                                             className="p-2 text-slate-500 hover:text-white hover:bg-red-600 rounded-lg transition-all"
                                             title="Xóa thửa đất"

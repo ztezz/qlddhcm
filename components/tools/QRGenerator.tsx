@@ -261,7 +261,7 @@ const QRGenerator: React.FC = () => {
                                         download={`QR_${inputType}_${Date.now()}.png`}
                                         className="w-full py-4 rounded-2xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 transition-all shadow-xl bg-blue-600 hover:bg-blue-500 text-white active:scale-95 shadow-blue-900/30"
                                     >
-                                        <Download size={18}/> T???i ???nh PNG (HD)
+                                        <Download size={18}/> Tải ảnh PNG (HD)
                                     </a>
                                 ) : (
                                     <button
