@@ -694,6 +694,10 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     };
 
     const handleSaveFeature = async (feature: Feature) => {
+        if (permissionLoading) {
+            setDialog({ isOpen: true, type: 'info', title: 'Đang tải phân quyền', message: 'Vui lòng thử lại sau khi hệ thống tải xong quyền truy cập.' });
+            return;
+        }
         if (!canSaveToDb) {
             setDialog({ isOpen: true, type: 'error', title: 'Không có quyền', message: 'Bạn không có quyền lưu bản vẽ vào cơ sở dữ liệu.' });
             return;
@@ -751,6 +755,10 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
 
     // Save CURRENT selected feature
     const handleSaveToDB = () => {
+        if (permissionLoading) {
+            setDialog({ isOpen: true, type: 'info', title: 'Đang tải phân quyền', message: 'Vui lòng thử lại sau khi hệ thống tải xong quyền truy cập.' });
+            return;
+        }
         if (!canSaveToDb) {
             setDialog({ isOpen: true, type: 'error', title: 'Không có quyền', message: 'Bạn không có quyền lưu bản vẽ vào cơ sở dữ liệu.' });
             return;
@@ -760,6 +768,10 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
 
     // Batch save all features with retry logic
     const handleBatchSaveAll = async () => {
+        if (permissionLoading) {
+            setDialog({ isOpen: true, type: 'info', title: 'Đang tải phân quyền', message: 'Vui lòng thử lại sau khi hệ thống tải xong quyền truy cập.' });
+            return;
+        }
         if (!canSaveToDb) {
             setDialog({ isOpen: true, type: 'error', title: 'Không có quyền', message: 'Bạn không có quyền lưu bản vẽ vào cơ sở dữ liệu.' });
             return;
@@ -887,6 +899,10 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     };
 
     const handleSaveFeatureFromList = (uid: string) => {
+        if (permissionLoading) {
+            setDialog({ isOpen: true, type: 'info', title: 'Đang tải phân quyền', message: 'Vui lòng thử lại sau khi hệ thống tải xong quyền truy cập.' });
+            return;
+        }
         if (!canSaveToDb) {
             setDialog({ isOpen: true, type: 'error', title: 'Không có quyền', message: 'Bạn không có quyền lưu bản vẽ vào cơ sở dữ liệu.' });
             return;

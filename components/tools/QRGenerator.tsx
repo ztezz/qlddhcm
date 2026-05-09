@@ -269,7 +269,7 @@ const QRGenerator: React.FC = () => {
                                         disabled
                                         className="w-full py-4 rounded-2xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 transition-all shadow-xl bg-slate-800 text-slate-500 cursor-not-allowed opacity-50"
                                     >
-                                        <Download size={18}/> T???i ???nh PNG (HD)
+                                        <Download size={18}/> Tải ảnh PNG (HD)
                                     </button>
                                 )}
                             </div>
