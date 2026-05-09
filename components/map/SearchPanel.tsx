@@ -94,34 +94,99 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ isOpen, onToggle, spatialTabl
         } finally { setLoading(false); }
     };
 
-    const handleCoordSearch = () => {
-        const cleanInput = coordInput.replace(/[^0-9.,-\s]/g, '').trim();
-        const parts = cleanInput.split(/[\s,]+/).filter(Boolean);
+    const parseLatLonPair = (n1: number, n2: number): { lat: number; lon: number } => {
+        if (Math.abs(n1) <= 90 && Math.abs(n2) > 90) return { lat: n1, lon: n2 };
+        if (Math.abs(n2) <= 90 && Math.abs(n1) > 90) return { lat: n2, lon: n1 };
+        return { lat: n1, lon: n2 };
+    };
 
-        if (parts.length !== 2) {
-            setError('Định dạng sai. VD: 10.776, 106.700');
-            return;
-        }
+    const isValidLatLon = (lat: number, lon: number) => (
+        Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180
+    );
+
+    const parseCoordPairFromText = (value: string): { lat: number; lon: number } | null => {
+        const match = value.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+        if (!match) return null;
+        const n1 = parseFloat(match[1]);
+        const n2 = parseFloat(match[2]);
+        if (Number.isNaN(n1) || Number.isNaN(n2)) return null;
+        return parseLatLonPair(n1, n2);
+    };
+
+    const parsePlainCoordinate = (value: string): { lat: number; lon: number } | null => {
+        const cleanInput = value.replace(/[^0-9.,-\s]/g, '').trim();
+        const parts = cleanInput.split(/[\s,]+/).filter(Boolean);
+        if (parts.length !== 2) return null;
 
         const n1 = parseFloat(parts[0]);
         const n2 = parseFloat(parts[1]);
+        if (Number.isNaN(n1) || Number.isNaN(n2)) return null;
 
-        if (isNaN(n1) || isNaN(n2)) {
-            setError('Tọa độ phải là số.');
+        return parseLatLonPair(n1, n2);
+    };
+
+    const parseGoogleMapsCoordinate = (value: string): { lat: number; lon: number } | null => {
+        const raw = value.trim();
+
+        try {
+            const normalizedUrl = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+            const url = new URL(normalizedUrl);
+            const queryCandidates = ['q', 'll', 'query', 'center'];
+            for (const key of queryCandidates) {
+                const val = url.searchParams.get(key);
+                if (!val) continue;
+                const parsed = parseCoordPairFromText(decodeURIComponent(val));
+                if (parsed) return parsed;
+            }
+
+            const atMatch = `${url.pathname}${url.hash}`.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+            if (atMatch) {
+                const lat = parseFloat(atMatch[1]);
+                const lon = parseFloat(atMatch[2]);
+                if (!Number.isNaN(lat) && !Number.isNaN(lon)) return { lat, lon };
+            }
+
+            const dMatch = url.href.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+            if (dMatch) {
+                const lat = parseFloat(dMatch[1]);
+                const lon = parseFloat(dMatch[2]);
+                if (!Number.isNaN(lat) && !Number.isNaN(lon)) return { lat, lon };
+            }
+
+            const pathPair = parseCoordPairFromText(decodeURIComponent(url.pathname));
+            if (pathPair) return pathPair;
+
+            return null;
+        } catch {
+            return null;
+        }
+    };
+
+    const handleCoordSearch = () => {
+        const input = coordInput.trim();
+        if (!input) {
+            setError('Vui lòng nhập tọa độ hoặc link Google Maps.');
             return;
         }
 
-        let lat, lon;
-        if (Math.abs(n1) <= 90 && Math.abs(n2) > 90) {
-            lat = n1; lon = n2;
-        } else if (Math.abs(n2) <= 90 && Math.abs(n1) > 90) {
-            lon = n1; lat = n2;
-        } else {
-            lat = n1; lon = n2;
+        const parsed = parsePlainCoordinate(input) || parseGoogleMapsCoordinate(input);
+
+        if (!parsed) {
+            if (/(maps\.app\.goo\.gl|goo\.gl\/maps)/i.test(input)) {
+                setError('Liên kết rút gọn chưa có tọa độ trực tiếp. Vui lòng mở link rồi sao chép URL đầy đủ.');
+                return;
+            }
+            setError('Không đọc được tọa độ. Nhập "lat,lng" hoặc dán link Google Maps hợp lệ.');
+            return;
+        }
+
+        if (!isValidLatLon(parsed.lat, parsed.lon)) {
+            setError('Tọa độ không hợp lệ (vĩ độ [-90,90], kinh độ [-180,180]).');
+            return;
         }
 
         if (onSearchCoordinate) {
-            onSearchCoordinate(lat, lon);
+            onSearchCoordinate(parsed.lat, parsed.lon);
         }
     };
 
@@ -237,7 +302,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ isOpen, onToggle, spatialTabl
                             <MapPin size={14} className="absolute left-3 top-3 text-red-500"/>
                             <input 
                                 className="w-full bg-red-50/30 border border-red-200 rounded-lg p-3 pl-10 text-xs font-black text-slate-950 outline-none" 
-                                placeholder="VD: 10.77611, 106.70111" 
+                                placeholder="VD: 10.77611, 106.70111 hoặc link Google Maps"
                                 value={coordInput} 
                                 onChange={e => setCoordInput(e.target.value)}
                             />
