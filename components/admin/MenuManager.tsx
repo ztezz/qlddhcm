@@ -383,7 +383,9 @@ const MenuManager: React.FC<MenuManagerProps> = ({ permissions = [] }) => {
                                         <td className="p-5">
                                             <div className="flex flex-wrap gap-1">
                                                 {item.roles.map(r => (
-                                                    <span key={r} className="text-[8px] font-black px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 border border-gray-700 uppercase">{r}</span>
+                                                    <span key={r} className="text-[8px] font-black px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 border border-gray-700 uppercase">
+                                                        {r === 'GUEST' ? 'Khách' : getRoleLabel(r)}
+                                                    </span>
                                                 ))}
                                             </div>
                                         </td>
