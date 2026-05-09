@@ -168,14 +168,33 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus, permissions = [] 
                 parcelApi.manageTables.getAll().catch(() => []),
                 adminService.getBasemaps().catch(() => [])
             ]);
-            setWmsLayers(layers || []);
+            const normalizedLayers = (layers || [])
+                .map((item: any, index: number) => ({
+                    ...item,
+                    sortOrder: normalizeSortOrderValue(item?.sortOrder ?? item?.sort_order, index + 1)
+                }))
+                .sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+
+            const normalizedBasemaps = (maps || [])
+                .map((item: any, index: number) => ({
+                    ...item,
+                    sortOrder: normalizeSortOrderValue(item?.sortOrder ?? item?.sort_order, index + 1)
+                }))
+                .sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+
+            setWmsLayers(normalizedLayers);
             setSpatialTables(tables || []);
-            setBasemaps(maps || []);
-            lastSyncedLayersRef.current = layers || [];
-            lastSyncedBasemapsRef.current = maps || [];
+            setBasemaps(normalizedBasemaps);
+            lastSyncedLayersRef.current = normalizedLayers;
+            lastSyncedBasemapsRef.current = normalizedBasemaps;
         } catch (e: any) {
             setError("Không thể tải toàn bộ dữ liệu cấu hình.");
         } finally { setLoading(false); }
+    };
+
+    const normalizeSortOrderValue = (value: unknown, fallback: number): number => {
+        const normalized = Number(value);
+        return Number.isFinite(normalized) && normalized > 0 ? normalized : fallback;
     };
 
     const reindexSortOrder = <T extends { sortOrder?: number }>(items: T[]): T[] => {
@@ -691,7 +710,7 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus, permissions = [] 
                         <tbody className="divide-y divide-gray-700 text-gray-300">
                             {filteredWmsLayers.length === 0 ? (
                                 <tr><td colSpan={9} className="p-10 text-center text-gray-600 italic">Không có lớp dữ liệu nào khớp điều kiện lọc</td></tr>
-                            ) : filteredWmsLayers.map(l => {
+                            ) : filteredWmsLayers.map((l, idx) => {
                                 const scopeMeta = getScopeMeta((l.mapScope || getLayerScope(l)) as MapScope);
                                 return (
                                 <tr
@@ -707,7 +726,7 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus, permissions = [] 
                                         <GripVertical size={14} />
                                     </td>
                                     <td className="p-4">
-                                        <span className="font-mono text-[11px] px-2 py-1 rounded bg-gray-900 border border-gray-700 text-cyan-300">#{l.sortOrder ?? 0}</span>
+                                        <span className="font-mono text-[11px] px-2 py-1 rounded bg-gray-900 border border-gray-700 text-cyan-300">#{normalizeSortOrderValue(l.sortOrder, idx + 1)}</span>
                                     </td>
                                     <td className="p-4">
                                         <div className="flex flex-col">
@@ -785,7 +804,7 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus, permissions = [] 
                         <tbody className="divide-y divide-gray-700 text-gray-300">
                             {filteredBasemaps.length === 0 ? (
                                 <tr><td colSpan={9} className="p-8 text-center text-gray-600 italic">Không có bản đồ nền nào khớp điều kiện lọc</td></tr>
-                            ) : filteredBasemaps.map(bm => (
+                            ) : filteredBasemaps.map((bm, idx) => (
                                 <tr
                                     key={bm.id}
                                     draggable={canReorderBasemaps}
@@ -799,7 +818,7 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus, permissions = [] 
                                         <GripVertical size={14} />
                                     </td>
                                     <td className="p-4">
-                                        <span className="font-mono text-[11px] px-2 py-1 rounded bg-gray-900 border border-gray-700 text-orange-300">#{bm.sortOrder ?? 0}</span>
+                                        <span className="font-mono text-[11px] px-2 py-1 rounded bg-gray-900 border border-gray-700 text-orange-300">#{normalizeSortOrderValue(bm.sortOrder, idx + 1)}</span>
                                     </td>
                                     <td className="p-4 font-bold text-white">{bm.name}</td>
                                     <td className="p-4 text-xs text-gray-500 max-w-[220px] truncate">{bm.description || '--'}</td>
