@@ -36,7 +36,6 @@ import { getArea } from 'ol/sphere';
 import shpwrite from '@mapbox/shp-write';
 import { isEmpty as isExtentEmpty } from 'ol/extent';
 import { click } from 'ol/events/condition';
-import * as DXF from 'dxf';
 
 // Register VN-2000 (EPSG:9210 - Kinh tuyến trục 105.75 cho khu vực miền Nam)
 proj4.defs("EPSG:9210", "+proj=tmerc +lat_0=0 +lon_0=105.75 +k=0.9999 +x_0=500000 +y_0=0 +ellps=WGS84 +towgs84=-191.904,-39.303,-111.450,0,0,0,0 +units=m +no_defs");
@@ -928,8 +927,29 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         }
 
         try {
-            const drawing = new DXF.Drawing();
+            let dxfContent = `  0
+SECTION
+  2
+HEADER
+  9
+$ACADVER
+  1
+AC1021
+  0
+ENDSEC
+  0
+SECTION
+  2
+BLOCKS
+  0
+ENDSEC
+  0
+SECTION
+  2
+ENTITIES
+`;
 
+            let entityId = 0;
             features.forEach((f: any, idx: number) => {
                 const geom = f.getGeometry();
                 const coords = geom?.getCoordinates?.();
@@ -938,30 +958,62 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
 
                 if (coords && coords.length > 0) {
                     const ring = coords[0];
-                    const points = ring.map((c: any) => [c[0], c[1]]);
+                    if (ring.length >= 3) {
+                        // LWPOLYLINE
+                        dxfContent += `  0
+LWPOLYLINE
+  5
+${entityId.toString(16).toUpperCase()}
+  8
+Thua_${sothua || idx}
+ 70
+1
+ 90
+${ring.length}
+`;
+                        ring.forEach((c: any) => {
+                            dxfContent += ` 10
+${c[0]}
+ 20
+${c[1]}
+`;
+                        });
+                        entityId++;
 
-                    if (points.length >= 3) {
-                        const lwpolyline = new DXF.LWPolyline(points);
-                        lwpolyline.layer = `Thua_${sothua || idx}`;
-                        lwpolyline.color = 1;
-                        drawing.addEntity(lwpolyline);
-
+                        // TEXT label
                         if (sodoto && sothua) {
                             const centroid = [
-                                points.reduce((sum: number, p: any) => sum + p[0], 0) / points.length,
-                                points.reduce((sum: number, p: any) => sum + p[1], 0) / points.length
+                                ring.reduce((sum: number, p: any) => sum + p[0], 0) / ring.length,
+                                ring.reduce((sum: number, p: any) => sum + p[1], 0) / ring.length
                             ];
-                            const text = new DXF.Text(`${sodoto}/${sothua}`, centroid[0], centroid[1]);
-                            text.layer = 'Labels';
-                            text.height = 10;
-                            drawing.addEntity(text);
+                            dxfContent += `  0
+TEXT
+  5
+${entityId.toString(16).toUpperCase()}
+  8
+Labels
+ 10
+${centroid[0]}
+ 20
+${centroid[1]}
+ 40
+10
+  1
+${sodoto}/${sothua}
+`;
+                            entityId++;
                         }
                     }
                 }
             });
 
-            const dxfString = drawing.toDxfString();
-            const blob = new Blob([dxfString], { type: 'application/dxf' });
+            dxfContent += `  0
+ENDSEC
+  0
+EOF
+`;
+
+            const blob = new Blob([dxfContent], { type: 'application/dxf' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
