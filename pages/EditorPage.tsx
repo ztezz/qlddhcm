@@ -36,6 +36,7 @@ import { getArea } from 'ol/sphere';
 import shpwrite from '@mapbox/shp-write';
 import { isEmpty as isExtentEmpty } from 'ol/extent';
 import { click } from 'ol/events/condition';
+import DxfWriter from 'dxf-writer';
 
 // Register VN-2000 (EPSG:9210 - Kinh tuyến trục 105.75 cho khu vực miền Nam)
 proj4.defs("EPSG:9210", "+proj=tmerc +lat_0=0 +lon_0=105.75 +k=0.9999 +x_0=500000 +y_0=0 +ellps=WGS84 +towgs84=-191.904,-39.303,-111.450,0,0,0,0 +units=m +no_defs");
@@ -919,6 +920,55 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         }
     };
 
+    const handleExportDXF = () => {
+        const features = editSource.current.getFeatures();
+        if (features.length === 0) {
+            setDialog({ isOpen: true, type: 'error', title: 'Lỗi export', message: 'Không có dữ liệu để xuất DXF.' });
+            return;
+        }
+
+        try {
+            const dxf = new DxfWriter();
+
+            features.forEach((f: any) => {
+                const geom = f.getGeometry();
+                const coords = geom?.getCoordinates?.();
+                const sodoto = f.get('sodoto') || '';
+                const sothua = f.get('sothua') || '';
+
+                if (coords && coords.length > 0) {
+                    const ring = coords[0];
+                    const points = ring.map((c: any) => ({ x: c[0], y: c[1] }));
+
+                    if (points.length >= 3) {
+                        dxf.addLWPolyline(points, { layer: `Thua_${sothua}`, color: 1 });
+
+                        if (sodoto && sothua) {
+                            const centroid = {
+                                x: points.reduce((sum: number, p: any) => sum + p.x, 0) / points.length,
+                                y: points.reduce((sum: number, p: any) => sum + p.y, 0) / points.length
+                            };
+                            dxf.addText(`${sodoto}/${sothua}`, centroid, 10, { layer: 'Labels' });
+                        }
+                    }
+                }
+            });
+
+            const dxfString = dxf.toDxfString();
+            const blob = new Blob([dxfString], { type: 'application/dxf' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `GeoMaster_${Date.now()}.dxf`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            setDialog({ isOpen: true, type: 'success', title: 'Xuất thành công', message: 'File DXF đã được tải xuống. Mở bằng AutoCAD hoặc MicroStation.' });
+        } catch (e: any) {
+            setDialog({ isOpen: true, type: 'error', title: 'Lỗi export', message: e?.message || 'Không thể xuất DXF vào lúc này.' });
+        }
+    };
+
     // List Management
     const handleDeleteFeature = (uid: string) => {
         const feature = editSource.current.getFeatures().find(f => getUid(f) === uid);
@@ -998,6 +1048,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                 onFileUpload={handleFileUpload}
                 onExportGeoJSON={handleExportGeoJSON}
                 onExportShpZip={handleExportShpZip}
+                onExportDXF={handleExportDXF}
                 onOpenCADConverter={() => setShowCADConverter(true)}
                 area={area}
                 hasSelected={!!selectedFeature}
