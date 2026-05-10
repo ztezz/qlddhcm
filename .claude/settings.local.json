@@ -9,7 +9,9 @@
       "Bash(npm run *)",
       "Bash(node --check \"D:/code/qlddhcm/backend_guide/routes_conversion.js\")",
       "Bash(node --check \"D:/code/qlddhcm/backend_guide/server.js\")",
-      "Bash(npm uninstall *)"
+      "Bash(npm uninstall *)",
+      "Bash(timeout 15)",
+      "PowerShell(Get-Process *)"
     ]
   }
 }

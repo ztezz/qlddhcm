@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { authService, API_URL } from '../services/mockBackend';
 import { User, Branch } from '../types';
 import { Lock, Mail, Loader2, KeyRound, ArrowLeft, UserPlus, Building, User as UserIcon, CheckCircle, ShieldCheck, Info, CheckCircle2, AlertTriangle, Hash, Eye, EyeOff, Sun, Moon, Zap, Shield, Check, RefreshCw } from 'lucide-react';
+import { VideoBackground } from '../components/VideoBackground';
 
 interface LoginProps {
   onLogin: (user: User) => void;
@@ -260,29 +261,14 @@ const Login: React.FC<LoginProps> = ({ onLogin, onCancel, systemName, logoUrl, f
   };
 
   return (
-    <div className={`fixed inset-0 z-[1000] transition-colors duration-300 ${
-      theme === 'dark' 
-        ? 'bg-gradient-to-br from-slate-950 via-blue-900 to-slate-950 backdrop-blur-sm' 
-        : 'bg-gradient-to-br from-blue-50 via-white to-blue-100 backdrop-blur-sm'
-    } flex items-start sm:items-center justify-center p-3 sm:p-4 overflow-y-auto`}>
-      
-      {/* Theme Toggle Button */}
-      <button 
-        onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-        className={`absolute top-3 right-3 sm:top-6 sm:right-6 z-50 p-2.5 sm:p-3 rounded-full transition-all duration-300 ${
-          theme === 'dark'
-            ? 'bg-gray-800 hover:bg-gray-700 text-yellow-400'
-            : 'bg-white hover:bg-gray-100 text-orange-500 shadow-lg'
-        }`}
-      >
-        {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-      </button>
+    <div className="fixed inset-0 z-[1000] flex items-start sm:items-center justify-center p-3 sm:p-4 overflow-y-auto">
 
-      <div className={`${
-        theme === 'dark'
-          ? 'bg-gray-900 border border-gray-700'
-          : 'bg-white border border-blue-200 shadow-2xl'
-      } rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8 w-full max-w-md max-h-[calc(100vh-1rem)] sm:max-h-[calc(100vh-2rem)] overflow-y-auto relative animate-in zoom-in-95 duration-300`}>
+      {/* Video Background - Full Screen */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <VideoBackground />
+      </div>
+
+      <div className="bg-gray-900/80 border border-gray-700 rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8 w-full max-w-md max-h-[calc(100vh-1rem)] sm:max-h-[calc(100vh-2rem)] overflow-y-auto relative animate-in zoom-in-95 duration-300 z-10 backdrop-blur-sm">
         
         <button 
             onClick={onCancel}
