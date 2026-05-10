@@ -82,6 +82,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     const [searchModal, setSearchModal] = useState({ isOpen: false, coords: { x: '', y: '' } });
     const [manualModal, setManualModal] = useState({ isOpen: false, text: '' });
     const [showCADConverter, setShowCADConverter] = useState(false);
+    const [currentBasemap, setCurrentBasemap] = useState('google-satellite');
     const [dialog, setDialog] = useState<{ isOpen: boolean; type: 'success' | 'error' | 'info'; title: string; message: string; }>({ isOpen: false, type: 'info', title: '', message: '' });
 
     // Custom Hooks for History and Draft Management
@@ -123,6 +124,44 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         ? DEFAULT_ROLE_PERMISSIONS[UserRole.ADMIN]
         : rolePermissions.find((rp) => rp.role === user?.role)?.permissions || (user?.role ? DEFAULT_ROLE_PERMISSIONS[user.role] || [] : []);
     const canSaveToDb = !permissionLoading && hasAnyPermission(currentPermissions, ['SAVE_MAP_TO_DB']);
+
+    const basemapOptions = {
+        'google-satellite': {
+            name: 'Google Satellite',
+            url: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'
+        },
+        'google-roadmap': {
+            name: 'Google Roadmap',
+            url: 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}'
+        },
+        'google-terrain': {
+            name: 'Google Terrain',
+            url: 'https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}'
+        },
+        'osm': {
+            name: 'OpenStreetMap',
+            url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+        },
+        'bing-satellite': {
+            name: 'Bing Satellite',
+            url: 'https://ecn.t3.tiles.virtualearth.net/tiles/a{q}.jpeg?g=13'
+        },
+        'esri-satellite': {
+            name: 'ESRI Satellite',
+            url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+        }
+    };
+
+    const handleChangeBasemap = (basemapKey: string) => {
+        const basemap = basemapOptions[basemapKey as keyof typeof basemapOptions];
+        if (basemap && baseLayerRef.current) {
+            baseLayerRef.current.setSource(new XYZ({
+                url: basemap.url,
+                crossOrigin: 'anonymous'
+            }));
+            setCurrentBasemap(basemapKey);
+        }
+    };
 
     // Layers Refs
     const baseLayerRef = useRef<TileLayer<any>>(new TileLayer({
@@ -1077,8 +1116,8 @@ EOF
 
     return (
         <div className="flex h-full w-full bg-[#05070a] overflow-hidden font-sans text-white">
-            <EditorToolbar 
-                activeInteraction={activeInteraction} 
+            <EditorToolbar
+                activeInteraction={activeInteraction}
                 setActiveInteraction={setActiveInteraction}
                 isSnapping={isSnapping} setIsSnapping={setIsSnapping}
                 showBasemap={showBasemap} setShowBasemap={setShowBasemap}
@@ -1091,6 +1130,8 @@ EOF
                 onOpenSearch={() => setSearchModal({ ...searchModal, isOpen: true })}
                 onOpenManual={() => setManualModal({ ...manualModal, isOpen: true })}
                 onClearAll={() => { editSource.current.clear(); setSelectedFeature(null); setVertices([]); updateFeatureListState(); clearDraft(); }}
+                currentBasemap={currentBasemap}
+                onChangeBasemap={handleChangeBasemap}
             />
 
             <div className="flex-1 relative bg-[#05070a]">
