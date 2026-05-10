@@ -38,7 +38,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
         { key: 'google-roadmap', name: 'Google Roadmap' },
         { key: 'google-terrain', name: 'Google Terrain' },
         { key: 'osm', name: 'OpenStreetMap' },
-        { key: 'bing-satellite', name: 'Bing Satellite' },
+        { key: 'google-hybrid', name: 'Google Satellite Hybrid' },
         { key: 'esri-satellite', name: 'ESRI Satellite' }
     ];
     return (

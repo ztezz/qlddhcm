@@ -142,9 +142,9 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
             name: 'OpenStreetMap',
             url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
         },
-        'bing-satellite': {
-            name: 'Bing Satellite',
-            url: 'https://ecn.t3.tiles.virtualearth.net/tiles/a{q}.jpeg?g=13'
+        'google-hybrid': {
+            name: 'Google Satellite Hybrid',
+            url: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'
         },
         'esri-satellite': {
             name: 'ESRI Satellite',
