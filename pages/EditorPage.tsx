@@ -28,10 +28,11 @@ import { Vector as VectorSource, XYZ } from 'ol/source';
 import * as proj from 'ol/proj';
 import * as style from 'ol/style';
 import { Polygon, Point, MultiPolygon } from 'ol/geom';
+import GeoJSON from 'ol/format/GeoJSON';
 import Feature from 'ol/Feature';
 import { Draw, Modify, Snap, Select } from 'ol/interaction';
 import { getArea } from 'ol/sphere';
-import GeoJSON from 'ol/format/GeoJSON';
+import shpwrite from '@mapbox/shp-write';
 import { isEmpty as isExtentEmpty } from 'ol/extent';
 import { click } from 'ol/events/condition';
 
@@ -872,6 +873,50 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `GeoMaster_${Date.now()}.geojson`; a.click();
     };
 
+    const handleExportShpZip = async () => {
+        const features = editSource.current.getFeatures();
+        if (features.length === 0) return;
+
+        try {
+            const geojson = new GeoJSON().writeFeaturesObject(features, {
+                dataProjection: 'EPSG:4326',
+                featureProjection: 'EPSG:3857'
+            }) as any;
+
+            if (!Array.isArray(geojson.features) || geojson.features.length === 0) {
+                setDialog({ isOpen: true, type: 'error', title: 'Lỗi export', message: 'Không có dữ liệu hợp lệ để xuất SHP.' });
+                return;
+            }
+
+            const normalizedFeatures = geojson.features.map((f: any) => {
+                const props = f?.properties || {};
+                return {
+                    ...f,
+                    properties: {
+                        sodoto: props.sodoto || '',
+                        sothua: props.sothua || '',
+                        loaidat: props.loaidat || '',
+                        dientich: Number.isFinite(Number(props.dientich)) ? Number(props.dientich) : 0
+                    }
+                };
+            });
+
+            const zipped = await shpwrite.zip(
+                { type: 'FeatureCollection', features: normalizedFeatures },
+                { outputType: 'arraybuffer', compression: 'STORE' }
+            );
+            const blob = new Blob([zipped], { type: 'application/zip' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `GeoMaster_${Date.now()}.zip`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch (e: any) {
+            setDialog({ isOpen: true, type: 'error', title: 'Lỗi export', message: e?.message || 'Không thể xuất SHP vào lúc này.' });
+        }
+    };
+
     // List Management
     const handleDeleteFeature = (uid: string) => {
         const feature = editSource.current.getFeatures().find(f => getUid(f) === uid);
@@ -950,6 +995,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                 onDeleteVertex={handleDeleteVertex}
                 onFileUpload={handleFileUpload}
                 onExportGeoJSON={handleExportGeoJSON}
+                onExportShpZip={handleExportShpZip}
                 area={area}
                 hasSelected={!!selectedFeature}
                 

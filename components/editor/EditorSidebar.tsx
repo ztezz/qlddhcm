@@ -25,6 +25,7 @@ interface EditorSidebarProps {
     onDeleteVertex: (index: number) => void;
     onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
     onExportGeoJSON: () => void;
+    onExportShpZip: () => void;
     area: number;
     hasSelected: boolean;
 
@@ -167,7 +168,7 @@ const EditorSidebar: React.FC<EditorSidebarProps> = (props) => {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-3 gap-3">
                         <label className="flex flex-col items-center justify-center p-4 bg-slate-800/30 hover:bg-slate-800 rounded-2xl border border-slate-800 cursor-pointer transition-all">
                             <FileUp size={20} className="text-slate-500 mb-2" />
                             <span className="text-[9px] font-black uppercase text-slate-500">Import File</span>
@@ -176,6 +177,10 @@ const EditorSidebar: React.FC<EditorSidebarProps> = (props) => {
                         <button onClick={props.onExportGeoJSON} disabled={props.vertices.length === 0} className="flex flex-col items-center justify-center p-4 bg-slate-800/30 hover:bg-slate-800 rounded-2xl border border-slate-800 transition-all disabled:opacity-30">
                             <FileDown size={20} className="text-slate-500 mb-2" />
                             <span className="text-[9px] font-black uppercase text-slate-500">Export JSON</span>
+                        </button>
+                        <button onClick={props.onExportShpZip} disabled={props.vertices.length === 0} className="flex flex-col items-center justify-center p-4 bg-slate-800/30 hover:bg-slate-800 rounded-2xl border border-slate-800 transition-all disabled:opacity-30">
+                            <Download size={20} className="text-slate-500 mb-2" />
+                            <span className="text-[9px] font-black uppercase text-slate-500">Export SHP</span>
                         </button>
                     </div>
                 </div>

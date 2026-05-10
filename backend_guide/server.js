@@ -19,6 +19,7 @@ import mapAdminRouter from './routes_map_admin.js';
 import statsRouter from './routes_stats.js';
 import messageRouter from './routes_messages.js';
 import notificationRouter from './routes_notifications.js';
+import conversionRouter from './routes_conversion.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -138,8 +139,9 @@ app.use('/api/stats', statsRouter(pool));
 app.use('/api/messages', messageRouter(pool));
 app.use('/api/notifications', notificationRouter(pool));
 app.use('/api', configRouter(pool, logSystemAction)); 
-app.use('/api', mapAdminRouter(pool, logSystemAction, dbConfig)); 
-app.use('/api', spatialRouter(pool, logSystemAction)); 
+app.use('/api', mapAdminRouter(pool, logSystemAction, dbConfig));
+app.use('/api', spatialRouter(pool, logSystemAction));
+app.use('/api', conversionRouter(pool, logSystemAction));
 app.use('/api/proxy', proxyRouter);
 
 app.get('/health', (req, res) => res.json({ status: 'OK', db: 'Connected' }));

@@ -16,6 +16,7 @@
     "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
+    "@mapbox/shp-write": "^0.4.3",
     "@react-three/drei": "^9.96.1",
     "@react-three/fiber": "^8.15.12",
     "@tailwindcss/vite": "^4.2.2",
