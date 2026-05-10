@@ -16,6 +16,7 @@ import LogViewer from '../components/admin/LogViewer';
 import MenuManager from '../components/admin/MenuManager';
 import NotificationManager from '../components/admin/NotificationManager';
 import PdfSettingsManager from '../components/admin/PdfSettingsManager';
+import CADConverter from '../components/tools/CADConverter';
 import { User, UserRole } from '../types';
 
 interface AdminPageProps {
@@ -108,6 +109,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ systemName, logoUrl, user }) => {
             case 'PDF_SETTINGS': return <PdfSettingsManager permissions={currentPermissions} />;
             case 'SETTINGS': return <SystemSettingsManager permissions={currentPermissions} />;
             case 'LOGS': return <LogViewer />;
+            case 'CAD_CONVERTER': return <div className="p-8"><CADConverter /></div>;
             default: return <div className="p-8 text-gray-500 italic">Module đang phát triển...</div>;
         }
     };

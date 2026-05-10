@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ClipboardList, Download, Plus, FileDigit, Tag, Save, RefreshCw, Hash, Trash2, FileUp, FileDown, CloudUpload, List, Edit3, AlertCircle } from 'lucide-react';
+import { ClipboardList, Download, Plus, FileDigit, Tag, Save, RefreshCw, Hash, Trash2, FileUp, FileDown, CloudUpload, List, Edit3, AlertCircle, FileJson } from 'lucide-react';
 import * as proj from 'ol/proj';
 
 interface EditorSidebarProps {
@@ -26,6 +26,7 @@ interface EditorSidebarProps {
     onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
     onExportGeoJSON: () => void;
     onExportShpZip: () => void;
+    onOpenCADConverter: () => void;
     area: number;
     hasSelected: boolean;
 
@@ -168,19 +169,23 @@ const EditorSidebar: React.FC<EditorSidebarProps> = (props) => {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-4 gap-3">
                         <label className="flex flex-col items-center justify-center p-4 bg-slate-800/30 hover:bg-slate-800 rounded-2xl border border-slate-800 cursor-pointer transition-all">
                             <FileUp size={20} className="text-slate-500 mb-2" />
-                            <span className="text-[9px] font-black uppercase text-slate-500">Import File</span>
+                            <span className="text-[9px] font-black uppercase text-slate-500">Import</span>
                             <input type="file" className="hidden" accept=".geojson,.json" onChange={props.onFileUpload} />
                         </label>
                         <button onClick={props.onExportGeoJSON} disabled={props.vertices.length === 0} className="flex flex-col items-center justify-center p-4 bg-slate-800/30 hover:bg-slate-800 rounded-2xl border border-slate-800 transition-all disabled:opacity-30">
                             <FileDown size={20} className="text-slate-500 mb-2" />
-                            <span className="text-[9px] font-black uppercase text-slate-500">Export JSON</span>
+                            <span className="text-[9px] font-black uppercase text-slate-500">JSON</span>
                         </button>
                         <button onClick={props.onExportShpZip} disabled={props.vertices.length === 0} className="flex flex-col items-center justify-center p-4 bg-slate-800/30 hover:bg-slate-800 rounded-2xl border border-slate-800 transition-all disabled:opacity-30">
                             <Download size={20} className="text-slate-500 mb-2" />
-                            <span className="text-[9px] font-black uppercase text-slate-500">Export SHP</span>
+                            <span className="text-[9px] font-black uppercase text-slate-500">SHP</span>
+                        </button>
+                        <button onClick={props.onOpenCADConverter} className="flex flex-col items-center justify-center p-4 bg-slate-800/30 hover:bg-slate-800 rounded-2xl border border-slate-800 transition-all">
+                            <FileJson size={20} className="text-slate-500 mb-2" />
+                            <span className="text-[9px] font-black uppercase text-slate-500">DWG</span>
                         </button>
                     </div>
                 </div>

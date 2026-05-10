@@ -499,7 +499,8 @@ export const ADMIN_TAB_PERMISSIONS: Record<string, string[]> = {
     DATA_LAYERS: ['MANAGE_LAYERS', 'MANAGE_TABLES', 'MANAGE_BASEMAPS'],
     SETTINGS: ['MANAGE_SYSTEM', 'SAVE_SYSTEM_SETTINGS', 'MANAGE_BACKUP', 'RESTORE_BACKUP'],
     PDF_SETTINGS: ['MANAGE_SYSTEM', 'SAVE_SYSTEM_SETTINGS'],
-    LOGS: ['VIEW_LOGS', 'EXPORT_LOGS']
+    LOGS: ['VIEW_LOGS', 'EXPORT_LOGS'],
+    CAD_CONVERTER: ['MANAGE_CONVERSIONS', 'VIEW_CONVERSIONS']
 };
 
 export const hasAnyPermission = (permissions: string[] = [], required: string | string[]) => {

@@ -11,6 +11,7 @@ import { register } from 'ol/proj/proj4';
 import EditorToolbar from '../components/editor/EditorToolbar';
 import EditorSidebar from '../components/editor/EditorSidebar';
 import EditorModals from '../components/editor/EditorModals';
+import CADConverter from '../components/tools/CADConverter';
 
 // Hooks
 import { useEditorHistory } from '../hooks/useEditorHistory';
@@ -80,6 +81,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     // Modal States
     const [searchModal, setSearchModal] = useState({ isOpen: false, coords: { x: '', y: '' } });
     const [manualModal, setManualModal] = useState({ isOpen: false, text: '' });
+    const [showCADConverter, setShowCADConverter] = useState(false);
     const [dialog, setDialog] = useState<{ isOpen: boolean; type: 'success' | 'error' | 'info'; title: string; message: string; }>({ isOpen: false, type: 'info', title: '', message: '' });
 
     // Custom Hooks for History and Draft Management
@@ -996,6 +998,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                 onFileUpload={handleFileUpload}
                 onExportGeoJSON={handleExportGeoJSON}
                 onExportShpZip={handleExportShpZip}
+                onOpenCADConverter={() => setShowCADConverter(true)}
                 area={area}
                 hasSelected={!!selectedFeature}
                 
@@ -1032,6 +1035,25 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                     onClose: () => setDialog({...dialog, isOpen: false})
                 }}
             />
+
+            {showCADConverter && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-slate-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="flex items-center justify-between p-4 border-b border-slate-700 sticky top-0 bg-slate-800">
+                            <h2 className="text-lg font-bold text-white">Chuyển đổi DWG/DGN sang GeoJSON</h2>
+                            <button
+                                onClick={() => setShowCADConverter(false)}
+                                className="text-slate-400 hover:text-white"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <div className="p-4">
+                            <CADConverter compact={true} />
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
