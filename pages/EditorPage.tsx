@@ -952,12 +952,21 @@ ENTITIES
             let entityId = 0;
             features.forEach((f: any, idx: number) => {
                 const geom = f.getGeometry();
-                const coords = geom?.getCoordinates?.();
+                let coords = geom?.getCoordinates?.();
                 const sodoto = f.get('sodoto') || '';
                 const sothua = f.get('sothua') || '';
 
                 if (coords && coords.length > 0) {
-                    const ring = coords[0];
+                    let ring = coords[0];
+
+                    // Chuyển đổi tọa độ nếu cần
+                    if (coordSystem === 'VN2000') {
+                        ring = ring.map((c: any) => {
+                            const transformed = proj.transform(c, 'EPSG:3857', 'EPSG:9210');
+                            return transformed;
+                        });
+                    }
+
                     if (ring.length >= 3) {
                         // LWPOLYLINE
                         dxfContent += `  0
@@ -1017,11 +1026,11 @@ EOF
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `GeoMaster_${Date.now()}.dxf`;
+            a.download = `GeoMaster_${coordSystem}_${Date.now()}.dxf`;
             a.click();
             URL.revokeObjectURL(url);
 
-            setDialog({ isOpen: true, type: 'success', title: 'Xuất thành công', message: 'File DXF đã được tải xuống. Mở bằng AutoCAD hoặc MicroStation.' });
+            setDialog({ isOpen: true, type: 'success', title: 'Xuất thành công', message: `File DXF (${coordSystem}) đã được tải xuống. Mở bằng AutoCAD hoặc MicroStation.` });
         } catch (e: any) {
             setDialog({ isOpen: true, type: 'error', title: 'Lỗi export', message: e?.message || 'Không thể xuất DXF vào lúc này.' });
         }
