@@ -36,7 +36,7 @@ import { getArea } from 'ol/sphere';
 import shpwrite from '@mapbox/shp-write';
 import { isEmpty as isExtentEmpty } from 'ol/extent';
 import { click } from 'ol/events/condition';
-import DxfWriter from 'dxf-writer';
+import * as DXF from 'dxf';
 
 // Register VN-2000 (EPSG:9210 - Kinh tuyến trục 105.75 cho khu vực miền Nam)
 proj4.defs("EPSG:9210", "+proj=tmerc +lat_0=0 +lon_0=105.75 +k=0.9999 +x_0=500000 +y_0=0 +ellps=WGS84 +towgs84=-191.904,-39.303,-111.450,0,0,0,0 +units=m +no_defs");
@@ -928,9 +928,9 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         }
 
         try {
-            const dxf = new DxfWriter();
+            const drawing = new DXF.Drawing();
 
-            features.forEach((f: any) => {
+            features.forEach((f: any, idx: number) => {
                 const geom = f.getGeometry();
                 const coords = geom?.getCoordinates?.();
                 const sodoto = f.get('sodoto') || '';
@@ -938,23 +938,29 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
 
                 if (coords && coords.length > 0) {
                     const ring = coords[0];
-                    const points = ring.map((c: any) => ({ x: c[0], y: c[1] }));
+                    const points = ring.map((c: any) => [c[0], c[1]]);
 
                     if (points.length >= 3) {
-                        dxf.addLWPolyline(points, { layer: `Thua_${sothua}`, color: 1 });
+                        const lwpolyline = new DXF.LWPolyline(points);
+                        lwpolyline.layer = `Thua_${sothua || idx}`;
+                        lwpolyline.color = 1;
+                        drawing.addEntity(lwpolyline);
 
                         if (sodoto && sothua) {
-                            const centroid = {
-                                x: points.reduce((sum: number, p: any) => sum + p.x, 0) / points.length,
-                                y: points.reduce((sum: number, p: any) => sum + p.y, 0) / points.length
-                            };
-                            dxf.addText(`${sodoto}/${sothua}`, centroid, 10, { layer: 'Labels' });
+                            const centroid = [
+                                points.reduce((sum: number, p: any) => sum + p[0], 0) / points.length,
+                                points.reduce((sum: number, p: any) => sum + p[1], 0) / points.length
+                            ];
+                            const text = new DXF.Text(`${sodoto}/${sothua}`, centroid[0], centroid[1]);
+                            text.layer = 'Labels';
+                            text.height = 10;
+                            drawing.addEntity(text);
                         }
                     }
                 }
             });
 
-            const dxfString = dxf.toDxfString();
+            const dxfString = drawing.toDxfString();
             const blob = new Blob([dxfString], { type: 'application/dxf' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
