@@ -32,3 +32,6 @@ backend_guide/db_config.js
 !.dev.vars.example
 .env*
 !.env.example
+
+# Claude Code worktrees
+.claude/worktrees/
