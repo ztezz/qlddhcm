@@ -270,29 +270,20 @@ const Login: React.FC<LoginProps> = ({ onLogin, onCancel, systemName, logoUrl, f
 
       <div className="bg-gray-900/80 border border-gray-700 rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8 w-full max-w-md max-h-[calc(100vh-1rem)] sm:max-h-[calc(100vh-2rem)] overflow-y-auto relative animate-in zoom-in-95 duration-300 z-10 backdrop-blur-sm">
         
-        <button 
+        <button
             onClick={onCancel}
-            className={`absolute top-3 left-3 sm:top-4 sm:left-4 ${
-              theme === 'dark' ? 'text-gray-500 hover:text-white' : 'text-gray-600 hover:text-black'
-            } transition-colors flex items-center gap-1 text-sm font-bold`}
+            className={`absolute top-2 right-4 sm:top-3 sm:right-6 p-2 rounded-lg transition-all duration-200 z-50 ${
+              theme === 'dark'
+                ? 'bg-gray-800/50 hover:bg-gray-700 text-gray-400 hover:text-white border border-gray-700 hover:border-gray-600'
+                : 'bg-gray-100/50 hover:bg-gray-200 text-gray-600 hover:text-gray-900 border border-gray-300 hover:border-gray-400'
+            }`}
+            title="Đóng"
         >
-            <ArrowLeft size={16} /> Đóng
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
         </button>
 
-        <div className="text-center mb-5 sm:mb-8">
-          {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="mx-auto h-20 sm:h-24 mb-3 sm:mb-4 object-contain drop-shadow-lg" />
-          ) : null}
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <Zap className={theme === 'dark' ? 'text-blue-400' : 'text-blue-600'} size={28} />
-            <h2 className={`text-2xl sm:text-3xl font-black ${
-              theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
-            }`}>{systemName || 'GeoMaster'}</h2>
-          </div>
-          <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-            Hệ thống Quản lý Đất đai Chuyên nghiệp
-          </p>
-        </div>
 
         {error && (
           <div className={`${
@@ -455,10 +446,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, onCancel, systemName, logoUrl, f
             </button>
 
             {allowRegistration && (
-                <div className={`text-center pt-2 border-t mt-1 sm:mt-2 ${
-                  theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
-                }`}>
-                    <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-600'} mb-2`}>Chưa có tài khoản?</p>
+                <div className={`flex items-center justify-center gap-2 pt-2 mt-1 sm:mt-2`}>
+                    <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-600'}`}>Chưa có tài khoản?</p>
                     <button type="button" onClick={() => setView('REGISTER')} className={`text-xs font-black uppercase transition-colors ${
                       theme === 'dark'
                         ? 'text-blue-400 hover:text-blue-300'

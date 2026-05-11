@@ -55,8 +55,10 @@ const PermissionManager: React.FC = () => {
         finally { setLoading(false); }
     };
 
-    const getPerms = (role: UserRole) =>
-        rolePermissions.find(rp => rp.role === role)?.permissions ?? DEFAULT_ROLE_PERMISSIONS[role] ?? [];
+    const getPerms = (role: UserRole) => {
+        if (role === UserRole.ADMIN) return DEFAULT_ROLE_PERMISSIONS[UserRole.ADMIN] ?? [];
+        return rolePermissions.find(rp => rp.role === role)?.permissions ?? DEFAULT_ROLE_PERMISSIONS[role] ?? [];
+    };
 
     const handleToggle = async (role: UserRole, code: string, checked: boolean) => {
         const current = getPerms(role);
