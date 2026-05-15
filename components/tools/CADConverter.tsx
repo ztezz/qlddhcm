@@ -27,8 +27,8 @@ export default function CADConverter({ compact = false }: CADConverterProps) {
     if (!file) return;
 
     const ext = file.name.toLowerCase().split('.').pop();
-    if (!['dwg', 'dgn'].includes(ext || '')) {
-      setError('Chỉ hỗ trợ file DWG hoặc DGN');
+    if (!['dxf'].includes(ext || '')) {
+      setError('Chỉ hỗ trợ file DXF');
       return;
     }
 
@@ -162,7 +162,7 @@ export default function CADConverter({ compact = false }: CADConverterProps) {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".dwg,.dgn"
+          accept=".dxf"
           onChange={handleFileSelect}
           disabled={uploading}
           className="hidden"
@@ -173,7 +173,7 @@ export default function CADConverter({ compact = false }: CADConverterProps) {
           className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg text-sm font-medium transition"
         >
           <Upload className="w-4 h-4" />
-          {uploading ? 'Đang upload...' : 'Chọn file DWG/DGN'}
+          {uploading ? 'Đang upload...' : 'Chọn file DXF'}
         </button>
 
         {error && (
@@ -233,7 +233,7 @@ export default function CADConverter({ compact = false }: CADConverterProps) {
     <div className="w-full max-w-2xl mx-auto p-6 bg-slate-800 rounded-lg border border-slate-700">
       <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
         <Upload className="w-6 h-6 text-blue-400" />
-        Chuyển đổi CAD (DWG/DGN)
+        Chuyển đổi CAD (DXF)
       </h2>
 
       <div className="space-y-6">
@@ -243,14 +243,14 @@ export default function CADConverter({ compact = false }: CADConverterProps) {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".dwg,.dgn"
+            accept=".dxf"
             onChange={handleFileSelect}
             disabled={uploading}
             className="hidden"
           />
           <Upload className="w-12 h-12 text-slate-400 mx-auto mb-3" />
           <p className="text-white font-medium mb-1">Kéo file hoặc click để chọn</p>
-          <p className="text-sm text-slate-400">Hỗ trợ DWG, DGN (tối đa 50MB)</p>
+          <p className="text-sm text-slate-400">Hỗ trợ DXF (tối đa 50MB)</p>
           {uploading && <p className="text-blue-400 text-sm mt-2">Đang upload...</p>}
         </div>
 

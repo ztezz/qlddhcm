@@ -48,7 +48,7 @@ const PATH_MAPPING: Record<string, string> = {
     'notifications': '/thongbao',
     'qr-generator': '/taomaqr',
     'coordinate-converter': '/chuyendoihetoado',
-    'cad-converter': '/chuyendoidwg',
+    'cad-converter': '/chuyendoidxf',
     'land-price': '/giadata',
     'admin': '/quantri',
     'about': '/gioithieu'
@@ -311,7 +311,7 @@ const App: React.FC = () => {
                 <Route path="/giadata" element={<LandPriceLookup user={user} systemSettings={systemSettings} />} />
                 <Route path="/taomaqr" element={<QRGenerator />} />
                 <Route path="/chuyendoihetoado" element={<CoordinateConverter />} />
-                <Route path="/chuyendoidwg" element={<CADConverter />} />
+                <Route path="/chuyendoidxf" element={<CADConverter />} />
                 <Route path="/gioithieu" element={<About />} />
                 
                 {/* Protected Routes */}

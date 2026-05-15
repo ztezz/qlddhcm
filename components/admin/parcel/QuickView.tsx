@@ -1,11 +1,12 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { X, ZoomIn, ZoomOut, RotateCcw, FileDown } from 'lucide-react';
+import { X, ZoomIn, ZoomOut, RotateCcw, FileDown, FileArchive, FileJson } from 'lucide-react';
+import { ParcelExportFormat } from '../../../utils/parcelExport';
 
 interface QuickViewProps {
     parcel: any;
     onClose: () => void;
-    onDownload: (p: any) => void;
+    onDownload: (p: any, format: ParcelExportFormat) => void;
     getFieldValue: (obj: any, aliases: string[]) => any;
 }
 
@@ -149,7 +150,9 @@ const QuickView: React.FC<QuickViewProps> = ({ parcel, onClose, onDownload, getF
                         <div><p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Diện tích</p><p className="text-2xl font-black text-emerald-500">{Math.round(getAreaVal(parcel)).toLocaleString()} m²</p></div>
                         <div><p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Chủ sở hữu</p><p className="text-sm font-bold text-gray-200">{getOwner(parcel)}</p></div>
                         <div className="flex flex-col gap-2 pt-4">
-                            <button onClick={() => onDownload(parcel)} className="w-full bg-indigo-600 text-white py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-indigo-500 transition-all flex items-center justify-center gap-2"><FileDown size={14}/> Tải dữ liệu</button>
+                            <button onClick={() => onDownload(parcel, 'geojson')} className="w-full bg-indigo-600 text-white py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-indigo-500 transition-all flex items-center justify-center gap-2"><FileDown size={14}/> Tải GeoJSON</button>
+                            <button onClick={() => onDownload(parcel, 'shp')} className="w-full bg-violet-600 text-white py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-violet-500 transition-all flex items-center justify-center gap-2"><FileArchive size={14}/> Tải SHP</button>
+                            <button onClick={() => onDownload(parcel, 'dxf')} className="w-full bg-cyan-600 text-white py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-cyan-500 transition-all flex items-center justify-center gap-2"><FileJson size={14}/> Tải DXF</button>
                             <button onClick={onClose} className="w-full bg-white text-black py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-blue-400 hover:text-white transition-all">Đóng xem</button>
                         </div>
                     </div>

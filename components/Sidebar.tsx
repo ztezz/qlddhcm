@@ -36,7 +36,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const DEFAULT_TOOL_ITEMS = [
     { id: 'qr-generator', label: 'Tạo mã QR', icon: QrCode as React.ElementType, path: '/taomaqr' },
     { id: 'coordinate-converter', label: 'Chuyển hệ tọa độ', icon: ArrowRightLeft as React.ElementType, path: '/chuyendoihetoado' },
-    { id: 'cad-converter', label: 'Chuyển đổi DWG/DGN', icon: FileJson as React.ElementType, path: '/chuyendoidwg' }
+    { id: 'cad-converter', label: 'Chuyển đổi DXF', icon: FileJson as React.ElementType, path: '/chuyendoidxf' }
   ];
 
   const toolItems = useMemo(() => {

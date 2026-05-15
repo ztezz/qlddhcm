@@ -1,7 +1,8 @@
 
 import React, { useEffect, useState } from 'react';
-import { Edit, Trash2, Eye, FileDown, Search, AlertTriangle } from 'lucide-react';
+import { Edit, Trash2, Eye, FileDown, Search, AlertTriangle, FileArchive, FileJson } from 'lucide-react';
 import { ParcelDTO } from '../../../services/parcelApi';
+import { ParcelExportFormat } from '../../../utils/parcelExport';
 
 interface ParcelListProps {
     parcels: ParcelDTO[];
@@ -9,7 +10,7 @@ interface ParcelListProps {
     error: string | null;
     loading: boolean;
     onQuickView: (p: any) => void;
-    onDownload: (p: any) => void;
+    onDownload: (p: any, format: ParcelExportFormat) => void;
     onEdit: (p: any) => void;
     onDelete: (gid: number) => void;
     canEdit?: boolean;
@@ -23,7 +24,7 @@ interface ParcelListProps {
     onLimitChange: (limit: number) => void;
 }
 
-const ParcelList: React.FC<ParcelListProps> = ({ 
+const ParcelList: React.FC<ParcelListProps> = ({
     parcels, hasSearched, error, loading, onQuickView, onDownload, onEdit, onDelete, canEdit = true, canDelete = true, getFieldValue, page, pages, total, limit, onPageChange, onLimitChange
 }) => {
     const [jumpPageInput, setJumpPageInput] = useState('');
@@ -93,7 +94,9 @@ const ParcelList: React.FC<ParcelListProps> = ({
                             <td className="p-4">
                                 <div className="flex justify-center gap-2">
                                     <button onClick={() => onQuickView(p)} className="p-2 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-600 hover:text-white rounded-xl transition-all" title="Xem sơ đồ"><Eye size={16}/></button>
-                                    <button onClick={() => onDownload(p)} className="p-2 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-600 hover:text-white rounded-xl transition-all" title="Tải GeoJSON"><FileDown size={16}/></button>
+                                    <button onClick={() => onDownload(p, 'geojson')} className="p-2 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-600 hover:text-white rounded-xl transition-all" title="Tải GeoJSON"><FileDown size={16}/></button>
+                                    <button onClick={() => onDownload(p, 'shp')} className="p-2 bg-violet-500/10 text-violet-400 hover:bg-violet-600 hover:text-white rounded-xl transition-all" title="Tải SHP"><FileArchive size={16}/></button>
+                                    <button onClick={() => onDownload(p, 'dxf')} className="p-2 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-600 hover:text-white rounded-xl transition-all" title="Tải DXF"><FileJson size={16}/></button>
                                     <button onClick={() => onEdit(p)} disabled={!canEdit} className="p-2 bg-blue-500/10 text-blue-400 hover:bg-blue-600 hover:text-white rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed"><Edit size={16}/></button>
                                     <button onClick={() => onDelete(p.gid!)} disabled={!canDelete} className="p-2 bg-red-500/10 text-red-400 hover:bg-red-600 hover:text-white rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed"><Trash2 size={16}/></button>
                                 </div>

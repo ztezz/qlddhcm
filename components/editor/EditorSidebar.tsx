@@ -27,7 +27,7 @@ interface EditorSidebarProps {
     onExportGeoJSON: () => void;
     onExportShpZip: () => void;
     onExportDXF: () => void;
-    onOpenCADConverter: () => void;
+    onOpenDxfImport: () => void;
     area: number;
     hasSelected: boolean;
 
@@ -176,9 +176,9 @@ const EditorSidebar: React.FC<EditorSidebarProps> = (props) => {
                             <span className="text-[9px] font-black uppercase text-slate-500">Import GeoJSON</span>
                             <input type="file" className="hidden" accept=".geojson,.json" onChange={props.onFileUpload} />
                         </label>
-                        <button onClick={props.onOpenCADConverter} className="flex flex-col items-center justify-center p-4 bg-slate-800/30 hover:bg-slate-800 rounded-2xl border border-slate-800 transition-all">
+                        <button onClick={props.onOpenDxfImport} className="flex flex-col items-center justify-center p-4 bg-slate-800/30 hover:bg-slate-800 rounded-2xl border border-slate-800 transition-all">
                             <FileJson size={20} className="text-slate-500 mb-2" />
-                            <span className="text-[9px] font-black uppercase text-slate-500">Import DWG/DGN</span>
+                            <span className="text-[9px] font-black uppercase text-slate-500">Import DXF</span>
                         </button>
                     </div>
 

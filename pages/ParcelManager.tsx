@@ -3,7 +3,8 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { parcelApi, ParcelDTO, SpatialTable } from '../services/parcelApi';
 import { hasAnyPermission } from '../services/mockBackend';
 import { RefreshCw, Database, Layers, CheckCircle2, AlertTriangle, Info, Plus, FileSpreadsheet } from 'lucide-react';
-import { removeAccents } from '../utils/helpers';
+import { removeAccents, toSafeFilename } from '../utils/helpers';
+import { ParcelExportFormat, exportDxfFile, exportGeoJsonFile, exportShpZipFile } from '../utils/parcelExport';
 
 // Sub-components
 import TableFilter from '../components/admin/parcel/TableFilter';
@@ -110,14 +111,51 @@ const ParcelManager: React.FC<ParcelManagerProps> = ({ permissions = [] }) => {
         return null;
     };
 
+    const buildParcelFeature = (p: any) => ({
+        type: 'Feature' as const,
+        geometry: p.geometry,
+        properties: {
+            gid: p.gid,
+            sodoto: getFieldValue(p, ['sodoto', 'so_to', 'shbando']) || '',
+            sothua: getFieldValue(p, ['sothua', 'so_thua', 'shthua']) || '',
+            tenchu: getFieldValue(p, ['tenchu', 'owner', 'chusudung']) || '',
+            diachi: getFieldValue(p, ['diachi', 'address']) || '',
+            loaidat: getFieldValue(p, ['loaidat', 'kyhieumucd', 'mucdich']) || '',
+            dientich: parseFloat(getFieldValue(p, ['dientich', 'dien_tich', 'area']) || 0),
+            source: layer
+        }
+    });
+
+    const buildParcelFilename = (p: any, ext: string) => {
+        const soTo = getFieldValue(p, ['sodoto', 'so_to', 'shbando']) || 'unknown';
+        const soThua = getFieldValue(p, ['sothua', 'so_thua', 'shthua']) || 'unknown';
+        return `${toSafeFilename(`Parcel_${layer}_${soTo}_${soThua}_${p.gid || 'na'}`)}.${ext}`;
+    };
+
     // --- ACTIONS ---
-    const handleDownload = (p: any) => {
+    const handleDownload = async (p: any, format: ParcelExportFormat) => {
         try {
-            const geojson = { type: "Feature", geometry: p.geometry, properties: { gid: p.gid, to: getFieldValue(p, ['sodoto', 'so_to']), thua: getFieldValue(p, ['sothua', 'so_thua']), source: layer } };
-            const blob = new Blob([JSON.stringify(geojson, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a'); a.href = url; a.download = `Parcel_${p.gid}.geojson`; a.click();
-        } catch (err) { showDialog('error', 'Lỗi', 'Không thể xuất file.'); }
+            if (!p?.geometry) {
+                showDialog('error', 'Lỗi', 'Thửa đất này chưa có dữ liệu hình học để tải xuống.');
+                return;
+            }
+
+            const featureCollection = { type: 'FeatureCollection' as const, features: [buildParcelFeature(p)] };
+
+            if (format === 'geojson') {
+                exportGeoJsonFile(featureCollection, buildParcelFilename(p, 'geojson'));
+                return;
+            }
+
+            if (format === 'shp') {
+                await exportShpZipFile(featureCollection, buildParcelFilename(p, 'zip'));
+                return;
+            }
+
+            exportDxfFile(featureCollection, buildParcelFilename(p, 'dxf'));
+        } catch (err) {
+            showDialog('error', 'Lỗi', 'Không thể xuất file.');
+        }
     };
 
     const handleDelete = (gid: number) => {

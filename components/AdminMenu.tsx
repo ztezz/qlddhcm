@@ -37,7 +37,7 @@ const AdminMenu: React.FC<AdminMenuProps> = ({ activeTab, onSelect, systemName, 
         
         { header: 'Cấu hình Dữ liệu' },
         { id: 'DATA_LAYERS', icon: Layers, label: 'Lớp bản đồ & DB' },
-        { id: 'CAD_CONVERTER', icon: FileJson, label: 'Chuyển đổi DWG/DGN' },
+        { id: 'CAD_CONVERTER', icon: FileJson, label: 'Chuyển đổi DXF' },
     ];
 
     const visibleMenuItems = menuItems.filter((item: any) => {

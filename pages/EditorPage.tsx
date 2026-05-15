@@ -6,12 +6,13 @@ import { parcelApi } from '../services/parcelApi';
 import { getUid } from 'ol/util';
 import proj4 from "proj4";
 import { register } from 'ol/proj/proj4';
+import { exportDxfFile, exportGeoJsonFile, exportShpZipFile } from '../utils/parcelExport';
+import { importDxfAsPolygonFeatures } from '../utils/dxfImport';
 
 // Components
 import EditorToolbar from '../components/editor/EditorToolbar';
 import EditorSidebar from '../components/editor/EditorSidebar';
 import EditorModals from '../components/editor/EditorModals';
-import CADConverter from '../components/tools/CADConverter';
 
 // Hooks
 import { useEditorHistory } from '../hooks/useEditorHistory';
@@ -33,7 +34,6 @@ import GeoJSON from 'ol/format/GeoJSON';
 import Feature from 'ol/Feature';
 import { Draw, Modify, Snap, Select } from 'ol/interaction';
 import { getArea } from 'ol/sphere';
-import shpwrite from '@mapbox/shp-write';
 import { isEmpty as isExtentEmpty } from 'ol/extent';
 import { click } from 'ol/events/condition';
 
@@ -81,7 +81,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     // Modal States
     const [searchModal, setSearchModal] = useState({ isOpen: false, coords: { x: '', y: '' } });
     const [manualModal, setManualModal] = useState({ isOpen: false, text: '' });
-    const [showCADConverter, setShowCADConverter] = useState(false);
+    const dxfInputRef = useRef<HTMLInputElement | null>(null);
     const [currentBasemap, setCurrentBasemap] = useState('google-satellite');
     const [dialog, setDialog] = useState<{ isOpen: boolean; type: 'success' | 'error' | 'info'; title: string; message: string; }>({ isOpen: false, type: 'info', title: '', message: '' });
 
@@ -665,6 +665,38 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         return null;
     };
 
+    const applyImportedFeatures = (features: Feature[], projectionLabel: string, sourceLabel: string, skippedMessage?: string) => {
+        if (features.length === 0) {
+            throw new Error(`Không tìm thấy đối tượng hợp lệ từ ${sourceLabel}.`);
+        }
+
+        editSource.current.clear();
+        features.forEach(f => {
+            const props = f.getProperties();
+            if (props.sodoto) f.set('sodoto', props.sodoto);
+            if (props.sothua) f.set('sothua', props.sothua);
+            if (props.loaidat) f.set('loaidat', props.loaidat);
+        });
+
+        editSource.current.addFeatures(features);
+        const lastFeature = features[features.length - 1];
+        setSelectedFeature(lastFeature);
+        updateVerticesFromFeature(lastFeature);
+        updateFeatureListState();
+
+        const extent = editSource.current.getExtent();
+        if (!isExtentEmpty(extent)) {
+            mapInstance.current?.getView().fit(extent, { padding: [100, 100, 100, 100], duration: 800 });
+        }
+
+        setDialog({
+            isOpen: true,
+            type: 'success',
+            title: 'Thành công',
+            message: `Đã nạp ${features.length} đối tượng từ ${sourceLabel} (Hệ tọa độ phát hiện: ${projectionLabel}).${skippedMessage ? ` ${skippedMessage}` : ''}`
+        });
+    };
+
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -700,28 +732,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                 }
 
                 if (features.length > 0) {
-                    editSource.current.clear();
-                    // Map attributes if available
-                    features.forEach(f => {
-                        const props = f.getProperties();
-                        // Try to map common fields
-                        if (props.sodoto) f.set('sodoto', props.sodoto);
-                        if (props.sothua) f.set('sothua', props.sothua);
-                        if (props.loaidat) f.set('loaidat', props.loaidat);
-                    });
-
-                    editSource.current.addFeatures(features);
-                    
-                    const lastFeature = features[features.length - 1];
-                    setSelectedFeature(lastFeature);
-                    updateVerticesFromFeature(lastFeature); 
-                    updateFeatureListState();
-                    
-                    const extent = editSource.current.getExtent();
-                    if (!isExtentEmpty(extent)) {
-                        mapInstance.current?.getView().fit(extent, { padding: [100, 100, 100, 100], duration: 800 });
-                    }
-                    setDialog({ isOpen: true, type: 'success', title: 'Thành công', message: `Đã nạp ${features.length} đối tượng (Hệ tọa độ phát hiện: ${guessedDataProj === 'EPSG:9210' ? 'VN-2000' : 'WGS84'}).` });
+                    applyImportedFeatures(features, guessedDataProj === 'EPSG:9210' ? 'VN-2000' : 'WGS84', 'GeoJSON');
                 } else {
                     throw new Error("Không tìm thấy đối tượng không gian hợp lệ.");
                 }
@@ -732,6 +743,38 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                 e.target.value = ''; 
             }
         };
+        reader.readAsText(file);
+    };
+
+    const handleDxfImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const text = String(event.target?.result || '').trim();
+                if (!text) throw new Error('File rỗng');
+
+                const { features, summary } = importDxfAsPolygonFeatures(text);
+                const skippedParts = Object.entries(summary.skippedByType)
+                    .map(([type, count]) => `${type} (${count})`)
+                    .join(', ');
+
+                applyImportedFeatures(
+                    features,
+                    summary.projection === 'EPSG:9210' ? 'VN-2000' : 'WGS84',
+                    'DXF',
+                    summary.skipped > 0 ? `Đã bỏ qua ${summary.skipped} entity không phù hợp: ${skippedParts}.` : undefined
+                );
+            } catch (err: any) {
+                console.error(err);
+                setDialog({ isOpen: true, type: 'error', title: 'Lỗi import DXF', message: err.message || 'Không thể đọc file DXF.' });
+            } finally {
+                e.target.value = '';
+            }
+        };
+
         reader.readAsText(file);
     };
 
@@ -908,10 +951,15 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     };
 
     const handleExportGeoJSON = () => {
-        if (editSource.current.getFeatures().length === 0) return;
-        const json = new GeoJSON().writeFeatures(editSource.current.getFeatures(), { dataProjection: 'EPSG:4326', featureProjection: 'EPSG:3857' });
-        const blob = new Blob([json], { type: 'application/json' });
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `GeoMaster_${Date.now()}.geojson`; a.click();
+        const features = editSource.current.getFeatures();
+        if (features.length === 0) return;
+
+        const geojson = new GeoJSON().writeFeaturesObject(features, {
+            dataProjection: 'EPSG:4326',
+            featureProjection: 'EPSG:3857'
+        }) as any;
+
+        exportGeoJsonFile(geojson, `GeoMaster_${Date.now()}.geojson`);
     };
 
     const handleExportShpZip = async () => {
@@ -924,35 +972,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                 featureProjection: 'EPSG:3857'
             }) as any;
 
-            if (!Array.isArray(geojson.features) || geojson.features.length === 0) {
-                setDialog({ isOpen: true, type: 'error', title: 'Lỗi export', message: 'Không có dữ liệu hợp lệ để xuất SHP.' });
-                return;
-            }
-
-            const normalizedFeatures = geojson.features.map((f: any) => {
-                const props = f?.properties || {};
-                return {
-                    ...f,
-                    properties: {
-                        sodoto: props.sodoto || '',
-                        sothua: props.sothua || '',
-                        loaidat: props.loaidat || '',
-                        dientich: Number.isFinite(Number(props.dientich)) ? Number(props.dientich) : 0
-                    }
-                };
-            });
-
-            const zipped = await shpwrite.zip(
-                { type: 'FeatureCollection', features: normalizedFeatures },
-                { outputType: 'arraybuffer', compression: 'STORE' }
-            );
-            const blob = new Blob([zipped], { type: 'application/zip' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `GeoMaster_${Date.now()}.zip`;
-            a.click();
-            URL.revokeObjectURL(url);
+            await exportShpZipFile(geojson, `GeoMaster_${Date.now()}.zip`);
         } catch (e: any) {
             setDialog({ isOpen: true, type: 'error', title: 'Lỗi export', message: e?.message || 'Không thể xuất SHP vào lúc này.' });
         }
@@ -966,109 +986,12 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         }
 
         try {
-            let dxfContent = `  0
-SECTION
-  2
-HEADER
-  9
-$ACADVER
-  1
-AC1021
-  0
-ENDSEC
-  0
-SECTION
-  2
-BLOCKS
-  0
-ENDSEC
-  0
-SECTION
-  2
-ENTITIES
-`;
+            const geojson = new GeoJSON().writeFeaturesObject(features, {
+                dataProjection: 'EPSG:4326',
+                featureProjection: 'EPSG:3857'
+            }) as any;
 
-            let entityId = 0;
-            features.forEach((f: any, idx: number) => {
-                const geom = f.getGeometry();
-                let coords = geom?.getCoordinates?.();
-                const sodoto = f.get('sodoto') || '';
-                const sothua = f.get('sothua') || '';
-
-                if (coords && coords.length > 0) {
-                    let ring = coords[0];
-
-                    // Chuyển đổi tọa độ nếu cần
-                    if (coordSystem === 'VN2000') {
-                        ring = ring.map((c: any) => {
-                            const transformed = proj.transform(c, 'EPSG:3857', 'EPSG:9210');
-                            return transformed;
-                        });
-                    }
-
-                    if (ring.length >= 3) {
-                        // LWPOLYLINE
-                        dxfContent += `  0
-LWPOLYLINE
-  5
-${entityId.toString(16).toUpperCase()}
-  8
-Thua_${sothua || idx}
- 70
-1
- 90
-${ring.length}
-`;
-                        ring.forEach((c: any) => {
-                            dxfContent += ` 10
-${c[0]}
- 20
-${c[1]}
-`;
-                        });
-                        entityId++;
-
-                        // TEXT label
-                        if (sodoto && sothua) {
-                            const centroid = [
-                                ring.reduce((sum: number, p: any) => sum + p[0], 0) / ring.length,
-                                ring.reduce((sum: number, p: any) => sum + p[1], 0) / ring.length
-                            ];
-                            dxfContent += `  0
-TEXT
-  5
-${entityId.toString(16).toUpperCase()}
-  8
-Labels
- 10
-${centroid[0]}
- 20
-${centroid[1]}
- 40
-10
-  1
-${sodoto}/${sothua}
-`;
-                            entityId++;
-                        }
-                    }
-                }
-            });
-
-            dxfContent += `  0
-ENDSEC
-  0
-EOF
-`;
-
-            const blob = new Blob([dxfContent], { type: 'application/dxf' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `GeoMaster_${coordSystem}_${Date.now()}.dxf`;
-            a.click();
-            URL.revokeObjectURL(url);
-
+            exportDxfFile(geojson, `GeoMaster_${coordSystem}_${Date.now()}.dxf`, coordSystem);
             setDialog({ isOpen: true, type: 'success', title: 'Xuất thành công', message: `File DXF (${coordSystem}) đã được tải xuống. Mở bằng AutoCAD hoặc MicroStation.` });
         } catch (e: any) {
             setDialog({ isOpen: true, type: 'error', title: 'Lỗi export', message: e?.message || 'Không thể xuất DXF vào lúc này.' });
@@ -1157,7 +1080,7 @@ EOF
                 onExportGeoJSON={handleExportGeoJSON}
                 onExportShpZip={handleExportShpZip}
                 onExportDXF={handleExportDXF}
-                onOpenCADConverter={() => setShowCADConverter(true)}
+                onOpenDxfImport={() => dxfInputRef.current?.click()}
                 area={area}
                 hasSelected={!!selectedFeature}
                 
@@ -1174,7 +1097,15 @@ EOF
                 batchResult={batchSaveResult}
             />
 
-            <EditorModals 
+            <input
+                ref={dxfInputRef}
+                type="file"
+                accept=".dxf"
+                onChange={handleDxfImport}
+                className="hidden"
+            />
+
+            <EditorModals
                 searchModal={{
                     isOpen: searchModal.isOpen,
                     setOpen: (val) => setSearchModal({...searchModal, isOpen: val}),
@@ -1194,25 +1125,6 @@ EOF
                     onClose: () => setDialog({...dialog, isOpen: false})
                 }}
             />
-
-            {showCADConverter && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-slate-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                        <div className="flex items-center justify-between p-4 border-b border-slate-700 sticky top-0 bg-slate-800">
-                            <h2 className="text-lg font-bold text-white">Chuyển đổi DWG/DGN sang GeoJSON</h2>
-                            <button
-                                onClick={() => setShowCADConverter(false)}
-                                className="text-slate-400 hover:text-white"
-                            >
-                                ✕
-                            </button>
-                        </div>
-                        <div className="p-4">
-                            <CADConverter compact={true} />
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };
