@@ -60,6 +60,8 @@ const REVERSE_PATH_MAPPING: Record<string, string> = Object.entries(PATH_MAPPING
     return acc;
 }, {} as Record<string, string>);
 
+const KNOWN_PATHS = Object.values(PATH_MAPPING);
+
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [showLogin, setShowLogin] = useState(false);
@@ -269,7 +271,6 @@ const App: React.FC = () => {
   );
 
   // Render 404 toàn màn hình — trước khi vào layout sidebar
-    const KNOWN_PATHS = ['/', '/donvihanhchinh', '/giadata', '/taomaqr', '/chuyendoihetoado', '/gioithieu', '/thongke', '/chinhsuabanve', '/hoso', '/tinnhan', '/thongbao', '/quantri'];
   const isKnownPath = KNOWN_PATHS.some(p => location.pathname === p || location.pathname.startsWith(p + '/'));
   if (!isKnownPath) return (
       <Suspense fallback={<PageLoader />}>
