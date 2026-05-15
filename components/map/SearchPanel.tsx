@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Loader2, X, MapPin, User, Home, Filter, AlertCircle, AlertTriangle, Crosshair, Navigation, ChevronDown } from 'lucide-react';
+import { Search, Loader2, X, MapPin, User, Filter, AlertTriangle, Crosshair, Navigation, ChevronDown } from 'lucide-react';
 import { gisService } from '../../services/mockBackend';
 import { LandParcel } from '../../types';
-import { formatParcelIdentifier, removeAccents } from '../../utils/helpers';
+import { removeAccents } from '../../utils/helpers';
 
 interface SearchPanelProps {
     isOpen: boolean;
@@ -337,19 +337,29 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ isOpen, onToggle, spatialTabl
                             </div>
                         ) : (
                             results.map(r => (
-                                <div 
-                                    key={r.id} 
-                                    onClick={() => onSelectResult(r)} 
-                                    className="p-2.5 bg-white hover:bg-blue-50 border border-slate-200 rounded-xl cursor-pointer transition-all"
+                                <div
+                                    key={r.id}
+                                    onClick={() => onSelectResult(r)}
+                                    className="p-1.5 bg-white hover:bg-blue-50 hover:border-blue-300 hover:shadow-sm border border-slate-200 rounded-xl cursor-pointer transition-all"
                                 >
-                                    <div className="flex justify-between items-start mb-1.5">
-                                        <div className="font-black text-slate-950 text-[11px]">{formatParcelIdentifier(r.properties, systemSettings?.parcel_identifier_format)}</div>
+                                    <div className="flex justify-end items-start mb-0.5">
                                         <span className="bg-blue-100 text-blue-600 text-[8px] font-black px-1.5 py-0.5 rounded uppercase">{r.properties.landType}</span>
                                     </div>
-                                    <div className="text-slate-900 text-[10px] font-bold flex items-center gap-1.5 truncate">
-                                        <User size={10} className="text-blue-600 shrink-0"/> 
-                                        <span>{r.properties.ownerName || 'Chưa xác định chủ'}</span>
+                                    {(r.properties.so_to || r.properties.so_thua) && (
+                                        <div className="text-slate-500 text-[9px] font-semibold truncate">
+                                            Tờ {r.properties.so_to || '?'} - Thửa {r.properties.so_thua || '?'}
+                                        </div>
+                                    )}
+                                    <div className="text-slate-900 text-[9px] font-bold flex items-center gap-1 truncate" title={r.properties.ownerName || 'Chưa xác định chủ'}>
+                                        <User size={9} className="text-blue-600 shrink-0"/>
+                                        <span className="truncate">{r.properties.ownerName || 'Chưa xác định chủ'}</span>
                                     </div>
+                                    {r.properties.address && (
+                                        <div className="text-slate-600 text-[9px] mt-0.5 flex items-center gap-1 truncate" title={r.properties.address}>
+                                            <MapPin size={9} className="text-slate-400 shrink-0"/>
+                                            <span className="truncate">{r.properties.address}</span>
+                                        </div>
+                                    )}
                                 </div>
                             ))
                         )}

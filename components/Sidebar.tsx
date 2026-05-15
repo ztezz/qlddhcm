@@ -118,9 +118,6 @@ const Sidebar: React.FC<SidebarProps> = ({
           notificationService.markAllAsRead().catch(() => undefined);
       }
       setUnreadCount(0);
-      if (window.innerWidth < 768 && !isCollapsed) {
-          onCollapse();
-      }
   };
 
   const visibleItems = dynamicMenu.filter(item => {
@@ -138,10 +135,6 @@ const Sidebar: React.FC<SidebarProps> = ({
       } else {
         const internalPath = item.url?.startsWith('/') ? item.url : undefined;
         onNavigate(item.id, internalPath);
-          // Auto close on mobile after navigation
-          if (window.innerWidth < 768 && !isCollapsed) {
-              onCollapse();
-          }
       }
   };
 
@@ -331,11 +324,8 @@ const Sidebar: React.FC<SidebarProps> = ({
             <div className="flex flex-col gap-3">
 
               {!isCollapsed ? (
-                <div 
-                  onClick={() => {
-                      onNavigate('profile');
-                      if (window.innerWidth < 768) onCollapse();
-                  }}
+                <div
+                  onClick={() => onNavigate('profile')}
                   className="flex items-center gap-3.5 p-2.5 rounded-xl cursor-pointer hover:bg-slate-800 transition-all group border border-transparent hover:border-slate-700/50"
                   title="Cập nhật hồ sơ"
                 >
@@ -353,11 +343,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                     </div>
                 </div>
               ) : (
-                   <div 
-                      onClick={() => {
-                          onNavigate('profile');
-                          if (window.innerWidth < 768) onCollapse();
-                      }} 
+                   <div
+                      onClick={() => onNavigate('profile')}
                       className="w-10 h-10 mx-auto rounded-full border-2 border-slate-700 hover:border-blue-500 overflow-hidden cursor-pointer mb-3 shadow-lg transition-all"
                       title={user.name}
                    >

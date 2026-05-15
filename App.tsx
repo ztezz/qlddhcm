@@ -65,7 +65,7 @@ const App: React.FC = () => {
   const [showLogin, setShowLogin] = useState(false);
   const [resetToken, setResetToken] = useState<string | null>(null);
   const [verificationToken, setVerificationToken] = useState<string | null>(null);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(window.innerWidth < 768);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
   const [systemSettings, setSystemSettings] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [bootError, setBootError] = useState<string | null>(null);
@@ -156,8 +156,6 @@ const App: React.FC = () => {
       const handleResize = () => {
           if (window.innerWidth < 768) {
               setIsSidebarCollapsed(true);
-          } else {
-              setIsSidebarCollapsed(false);
           }
       };
       const handleSettingsUpdated = (event: Event) => {
@@ -191,6 +189,7 @@ const App: React.FC = () => {
     setShowLogin(false);
     setResetToken(null);
     setVerificationToken(null);
+    setIsSidebarCollapsed(true);
     // Điều hướng dựa trên role sau khi login
     navigate(loggedInUser.role === UserRole.ADMIN ? '/quantri' : '/');
   };
@@ -198,18 +197,21 @@ const App: React.FC = () => {
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem('geo_user');
+    setIsSidebarCollapsed(true);
     navigate('/');
   };
 
   const handleNavigate = (pageId: string, routePath?: string) => {
-      if (routePath && routePath.startsWith('/')) {
-          navigate(routePath);
+      const targetPath = routePath && routePath.startsWith('/')
+          ? routePath
+          : PATH_MAPPING[pageId];
+
+      if (!targetPath) {
           return;
       }
-      const path = PATH_MAPPING[pageId];
-      if (path) {
-          navigate(path);
-      }
+
+      setIsSidebarCollapsed(true);
+      navigate(targetPath);
   };
 
   // Protected Route Wrapper

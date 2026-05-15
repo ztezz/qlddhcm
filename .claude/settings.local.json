@@ -11,7 +11,8 @@
       "Bash(node --check \"D:/code/qlddhcm/backend_guide/server.js\")",
       "Bash(npm uninstall *)",
       "Bash(timeout 15)",
-      "PowerShell(Get-Process *)"
+      "PowerShell(Get-Process *)",
+      "mcp__ide__getDiagnostics"
     ]
   }
 }
