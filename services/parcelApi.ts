@@ -36,7 +36,8 @@ const getApiUrl = () => {
 export const API_URL = getApiUrl();
 
 export interface ParcelDTO {
-    gid?: number; 
+    gid?: number;
+    madinhdanh?: string;
     sothua: string;
     sodoto: string;
     tenchu?: string;
@@ -142,9 +143,10 @@ export const parcelApi = {
         }
     },
 
-    getAll: async (layer: string, filters?: { sodoto?: string, sothua?: string, tenchu?: string, diachi?: string }, pagination?: { page?: number; limit?: number }): Promise<ParcelListResponse> => {
+    getAll: async (layer: string, filters?: { madinhdanh?: string, sodoto?: string, sothua?: string, tenchu?: string, diachi?: string }, pagination?: { page?: number; limit?: number }): Promise<ParcelListResponse> => {
         let queryString = `?t=${Date.now()}`;
         if (filters) {
+            if (filters.madinhdanh) queryString += `&madinhdanh=${encodeURIComponent(filters.madinhdanh)}`;
             if (filters.sodoto) queryString += `&sodoto=${encodeURIComponent(filters.sodoto)}`;
             if (filters.sothua) queryString += `&sothua=${encodeURIComponent(filters.sothua)}`;
             if (filters.tenchu) queryString += `&tenchu=${encodeURIComponent(filters.tenchu)}`;

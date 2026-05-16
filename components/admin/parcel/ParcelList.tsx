@@ -33,6 +33,7 @@ const ParcelList: React.FC<ParcelListProps> = ({
         setJumpPageInput(page.toString());
     }, [page]);
 
+    const getParcelCode = (p: any) => getFieldValue(p, ['madinhdanh', 'ma_dinh_danh', 'ma_thua', 'parcel_code', 'parcel_id', 'land_id', 'identifier']) || '--';
     const getLandType = (p: any) => getFieldValue(p, ['loaidat', 'kyhieumucd', 'mucdich']) || 'N/A';
     const getOwner = (p: any) => getFieldValue(p, ['tenchu', 'owner', 'chusudung']) || '--';
     const getAreaVal = (p: any) => parseFloat(getFieldValue(p, ['dientich', 'dien_tich', 'area']) || 0);
@@ -62,6 +63,7 @@ const ParcelList: React.FC<ParcelListProps> = ({
             <table className="w-full text-sm text-left border-collapse flex-1">
                 <thead className="bg-gray-950 text-gray-500 uppercase text-[10px] sticky top-0 z-10 font-black tracking-widest border-b border-gray-800">
                     <tr>
+                        <th className="p-4">Mã định danh</th>
                         <th className="p-4">Tờ/Thửa</th>
                         <th className="p-4">Chủ sử dụng</th>
                         <th className="p-4">Loại đất</th>
@@ -72,9 +74,15 @@ const ParcelList: React.FC<ParcelListProps> = ({
                 </thead>
                 <tbody className="divide-y divide-gray-800/50">
                     {parcels.length === 0 ? (
-                        <tr><td colSpan={6} className="p-20 text-center text-gray-500 italic">Không tìm thấy dữ liệu phù hợp</td></tr>
+                        <tr><td colSpan={7} className="p-20 text-center text-gray-500 italic">Không tìm thấy dữ liệu phù hợp</td></tr>
                     ) : parcels.map(p => (
                         <tr key={p.gid} className="hover:bg-blue-600/5 transition-colors group">
+                            <td className="p-4">
+                                <div className="flex flex-col">
+                                    <span className="font-mono font-black text-amber-300 text-sm">{getParcelCode(p)}</span>
+                                    <span className="text-[9px] text-gray-600 uppercase tracking-widest">Mã định danh</span>
+                                </div>
+                            </td>
                             <td className="p-4">
                                 <div className="flex flex-col">
                                     <span className="font-black text-blue-400 text-sm">{getSheetNo(p)}/{getParcelNo(p)}</span>

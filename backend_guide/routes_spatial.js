@@ -45,7 +45,30 @@ export default function(pool, logSystemAction) {
         return table;
     };
 
+    const generateRandomParcelCode = () => {
+        let result = '';
+        for (let i = 0; i < 12; i += 1) {
+            result += Math.floor(Math.random() * 10).toString();
+        }
+        return result;
+    };
+
+    const generateUniqueParcelCode = async (db, tableName, codeColumn) => {
+        for (let attempt = 0; attempt < 20; attempt += 1) {
+            const candidate = generateRandomParcelCode();
+            const exists = await db.query(
+                `SELECT 1 FROM "${tableName}" WHERE "${codeColumn}" = $1 LIMIT 1`,
+                [candidate]
+            );
+            if (exists.rowCount === 0) {
+                return candidate;
+            }
+        }
+        throw new Error('Không thể tạo mã định danh thửa đất duy nhất.');
+    };
+
     const COLUMN_VARIANTS = {
+        madinhdanh: ['madinhdanh', 'ma_dinh_danh', 'ma_thua', 'parcel_code', 'parcel_id', 'land_id', 'identifier'],
         sodoto: ['shbando', 'sh_ban_do', 'tobando', 'to_ban_do', 'map_sheet', 'shmap', 'sodoto', 'so_to'],
         sothua: ['shthua', 'sh_thua', 'thua_dat', 'parcel_no', 'shparcel', 'so_thu_tu_thua', 'sothua', 'so_thua'],
         loaidat: ['kyhieumucd', 'ky_hieu_muc_dich', 'mucdich', 'mdsd', 'kh_mucdich', 'purpose', 'loaidat', 'loai_dat'],
@@ -101,7 +124,7 @@ export default function(pool, logSystemAction) {
             return mapping;
         } catch (e) {
             console.error(`Error resolving columns for ${tableName}:`, e);
-            return { sodoto: null, sothua: null, loaidat: null, tenchu: null, diachi: null, dientich: null, image_url: null, _srid: 4326 };
+            return { madinhdanh: null, sodoto: null, sothua: null, loaidat: null, tenchu: null, diachi: null, dientich: null, image_url: null, _srid: 4326 };
         }
     };
 
@@ -127,6 +150,7 @@ export default function(pool, logSystemAction) {
 
             // 1. Kiểm tra thiếu cột thuộc tính
             const missingCols = [];
+            if (currentMap.madinhdanh && !existingCols.includes(currentMap.madinhdanh.toLowerCase())) missingCols.push({ name: currentMap.madinhdanh, type: 'TEXT' });
             if (currentMap.sodoto && !existingCols.includes(currentMap.sodoto.toLowerCase())) missingCols.push({ name: currentMap.sodoto, type: 'TEXT' });
             if (currentMap.sothua && !existingCols.includes(currentMap.sothua.toLowerCase())) missingCols.push({ name: currentMap.sothua, type: 'TEXT' });
             if (currentMap.loaidat && !existingCols.includes(currentMap.loaidat.toLowerCase())) missingCols.push({ name: currentMap.loaidat, type: 'TEXT' });
@@ -134,6 +158,7 @@ export default function(pool, logSystemAction) {
             if (currentMap.image_url && !existingCols.includes(currentMap.image_url.toLowerCase())) missingCols.push({ name: currentMap.image_url, type: 'TEXT' });
 
             // Nếu các cột chuẩn hoàn toàn không có trong mapping (null), ta có thể ép thêm các cột mặc định nếu muốn
+            if (!currentMap.madinhdanh && !existingCols.includes('madinhdanh')) missingCols.push({ name: 'madinhdanh', type: 'TEXT' });
             if (!currentMap.sodoto && !existingCols.includes('sodoto')) missingCols.push({ name: 'sodoto', type: 'TEXT' });
             if (!currentMap.sothua && !existingCols.includes('sothua')) missingCols.push({ name: 'sothua', type: 'TEXT' });
             if (!currentMap.loaidat && !existingCols.includes('kyhieumucd') && !existingCols.includes('loaidat')) missingCols.push({ name: 'kyhieumucd', type: 'TEXT' });
@@ -146,6 +171,18 @@ export default function(pool, logSystemAction) {
                 for (const col of missingCols) {
                     await pool.query(`ALTER TABLE "${tableName}" ADD COLUMN IF NOT EXISTS "${col.name}" ${col.type}`);
                 }
+            }
+
+            const refreshedCols = await pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name = $1`, [tableName]);
+            const refreshedColSet = new Set(refreshedCols.rows.map(r => r.column_name.toLowerCase()));
+            const parcelCodeColumn = currentMap.madinhdanh || (refreshedColSet.has('madinhdanh') ? 'madinhdanh' : null);
+            if (parcelCodeColumn) {
+                const missingCodeRows = await pool.query(`SELECT gid FROM "${tableName}" WHERE "${parcelCodeColumn}" IS NULL OR BTRIM("${parcelCodeColumn}") = ''`);
+                for (const row of missingCodeRows.rows) {
+                    const parcelCode = await generateUniqueParcelCode(pool, tableName, parcelCodeColumn);
+                    await pool.query(`UPDATE "${tableName}" SET "${parcelCodeColumn}" = $1 WHERE gid = $2`, [parcelCode, row.gid]);
+                }
+                await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS "${tableName}_${parcelCodeColumn}_uniq" ON "${tableName}" ("${parcelCodeColumn}")`);
             }
 
             // 2. Tự động sửa SRID 4326 -> 9210 nếu cần
@@ -228,6 +265,7 @@ export default function(pool, logSystemAction) {
             await pool.query(`
                 CREATE TABLE IF NOT EXISTS "${safeName}" (
                     gid SERIAL PRIMARY KEY,
+                    madinhdanh TEXT UNIQUE,
                     sodoto TEXT, sothua TEXT, tenchu TEXT, diachi TEXT, kyhieumucd TEXT, dientich NUMERIC,
                     image_url TEXT,
                     geometry GEOMETRY(Geometry, 9210),
@@ -320,6 +358,7 @@ export default function(pool, logSystemAction) {
             await client.query(`
                 CREATE TABLE IF NOT EXISTS "${safeName}" (
                     gid SERIAL PRIMARY KEY,
+                    madinhdanh TEXT UNIQUE,
                     sodoto TEXT,
                     sothua TEXT,
                     tenchu TEXT,
@@ -406,7 +445,9 @@ export default function(pool, logSystemAction) {
                     ? null
                     : Number(String(dientichRaw).replace(',', '.'));
 
+                const parcelCode = await generateUniqueParcelCode(client, safeName, 'madinhdanh');
                 rowsToInsert.push([
+                    parcelCode,
                     String(sodoto),
                     String(sothua),
                     tenchu !== null && tenchu !== undefined ? String(tenchu) : null,
@@ -434,6 +475,7 @@ export default function(pool, logSystemAction) {
                         `$${idx++}`,
                         `$${idx++}`,
                         `$${idx++}`,
+                        `$${idx++}`,
                         `$${idx++}`
                     ];
                     const geomPlaceholder = `$${idx++}`;
@@ -442,7 +484,7 @@ export default function(pool, logSystemAction) {
                 }).join(', ');
 
                 await client.query(
-                    `INSERT INTO "${safeName}" (sodoto, sothua, tenchu, diachi, kyhieumucd, dientich, geometry) VALUES ${valuesSql}`,
+                    `INSERT INTO "${safeName}" (madinhdanh, sodoto, sothua, tenchu, diachi, kyhieumucd, dientich, geometry) VALUES ${valuesSql}`,
                     params
                 );
                 inserted += batch.length;
@@ -675,7 +717,7 @@ export default function(pool, logSystemAction) {
 
     // Public read endpoint used by MapPage search panel.
     router.get('/data/:table', async (req, res) => {
-        const { sodoto, sothua, tenchu, diachi } = req.query;
+        const { madinhdanh, sodoto, sothua, tenchu, diachi } = req.query;
         try {
             const table = await resolveSafeTableName(req.params.table);
             const cols = await resolveTableColumns(table);
@@ -693,6 +735,7 @@ export default function(pool, logSystemAction) {
                 }
             };
 
+            addSelectField('madinhdanh');
             addSelectField('sodoto');
             addSelectField('sothua');
             addSelectField('tenchu');
@@ -705,6 +748,7 @@ export default function(pool, logSystemAction) {
 
             const whereClauses = ['1=1'];
 
+            if (madinhdanh && cols.madinhdanh) { whereClauses.push(`"${cols.madinhdanh}"::text = $${idx++}`); params.push(madinhdanh); }
             if (sodoto && cols.sodoto) { whereClauses.push(`"${cols.sodoto}"::text = $${idx++}`); params.push(sodoto); }
             if (sothua && cols.sothua) { whereClauses.push(`"${cols.sothua}"::text = $${idx++}`); params.push(sothua); }
             if (tenchu && cols.tenchu) {
@@ -746,6 +790,7 @@ export default function(pool, logSystemAction) {
             const table = await resolveSafeTableName(req.params.table);
             const cols = await resolveTableColumns(table);
             const targetSrid = cols._srid || 4326;
+            const parcelCode = cols.madinhdanh ? await generateUniqueParcelCode(pool, table, cols.madinhdanh) : null;
 
             const fields = [];
             const placeholders = [];
@@ -761,6 +806,7 @@ export default function(pool, logSystemAction) {
                 }
             };
 
+            addField('madinhdanh', parcelCode);
             addField('sodoto', data.sodoto);
             addField('sothua', data.sothua);
             addField('tenchu', data.tenchu);
@@ -778,9 +824,9 @@ export default function(pool, logSystemAction) {
 
             if (fields.length === 0) return res.status(400).json({ error: "Không có dữ liệu hợp lệ để chèn." });
 
-            const query = `INSERT INTO "${table}" (${fields.join(', ')}) VALUES (${placeholders.join(', ')}) RETURNING gid`;
+            const query = `INSERT INTO "${table}" (${fields.join(', ')}) VALUES (${placeholders.join(', ')}) RETURNING gid, ${cols.madinhdanh ? `"${cols.madinhdanh}" as madinhdanh` : `NULL as madinhdanh`}`;
             const result = await pool.query(query, params);
-            res.json({ status: 'ok', gid: result.rows[0].gid });
+            res.json({ status: 'ok', gid: result.rows[0].gid, madinhdanh: result.rows[0].madinhdanh });
         } catch (e) { res.status(500).json({ error: e.message }); }
     });
 
@@ -793,6 +839,7 @@ export default function(pool, logSystemAction) {
             const targetSrid = cols._srid || 4326;
             await pool.query('BEGIN');
             for (const item of items) {
+                const parcelCode = cols.madinhdanh ? await generateUniqueParcelCode(pool, table, cols.madinhdanh) : null;
                 const fields = [];
                 const placeholders = [];
                 const params = [];
@@ -807,6 +854,7 @@ export default function(pool, logSystemAction) {
                     }
                 };
 
+            addField('madinhdanh', item.madinhdanh || parcelCode);
                 addField('sodoto', item.sodoto);
                 addField('sothua', item.sothua);
                 addField('tenchu', item.tenchu);
@@ -853,6 +901,7 @@ export default function(pool, logSystemAction) {
                 }
             };
 
+            addField('madinhdanh', data.madinhdanh);
             addField('sodoto', data.sodoto);
             addField('sothua', data.sothua);
             addField('tenchu', data.tenchu);
@@ -911,7 +960,8 @@ export default function(pool, logSystemAction) {
             const cols = await resolveTableColumns(table);
             console.log(`[Upload] Table columns resolved:`, cols);
             const targetSrid = cols._srid || 4326;
-            
+            const parcelCode = !data.gid && cols.madinhdanh ? await generateUniqueParcelCode(pool, table, cols.madinhdanh) : null;
+
             let geometry = null;
             if (file) {
                 const buffer = fs.readFileSync(file.path);
@@ -925,12 +975,12 @@ export default function(pool, logSystemAction) {
                     geojson = JSON.parse(buffer.toString());
                 }
                 console.log(`[Upload] GeoJSON parsed successfully`);
-                
+
                 if (Array.isArray(geojson)) geometry = geojson[0]?.features[0]?.geometry;
                 else if (geojson.type === 'FeatureCollection') geometry = geojson.features[0]?.geometry;
                 else if (geojson.type === 'Feature') geometry = geojson.geometry;
                 else geometry = geojson;
-                
+
                 fs.unlinkSync(file.path);
             }
 
@@ -948,6 +998,7 @@ export default function(pool, logSystemAction) {
                 }
             };
 
+            addField('madinhdanh', data.madinhdanh || parcelCode);
             addField('sodoto', data.sodoto);
             addField('sothua', data.sothua);
             addField('tenchu', data.tenchu);

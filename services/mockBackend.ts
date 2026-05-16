@@ -177,6 +177,7 @@ export const gisService = {
         try {
              const normalizedTableName = String(tableName || '').trim().toLowerCase();
              const normalizedFilters = {
+                madinhdanh: String(filters?.madinhdanh || '').trim(),
                 sodoto: String(filters?.sodoto || '').trim(),
                 sothua: String(filters?.sothua || '').trim(),
                 tenchu: String(filters?.tenchu || '').trim(),
@@ -184,6 +185,7 @@ export const gisService = {
              };
 
              let qs = `?t=${Date.now()}`;
+             if (normalizedFilters.madinhdanh) qs += `&madinhdanh=${encodeURIComponent(normalizedFilters.madinhdanh)}`;
              if (normalizedFilters.sodoto) qs += `&sodoto=${encodeURIComponent(normalizedFilters.sodoto)}`;
              if (normalizedFilters.sothua) qs += `&sothua=${encodeURIComponent(normalizedFilters.sothua)}`;
              if (normalizedFilters.tenchu) qs += `&tenchu=${encodeURIComponent(normalizedFilters.tenchu)}`;
@@ -197,6 +199,7 @@ export const gisService = {
              if (!Array.isArray(rows)) return [];
 
              return rows.map((item: any, index: number) => {
+                 const parcelCode = pickFirstValue(item, ['madinhdanh', 'ma_dinh_danh', 'ma_thua', 'parcel_code', 'parcel_id', 'land_id', 'identifier']);
                  const soTo = pickFirstValue(item, ['sodoto', 'so_to', 'shbando', 'sh_ban_do', 'tobando']);
                  const soThua = pickFirstValue(item, ['sothua', 'so_thua', 'shthua', 'sh_thua', 'thua_dat']);
                  const ownerName = pickFirstValue(item, ['tenchu', 'ten_chu', 'ownerName', 'owner_name', 'chusudung']);
@@ -213,6 +216,7 @@ export const gisService = {
                      geometry,
                      properties: {
                          ...item,
+                         madinhdanh: parcelCode,
                          so_to: soTo,
                          so_thua: soThua,
                          ownerName,

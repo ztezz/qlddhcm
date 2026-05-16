@@ -80,7 +80,7 @@ export const useMap = (
 
     // Edit State
     const [isEditOpen, setIsEditOpen] = useState(false);
-    const [editFormData, setEditFormData] = useState<ParcelDTO>({ sothua: '', sodoto: '' });
+    const [editFormData, setEditFormData] = useState<ParcelDTO>({ madinhdanh: '', sothua: '', sodoto: '' });
     const [editLoading, setEditLoading] = useState(false);
     const [dialog, setDialog] = useState<{ isOpen: boolean; type: 'success' | 'error' | 'info'; title: string; message: string; }>({ isOpen: false, type: 'info', title: '', message: '' });
 
@@ -232,6 +232,7 @@ export const useMap = (
         const p = parcel.properties;
         setEditFormData({
             gid: parcel.gid,
+            madinhdanh: (p.madinhdanh || p.ma_dinh_danh || p.ma_thua || p.parcel_code || '').toString(),
             sodoto: (p.so_to || '').toString(),
             sothua: (p.so_thua || '').toString(),
             tenchu: p.ownerName || '',

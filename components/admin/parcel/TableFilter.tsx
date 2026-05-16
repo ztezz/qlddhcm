@@ -41,7 +41,7 @@ const TableFilter: React.FC<TableFilterProps> = ({
     const currentTable = availableTables.find(t => t.table_name === layer);
 
     return (
-        <div className="p-5 bg-gray-900/50 border-b border-gray-800 grid grid-cols-1 md:grid-cols-6 gap-4 items-end animate-in fade-in duration-500">
+        <div className="p-5 bg-gray-900/50 border-b border-gray-800 grid grid-cols-1 md:grid-cols-7 gap-4 items-end animate-in fade-in duration-500">
             {/* SEARCHABLE TABLE SELECT */}
             <div className="space-y-1.5 md:col-span-1 relative" ref={dropdownRef}>
                 <label className="text-[10px] font-black text-gray-500 uppercase ml-1 tracking-widest flex items-center gap-1">
@@ -96,6 +96,15 @@ const TableFilter: React.FC<TableFilterProps> = ({
                 )}
             </div>
 
+            <div className="space-y-1.5 md:col-span-1">
+                <label className="text-[10px] font-black text-gray-500 uppercase ml-1 tracking-widest">Mã định danh</label>
+                <input
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs focus:border-blue-500 outline-none font-mono text-amber-300"
+                    placeholder="12 chữ số..."
+                    value={searchFilters.madinhdanh}
+                    onChange={e => setSearchFilters({...searchFilters, madinhdanh: e.target.value})}
+                />
+            </div>
             <div className="space-y-1.5 md:col-span-1">
                 <label className="text-[10px] font-black text-gray-500 uppercase ml-1 tracking-widest">Số tờ</label>
                 <input 

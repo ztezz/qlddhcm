@@ -16,7 +16,7 @@ interface SearchPanelProps {
 
 const SearchPanel: React.FC<SearchPanelProps> = ({ isOpen, onToggle, spatialTables, systemSettings, onSelectResult, onSearchCoordinate }) => {
     const [searchMode, setSearchMode] = useState<'ATTR' | 'COORD'>('ATTR');
-    const [searchForm, setSearchForm] = useState({ table: '', soTo: '', soThua: '', owner: '', address: '' });
+    const [searchForm, setSearchForm] = useState({ table: '', maDinhDanh: '', soTo: '', soThua: '', owner: '', address: '' });
     const [coordInput, setCoordInput] = useState('');
     const [results, setResults] = useState<LandParcel[]>([]);
     const [loading, setLoading] = useState(false);
@@ -55,6 +55,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ isOpen, onToggle, spatialTabl
 
         const normalizedFilters = {
             table: searchForm.table.trim(),
+            maDinhDanh: searchForm.maDinhDanh.trim(),
             soTo: searchForm.soTo.trim(),
             soThua: searchForm.soThua.trim(),
             owner: searchForm.owner.trim(),
@@ -71,7 +72,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ isOpen, onToggle, spatialTabl
             return;
         }
 
-        if (!normalizedFilters.soTo && !normalizedFilters.soThua && !normalizedFilters.owner && !normalizedFilters.address) {
+        if (!normalizedFilters.maDinhDanh && !normalizedFilters.soTo && !normalizedFilters.soThua && !normalizedFilters.owner && !normalizedFilters.address) {
             setError("Vui lòng nhập ít nhất một thông tin lọc.");
             return;
         }
@@ -81,6 +82,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ isOpen, onToggle, spatialTabl
         setHasSearched(true);
         try {
             const res = await gisService.searchParcels(normalizedFilters.table, {
+                madinhdanh: normalizedFilters.maDinhDanh,
                 sodoto: normalizedFilters.soTo,
                 sothua: normalizedFilters.soThua,
                 tenchu: normalizedFilters.owner,
@@ -274,6 +276,11 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ isOpen, onToggle, spatialTabl
                           )}
                       </div>
 
+                      <div className="space-y-1">
+                          <label className="text-[10px] font-black text-slate-800 uppercase ml-1 tracking-wider">Mã định danh</label>
+                          <input className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs font-mono font-bold text-amber-700 outline-none" placeholder="12 chữ số..." value={searchForm.maDinhDanh} onChange={e => setSearchForm({...searchForm, maDinhDanh: e.target.value})} />
+                      </div>
+
                       <div className="grid grid-cols-2 gap-2">
                           <div className="space-y-1">
                               <label className="text-[10px] font-black text-slate-800 uppercase ml-1 tracking-wider">Số tờ</label>
@@ -345,7 +352,8 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ isOpen, onToggle, spatialTabl
                                     <div className="flex justify-end items-start mb-0.5">
                                         <span className="bg-blue-100 text-blue-600 text-[8px] font-black px-1.5 py-0.5 rounded uppercase">{r.properties.landType}</span>
                                     </div>
-                                    {(r.properties.so_to || r.properties.so_thua) && (
+                                    <p className="text-[10px] font-mono font-black text-amber-700 mb-1">Mã định danh: {r.properties.madinhdanh || '--'}</p>
+                              {(r.properties.so_to || r.properties.so_thua) && (
                                         <div className="text-slate-500 text-[9px] font-semibold truncate">
                                             Tờ {r.properties.so_to || '?'} - Thửa {r.properties.so_thua || '?'}
                                         </div>

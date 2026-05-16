@@ -35,7 +35,7 @@ const SETTING_METADATA: Record<string, { label: string; description: string; typ
     'thematic_map_max_zoom': { label: 'HC - Zoom tối đa', description: 'Mức zoom tối đa cho trang Đơn vị hành chính', type: 'number' },
     'thematic_map_min_zoom': { label: 'HC - Zoom tối thiểu', description: 'Mức zoom tối thiểu cho trang Đơn vị hành chính', type: 'number' },
     'thematic_default_basemap_id': { label: 'HC - Bản đồ nền mặc định', description: 'ID bản đồ nền mặc định cho trang Đơn vị hành chính', type: 'text' },
-    'parcel_identifier_format': { label: 'Cấu trúc mã định danh thửa đất', description: 'Mẫu hiển thị mã thửa. Hỗ trợ các biến {so_to}, {so_thua}, {gid}, {owner}, {land_type}, {phuong_xa}. Phường/xã sẽ lấy theo tên bảng dữ liệu. Ví dụ: {phuong_xa}-T{so_to}-TH{so_thua}', type: 'text' },
+    'parcel_identifier_format': { label: 'Cấu trúc mã định danh thửa đất', description: 'Mẫu hiển thị mã thửa. Hỗ trợ các biến {ma_dinh_danh}, {so_to}, {so_thua}, {gid}, {owner}, {land_type}, {phuong_xa}. Mặc định ưu tiên mã định danh ngẫu nhiên 12 số. Ví dụ: {ma_dinh_danh}', type: 'text' },
     'pdf_template_preset': { label: 'Mẫu PDF mặc định', description: 'Mẫu do quản trị hệ thống chọn và áp dụng cho toàn bộ người dùng', type: 'text' },
     'pdf_header_1': { label: 'Dòng tiêu đề 1', description: 'Ví dụ: CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM', type: 'text' },
     'pdf_header_2': { label: 'Dòng tiêu đề 2', description: 'Ví dụ: Độc lập - Tự do - Hạnh phúc', type: 'text' },

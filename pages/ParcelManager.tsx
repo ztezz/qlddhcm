@@ -28,7 +28,7 @@ const ParcelManager: React.FC<ParcelManagerProps> = ({ permissions = [] }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [hasSearched, setHasSearched] = useState(false);
-    const [searchFilters, setSearchFilters] = useState({ sodoto: '', sothua: '', tenchu: '', diachi: '' });
+    const [searchFilters, setSearchFilters] = useState({ madinhdanh: '', sodoto: '', sothua: '', tenchu: '', diachi: '' });
     
     // Modal Management
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -36,7 +36,7 @@ const ParcelManager: React.FC<ParcelManagerProps> = ({ permissions = [] }) => {
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [selectedItem, setSelectedItem] = useState<any>(null);
-    const [formData, setFormData] = useState<ParcelDTO>({ sothua: '', sodoto: '', tenchu: '', diachi: '', loaidat: '', file: null });
+    const [formData, setFormData] = useState<ParcelDTO>({ madinhdanh: '', sothua: '', sodoto: '', tenchu: '', diachi: '', loaidat: '', file: null });
 
     // System Dialog
     const [dialog, setDialog] = useState<{ isOpen: boolean; type: 'alert' | 'confirm' | 'success' | 'error'; title: string; message: string; onConfirm?: () => void; }>({ isOpen: false, type: 'alert', title: '', message: '' });
@@ -116,6 +116,7 @@ const ParcelManager: React.FC<ParcelManagerProps> = ({ permissions = [] }) => {
         geometry: p.geometry,
         properties: {
             gid: p.gid,
+            madinhdanh: getFieldValue(p, ['madinhdanh', 'ma_dinh_danh', 'ma_thua', 'parcel_code', 'parcel_id', 'land_id', 'identifier']) || '',
             sodoto: getFieldValue(p, ['sodoto', 'so_to', 'shbando']) || '',
             sothua: getFieldValue(p, ['sothua', 'so_thua', 'shthua']) || '',
             tenchu: getFieldValue(p, ['tenchu', 'owner', 'chusudung']) || '',
@@ -127,9 +128,10 @@ const ParcelManager: React.FC<ParcelManagerProps> = ({ permissions = [] }) => {
     });
 
     const buildParcelFilename = (p: any, ext: string) => {
+        const parcelCode = getFieldValue(p, ['madinhdanh', 'ma_dinh_danh', 'ma_thua', 'parcel_code', 'parcel_id', 'land_id', 'identifier']) || 'unknown';
         const soTo = getFieldValue(p, ['sodoto', 'so_to', 'shbando']) || 'unknown';
         const soThua = getFieldValue(p, ['sothua', 'so_thua', 'shthua']) || 'unknown';
-        return `${toSafeFilename(`Parcel_${layer}_${soTo}_${soThua}_${p.gid || 'na'}`)}.${ext}`;
+        return `${toSafeFilename(`Parcel_${layer}_${parcelCode}_${soTo}_${soThua}_${p.gid || 'na'}`)}.${ext}`;
     };
 
     // --- ACTIONS ---
@@ -196,16 +198,18 @@ const ParcelManager: React.FC<ParcelManagerProps> = ({ permissions = [] }) => {
     const openEdit = (p: any) => {
         if (!canEditParcel) return showDialog('error', 'Không đủ quyền', 'Bạn không có quyền sửa thửa đất.');
         setEditingId(p.gid);
+        const rawParcelCode = getFieldValue(p, ['madinhdanh', 'ma_dinh_danh', 'ma_thua', 'parcel_code', 'parcel_id', 'land_id', 'identifier']);
         const rawSoTo = getFieldValue(p, ['sodoto', 'so_to']);
         const rawSoThua = getFieldValue(p, ['sothua', 'so_thua']);
-        setFormData({ 
-            sodoto: rawSoTo !== null && rawSoTo !== undefined ? String(rawSoTo) : '', 
-            sothua: rawSoThua !== null && rawSoThua !== undefined ? String(rawSoThua) : '', 
-            tenchu: getFieldValue(p, ['tenchu', 'owner']), 
-            diachi: getFieldValue(p, ['diachi', 'address']), 
-            loaidat: getFieldValue(p, ['loaidat', 'kyhieumucd']), 
+        setFormData({
+            madinhdanh: rawParcelCode !== null && rawParcelCode !== undefined ? String(rawParcelCode) : '',
+            sodoto: rawSoTo !== null && rawSoTo !== undefined ? String(rawSoTo) : '',
+            sothua: rawSoThua !== null && rawSoThua !== undefined ? String(rawSoThua) : '',
+            tenchu: getFieldValue(p, ['tenchu', 'owner']),
+            diachi: getFieldValue(p, ['diachi', 'address']),
+            loaidat: getFieldValue(p, ['loaidat', 'kyhieumucd']),
             dientich: parseFloat(getFieldValue(p, ['dientich', 'area']) || 0),
-            geometry: p.geometry, file: null 
+            geometry: p.geometry, file: null
         });
         setIsFormOpen(true);
     };
@@ -213,7 +217,7 @@ const ParcelManager: React.FC<ParcelManagerProps> = ({ permissions = [] }) => {
     const openAdd = () => {
         if (!canCreateParcel) return showDialog('error', 'Không đủ quyền', 'Bạn không có quyền thêm thửa đất mới.');
         setEditingId(null);
-        setFormData({ sothua: '', sodoto: '', tenchu: '', diachi: '', loaidat: '', file: null });
+        setFormData({ madinhdanh: '', sothua: '', sodoto: '', tenchu: '', diachi: '', loaidat: '', file: null });
         setIsFormOpen(true);
     };
 

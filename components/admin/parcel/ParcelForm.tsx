@@ -202,6 +202,7 @@ const ParcelForm: React.FC<ParcelFormProps> = ({
             return null;
         };
 
+        const extractedParcelCode = findVal(['madinhdanh', 'ma_dinh_danh', 'ma_thua', 'parcel_code', 'parcel_id', 'land_id', 'identifier']);
         const extractedSoTo = findVal(['sodoto', 'so_to', 'shbando', 'map_sheet', 'tobando']);
         const extractedSoThua = findVal(['sothua', 'so_thua', 'shthua', 'parcel_no', 'shparcel']);
         const extractedOwner = findVal(['tenchu', 'ten_chu', 'chu_so_huu', 'owner']);
@@ -210,6 +211,7 @@ const ParcelForm: React.FC<ParcelFormProps> = ({
 
         setFormData({
             ...formData,
+            madinhdanh: extractedParcelCode ? extractedParcelCode.toString() : formData.madinhdanh,
             geometry: geometry,
             dientich: area > 0 ? Math.round(area * 100) / 100 : formData.dientich,
             sodoto: extractedSoTo ? extractedSoTo.toString() : formData.sodoto,
@@ -244,6 +246,11 @@ const ParcelForm: React.FC<ParcelFormProps> = ({
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-6">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-1">Mã định danh</label>
+                            <input className="w-full bg-gray-950 border border-amber-500/20 rounded-2xl p-4 text-sm outline-none font-mono font-black text-amber-300 transition-all shadow-inner disabled:opacity-100" placeholder="Sẽ tự sinh sau khi lưu" value={formData.madinhdanh || ''} readOnly disabled />
+                        </div>
+
                         <div className="grid grid-cols-2 gap-5">
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-1">Số tờ bản đồ *</label>

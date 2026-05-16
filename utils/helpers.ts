@@ -37,6 +37,7 @@ const normalizeTableLabel = (value: string): string => {
 };
 
 export const formatParcelIdentifier = (source: any, template?: string): string => {
+    const parcelCode = getParcelFormatValue(source, ['madinhdanh', 'ma_dinh_danh', 'ma_thua', 'parcel_code', 'parcel_id', 'land_id', 'identifier']);
     const soTo = getParcelFormatValue(source, ['so_to', 'sodoto', 'shbando', 'to', 'map_sheet']);
     const soThua = getParcelFormatValue(source, ['so_thua', 'sothua', 'shthua', 'thua', 'parcel_no']);
     const gid = getParcelFormatValue(source, ['gid', 'id']);
@@ -45,10 +46,11 @@ export const formatParcelIdentifier = (source: any, template?: string): string =
     const wardName = getParcelFormatValue(source, ['display_name', 'tableDisplayName'])
         || normalizeTableLabel(getParcelFormatValue(source, ['tableName', 'table_name']))
         || getParcelFormatValue(source, ['phuongxa', 'phuong_xa', 'ward', 'ward_name', 'xa', 'ten_xa']);
-    const format = String(template || '{so_to}/{so_thua}').trim() || '{so_to}/{so_thua}';
+    const format = String(template || '{ma_dinh_danh}').trim() || '{ma_dinh_danh}';
 
-    const mapped = format.replace(/\{(so_to|so_thua|gid|owner|land_type|loai_dat|phuong_xa|phuongxa|ward|ten_bang|table_name)\}/gi, (_, token: string) => {
+    const mapped = format.replace(/\{(ma_dinh_danh|madinhdanh|ma_thua|parcel_code|parcel_id|land_id|identifier|so_to|so_thua|gid|owner|land_type|loai_dat|phuong_xa|phuongxa|ward|ten_bang|table_name)\}/gi, (_, token: string) => {
         const normalized = token.toLowerCase();
+        if (['ma_dinh_danh', 'madinhdanh', 'ma_thua', 'parcel_code', 'parcel_id', 'land_id', 'identifier'].includes(normalized)) return parcelCode;
         if (normalized === 'so_to') return soTo;
         if (normalized === 'so_thua') return soThua;
         if (normalized === 'gid') return gid;
@@ -64,7 +66,7 @@ export const formatParcelIdentifier = (source: any, template?: string): string =
         .replace(/^[\-_/,:\s]+|[\-_/,:\s]+$/g, '')
         .trim();
 
-    return cleaned || [soTo, soThua].filter(Boolean).join('/') || gid || 'Chưa có mã';
+    return cleaned || parcelCode || [soTo, soThua].filter(Boolean).join('/') || gid || 'Chưa có mã';
 };
 
 export const toSafeFilename = (value: string, fallback = 'parcel'): string => {

@@ -16,6 +16,7 @@ const QuickView: React.FC<QuickViewProps> = ({ parcel, onClose, onDownload, getF
     const isDragging = useRef(false);
     const lastMousePos = useRef({ x: 0, y: 0 });
 
+    const getParcelCode = (p: any) => getFieldValue(p, ['madinhdanh', 'ma_dinh_danh', 'ma_thua', 'parcel_code', 'parcel_id', 'land_id', 'identifier']) || '--';
     const getLandType = (p: any) => getFieldValue(p, ['loaidat', 'kyhieumucd', 'mucdich']) || 'N/A';
     const getOwner = (p: any) => getFieldValue(p, ['tenchu', 'owner']) || '--';
     const getAreaVal = (p: any) => parseFloat(getFieldValue(p, ['dientich', 'dien_tich', 'area']) || 0);
@@ -130,6 +131,7 @@ const QuickView: React.FC<QuickViewProps> = ({ parcel, onClose, onDownload, getF
                     <div className="flex-1 bg-gray-950 p-6 relative group">
                         <div className="absolute top-8 left-8 z-10 pointer-events-none">
                             <h3 className="text-2xl font-black text-white tracking-tighter">THỬA {getParcelNo(parcel)} - TỜ {getSheetNo(parcel)}</h3>
+                            <p className="text-[10px] text-amber-300 font-mono font-black mt-1">MÃ ĐỊNH DANH: {getParcelCode(parcel)}</p>
                             <p className="text-[9px] text-gray-500 font-bold uppercase mt-1 italic">Dùng chuột để Zoom & Di chuyển</p>
                         </div>
                         <div className="absolute bottom-8 left-8 flex flex-col gap-2 z-10 opacity-60 group-hover:opacity-100 transition-opacity">
