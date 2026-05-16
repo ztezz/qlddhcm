@@ -453,6 +453,53 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus, permissions = [] 
         }
     };
 
+    const handleSyncAllTables = async () => {
+        if (!canSyncTable) {
+            setError('Bạn không có quyền đồng bộ bảng dữ liệu.');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            let failedCount = 0;
+            let syncedCount = 0;
+
+            try {
+                const result = await parcelApi.manageTables.syncAll();
+                failedCount = Array.isArray(result?.failed) ? result.failed.length : 0;
+                syncedCount = Array.isArray(result?.synced) ? result.synced.length : 0;
+            } catch (e: any) {
+                const message = String(e?.message || '');
+                const notFound = message.includes('404') || message.toLowerCase().includes('not found');
+                if (!notFound) {
+                    throw e;
+                }
+
+                for (const table of spatialTables) {
+                    const tableName = String(table?.table_name || '').trim();
+                    if (!tableName) continue;
+                    try {
+                        await parcelApi.manageTables.syncTable(tableName);
+                        syncedCount += 1;
+                    } catch {
+                        failedCount += 1;
+                    }
+                }
+            }
+
+            await loadData();
+            if (failedCount > 0) {
+                setError(`Đã đồng bộ ${syncedCount} bảng, có ${failedCount} bảng lỗi. Kiểm tra log backend để biết chi tiết.`);
+                return;
+            }
+            setError(`Đã đồng bộ thành công ${syncedCount} bảng đã đăng ký.`);
+        } catch (e: any) {
+            setError('Lỗi thực thi: ' + e.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const persistLayerOrder = async (orderedItems: WMSLayerConfig[]) => {
         const payload = orderedItems.map((l, idx) => ({ id: l.id, sortOrder: Number.isFinite(Number(l.sortOrder)) ? Number(l.sortOrder) : idx + 1 }));
         await adminService.reorderWmsLayers(payload);
@@ -645,6 +692,13 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus, permissions = [] 
                         <Table size={18} className="text-green-400"/> Quản lý Bảng Dữ liệu (Registry)
                     </span>
                     <div className="flex items-center gap-2">
+                        <button
+                            onClick={handleSyncAllTables}
+                            disabled={!canSyncTable || loading || spatialTables.length === 0}
+                            className="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-1.5 rounded text-sm font-bold flex items-center gap-1 transition-all"
+                        >
+                            <RefreshCw size={16} className={loading ? 'animate-spin' : ''}/> Sync all
+                        </button>
                         <button
                             onClick={() => setIsGeoJsonImportOpen(true)}
                             disabled={!canImportGeoJsonParcels}

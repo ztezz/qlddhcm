@@ -11,7 +11,7 @@ import dbConfig from './db_config.js';
 
 // Import New Routers
 import proxyRouter from './routes_proxy.js';
-import spatialRouter from './routes_spatial.js';
+import spatialRouter, { syncRegisteredSpatialTables } from './routes_spatial.js';
 import authRouter from './routes_auth.js';
 import userRouter from './routes_users.js';
 import configRouter from './routes_config.js';
@@ -122,7 +122,17 @@ const initDB = async () => {
         `);
 
         console.log("🚀 Database Schema Verified & Initialized");
-        
+
+        try {
+            const syncSummary = await syncRegisteredSpatialTables(pool);
+            console.log(`[Startup Sync] Đã đồng bộ ${syncSummary.synced.length}/${syncSummary.total} bảng đã đăng ký.`);
+            if (syncSummary.failed.length > 0) {
+                console.warn('[Startup Sync] Một số bảng đồng bộ thất bại:', syncSummary.failed);
+            }
+        } catch (syncError) {
+            console.error('[Startup Sync] Lỗi đồng bộ bảng đã đăng ký:', syncError.message);
+        }
+
         cleanupOldTrash();
         setInterval(cleanupOldTrash, 86400000);
 

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { LandParcel, User } from '../../types';
 import { X, Info, Map as MapIcon, Maximize2, FileText, Trash2, Edit3, Navigation, QrCode, Download, Share2 } from 'lucide-react';
 import QRCode from 'qrcode';
-import { formatParcelIdentifier, toSafeFilename } from '../../utils/helpers';
+import { formatParcelIdentifier, getRawParcelIdentifier, toSafeFilename } from '../../utils/helpers';
 
 interface ParcelPopupProps {
     parcel: LandParcel;
@@ -20,13 +20,16 @@ const ParcelPopup: React.FC<ParcelPopupProps> = ({ parcel, user, systemSettings,
     const [showQR, setShowQR] = useState(false);
     const [qrDataUrl, setQrDataUrl] = useState<string>('');
     const parcelIdentifier = formatParcelIdentifier(p, systemSettings?.parcel_identifier_format);
+    const rawParcelIdentifier = getRawParcelIdentifier(p) || '--';
+    const sheetNumber = p.so_to || p.sodoto || '--';
+    const parcelNumber = p.so_thua || p.sothua || '--';
 
     useEffect(() => {
         if (showQR) {
             const generateQR = async () => {
                 try {
                     // Tạo nội dung mã QR: Thông tin thửa đất để tra cứu nhanh
-                    const qrText = `MÃ THỬA: ${parcelIdentifier}\nCHỦ: ${p.ownerName || 'N/A'}\nDIỆN TÍCH: ${Math.round(p.area || 0)} m2\nLOẠI ĐẤT: ${p.landType || 'N/A'}\nWEBGIS GEOMASTER`;
+                    const qrText = `MÃ ĐỊNH DANH: ${rawParcelIdentifier}\nSỐ TỜ: ${sheetNumber}\nSỐ THỬA: ${parcelNumber}\nCHỦ: ${p.ownerName || 'N/A'}\nDIỆN TÍCH: ${Math.round(p.area || 0)} m2\nLOẠI ĐẤT: ${p.landType || 'N/A'}\nWEBGIS GEOMASTER`;
                     const url = await QRCode.toDataURL(qrText, {
                         width: 400,
                         margin: 2,
@@ -75,8 +78,9 @@ const ParcelPopup: React.FC<ParcelPopupProps> = ({ parcel, user, systemSettings,
                             </div>
                         )}
                     </div>
-                    <p className="text-[11px] font-black text-blue-600 uppercase tracking-widest mb-1">Mã định danh thửa đất</p>
-                    <p className="text-sm font-black text-slate-800 mb-1">{parcelIdentifier}</p>
+                    <p className="text-[11px] font-black text-blue-600 uppercase tracking-widest mb-1">Thông tin định danh thửa đất</p>
+                    <p className="text-sm font-black text-slate-800 mb-1">Mã định danh: {rawParcelIdentifier}</p>
+                    <p className="text-[10px] font-bold text-slate-600 mb-1">Số tờ: {sheetNumber} · Số thửa: {parcelNumber}</p>
                     <p className="text-[10px] text-gray-500 font-medium mb-6">Sử dụng camera điện thoại để quét</p>
                     
                     <div className="grid grid-cols-2 gap-3 w-full">
@@ -100,6 +104,10 @@ const ParcelPopup: React.FC<ParcelPopupProps> = ({ parcel, user, systemSettings,
             {/* Body */}
             <div className="p-4 space-y-3 max-h-[50vh] md:max-h-[400px] overflow-y-auto custom-scrollbar">
                 <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="bg-amber-50 p-2 rounded col-span-2">
+                        <p className="text-amber-700 font-bold uppercase text-[9px]">Mã định danh</p>
+                        <p className="text-amber-900 font-mono font-black text-sm">{rawParcelIdentifier}</p>
+                    </div>
                     <div className="bg-gray-50 p-2 rounded">
                         <p className="text-gray-500 font-bold uppercase text-[9px]">Số tờ</p>
                         <p className="text-blue-700 font-bold text-sm">{p.so_to || '--'}</p>

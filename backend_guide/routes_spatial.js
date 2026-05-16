@@ -21,6 +21,95 @@ const upload = multer({ dest: uploadDir });
 // Bộ nhớ đệm cho cấu trúc bảng và SRID (Schema Cache)
 const SCHEMA_CACHE = new Map();
 
+export const syncRegisteredSpatialTables = async (pool) => {
+    const generateRandomParcelCode = () => {
+        let result = '';
+        for (let i = 0; i < 12; i += 1) {
+            result += Math.floor(Math.random() * 10).toString();
+        }
+        return result;
+    };
+
+    const generateUniqueParcelCode = async (tableName, codeColumn) => {
+        for (let attempt = 0; attempt < 20; attempt += 1) {
+            const candidate = generateRandomParcelCode();
+            const exists = await pool.query(
+                `SELECT 1 FROM "${tableName}" WHERE "${codeColumn}" = $1 LIMIT 1`,
+                [candidate]
+            );
+            if (exists.rowCount === 0) {
+                return candidate;
+            }
+        }
+        throw new Error('Không thể tạo mã định danh thửa đất duy nhất.');
+    };
+
+    const result = await pool.query(`SELECT table_name FROM spatial_tables_registry ORDER BY table_name ASC`);
+    const summary = {
+        total: result.rows.length,
+        synced: [],
+        failed: []
+    };
+
+    for (const row of result.rows) {
+        const tableName = String(row.table_name || '').toLowerCase().trim();
+        if (!tableName) continue;
+
+        try {
+            const res = await pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name = $1`, [tableName]);
+            if (res.rows.length === 0) {
+                summary.failed.push({ tableName, error: 'Bảng vật lý không tồn tại.' });
+                continue;
+            }
+
+            const dbColsMap = {};
+            const existingCols = res.rows.map(r => r.column_name.toLowerCase());
+            res.rows.forEach(r => {
+                dbColsMap[r.column_name.toLowerCase()] = r.column_name;
+            });
+
+            let parcelCodeColumn = null;
+            for (const candidate of ['madinhdanh', 'ma_dinh_danh', 'ma_thua', 'parcel_code', 'parcel_id', 'land_id', 'identifier']) {
+                if (dbColsMap[candidate]) {
+                    parcelCodeColumn = dbColsMap[candidate];
+                    break;
+                }
+            }
+
+            if (!parcelCodeColumn) {
+                await pool.query(`ALTER TABLE "${tableName}" ADD COLUMN IF NOT EXISTS "madinhdanh" TEXT`);
+                parcelCodeColumn = 'madinhdanh';
+            }
+
+            let rowIdColumn = null;
+            for (const candidate of ['gid', 'id', 'objectid', 'ogc_fid', 'fid']) {
+                if (existingCols.includes(candidate)) {
+                    rowIdColumn = dbColsMap[candidate] || candidate;
+                    break;
+                }
+            }
+
+            if (!rowIdColumn) {
+                throw new Error('Không tìm thấy cột định danh dòng để backfill mã định danh.');
+            }
+
+            const missingCodeRows = await pool.query(`SELECT "${rowIdColumn}" AS row_id FROM "${tableName}" WHERE "${parcelCodeColumn}" IS NULL OR BTRIM("${parcelCodeColumn}"::text) = ''`);
+            for (const record of missingCodeRows.rows) {
+                const parcelCode = await generateUniqueParcelCode(tableName, parcelCodeColumn);
+                await pool.query(`UPDATE "${tableName}" SET "${parcelCodeColumn}" = $1 WHERE "${rowIdColumn}" = $2`, [parcelCode, record.row_id]);
+            }
+
+            await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS "${tableName}_${parcelCodeColumn}_uniq" ON "${tableName}" ("${parcelCodeColumn}")`);
+            await pool.query(`CREATE INDEX IF NOT EXISTS "${tableName}_geom_idx" ON "${tableName}" USING GIST (geometry)`);
+            summary.synced.push(tableName);
+        } catch (error) {
+            summary.failed.push({ tableName, error: error?.message || 'Unknown error' });
+        }
+    }
+
+    return summary;
+};
+
 export default function(pool, logSystemAction) {
     const router = express.Router();
     const TABLE_NAME_REGEX = /^[a-z0-9_]+$/;
@@ -189,8 +278,8 @@ export default function(pool, logSystemAction) {
             if (currentMap._srid !== 9210) {
                 try {
                     await pool.query(`
-                        ALTER TABLE "${tableName}" 
-                        ALTER COLUMN geometry TYPE geometry(Geometry, 9210) 
+                        ALTER TABLE "${tableName}"
+                        ALTER COLUMN geometry TYPE geometry(Geometry, 9210)
                         USING ST_SetSRID(geometry, 9210)
                     `);
                     console.log(`[Migrate] Forced SRID 9210 for table: ${tableName}`);
@@ -200,10 +289,15 @@ export default function(pool, logSystemAction) {
             }
 
             await pool.query(`CREATE INDEX IF NOT EXISTS "${tableName}_geom_idx" ON "${tableName}" USING GIST (geometry)`);
-            SCHEMA_CACHE.delete(tableName); 
+            SCHEMA_CACHE.delete(tableName);
         } catch (e) {
             console.error(`[Schema Sync] Error syncing table ${tableName}:`, e.message);
+            throw e;
         }
+    };
+
+    const syncAllRegisteredSpatialTables = async () => {
+        return await syncRegisteredSpatialTables(pool);
     };
 
     const resolveNameColumn = async (tableName) => {
@@ -255,6 +349,16 @@ export default function(pool, logSystemAction) {
             await logSystemAction(req, 'SYNC_TABLE', `Đồng bộ cấu trúc bảng: ${table}`);
             res.json({ status: 'ok' });
         } catch (e) { res.status(500).json({ error: e.message }); }
+    });
+
+    router.post('/spatial-tables/sync-all', authenticateToken, async (req, res) => {
+        try {
+            const summary = await syncAllRegisteredSpatialTables();
+            await logSystemAction(req, 'SYNC_ALL_TABLES', `Đồng bộ toàn bộ bảng đã đăng ký: ${summary.synced.length}/${summary.total}`);
+            res.json({ status: 'ok', ...summary });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
     });
 
     router.post('/spatial-tables', authenticateToken, async (req, res) => {

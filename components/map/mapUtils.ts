@@ -40,6 +40,7 @@ export const smartMapProperties = (props: any) => {
     };
     return {
         ...props,
+        madinhdanh: findVal(['madinhdanh', 'ma_dinh_danh', 'ma_thua', 'parcel_code', 'parcel_id', 'land_id', 'identifier']),
         so_to: findVal(['sodoto', 'so_to', 'shbando', 'sh_ban_do', 'tobando', 'tờ', 'số tờ', 'so_to_ban_do']),
         so_thua: findVal(['sothua', 'so_thua', 'shthua', 'sh_thua', 'thửa', 'số thửa', 'so_thu_tu_thua']),
         ownerName: findVal(['tenchu', 'ten_chu', 'ten_chu_sd', 'owner', 'chủ sở hữu', 'chusudung']),

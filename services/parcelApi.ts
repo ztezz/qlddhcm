@@ -259,6 +259,13 @@ export const parcelApi = {
             });
             return await handleResponse(res);
         },
+        syncAll: async () => {
+            const res = await fetch(`${API_URL}/api/spatial-tables/sync-all`, {
+                method: 'POST',
+                headers: { ...getAuthHeaders() }
+            });
+            return await handleResponse(res);
+        },
         repairTable: async (tableName: string) => {
             const res = await fetch(`${API_URL}/api/spatial-tables/repair/${tableName}`, {
                 method: 'POST',

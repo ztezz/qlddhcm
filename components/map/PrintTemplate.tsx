@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { LandParcel, User } from '../../types';
 import QRCode from 'qrcode';
 import { resolvePdfTemplateSettings } from '../../utils/pdfTemplatePresets';
-import { formatParcelIdentifier } from '../../utils/helpers';
+import { formatParcelIdentifier, getRawParcelIdentifier } from '../../utils/helpers';
 
 interface PrintTemplateProps {
     parcel: LandParcel;
@@ -33,12 +33,15 @@ const PrintTemplate: React.FC<PrintTemplateProps> = ({ parcel, user, systemSetti
     };
 
     const parcelIdentifier = formatParcelIdentifier(formData, systemSettings?.parcel_identifier_format);
+    const rawParcelIdentifier = getRawParcelIdentifier(formData) || '--';
+    const sheetNumber = getAttribute(formData, ['so_to', 'sodoto', 'shmap']);
+    const parcelNumber = getAttribute(formData, ['so_thua', 'sothua', 'shthua']);
 
     useEffect(() => {
         // Generate QR Code for Print Verification
         const generateQR = async () => {
             try {
-                const verificationContent = `VERIFY: ${parcel.id}\nPARCEL: ${parcelIdentifier}\nWEBGIS GEOMASTER AUTHENTICATED`;
+                const verificationContent = `VERIFY: ${parcel.id}\nPARCEL: ${rawParcelIdentifier}\nSHEET: ${sheetNumber || '--'}\nLOT: ${parcelNumber || '--'}\nWEBGIS GEOMASTER AUTHENTICATED`;
                 const url = await QRCode.toDataURL(verificationContent, {
                     width: 120,
                     margin: 0,

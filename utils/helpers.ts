@@ -29,6 +29,10 @@ const getParcelFormatValue = (source: any, keys: string[]): string => {
     return '';
 };
 
+export const getRawParcelIdentifier = (source: any): string => {
+    return getParcelFormatValue(source, ['madinhdanh', 'ma_dinh_danh', 'ma_thua', 'parcel_code', 'parcel_id', 'land_id', 'identifier']);
+};
+
 const normalizeTableLabel = (value: string): string => {
     const raw = String(value || '').trim();
     if (!raw) return '';

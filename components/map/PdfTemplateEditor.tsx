@@ -1,6 +1,7 @@
 import React from 'react';
 import { LandParcel, User } from '../../types';
 import { X, FileText, RotateCcw, Printer, Eye, CheckSquare, Square } from 'lucide-react';
+import { getRawParcelIdentifier } from '../../utils/helpers';
 
 interface PdfTemplateEditorProps {
     isOpen: boolean;
@@ -28,6 +29,7 @@ const PdfTemplateEditor: React.FC<PdfTemplateEditorProps> = ({
     if (!isOpen) return null;
 
     const p = (parcel?.properties || {}) as Record<string, any>;
+    const rawParcelIdentifier = getRawParcelIdentifier(p) || '--';
     const resolveValue = (key: string, fallback = '') => {
         return templateSettings[key] ?? systemSettings?.[key] ?? fallback;
     };
@@ -181,6 +183,7 @@ const PdfTemplateEditor: React.FC<PdfTemplateEditorProps> = ({
                             </div>
 
                             <div className="space-y-2 text-sm leading-6">
+                                <div><strong>Mã định danh:</strong> {rawParcelIdentifier}</div>
                                 <div><strong>Thửa đất số:</strong> {p.so_thua || p.sothua || '--'} &nbsp; <strong>Tờ bản đồ số:</strong> {p.so_to || p.sodoto || '--'}</div>
                                 <div><strong>Chủ sử dụng:</strong> {p.ownerName || p.tenchu || 'Chưa cập nhật'}</div>
                                 <div><strong>Địa chỉ:</strong> {p.address || p.diachi || 'Chưa cập nhật'}</div>
