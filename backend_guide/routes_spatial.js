@@ -5,6 +5,7 @@ import shp from 'shpjs';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import geohash from 'geohash';
 import { authenticateToken } from './middleware_auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -20,19 +21,24 @@ const upload = multer({ dest: uploadDir });
 
 // Bộ nhớ đệm cho cấu trúc bảng và SRID (Schema Cache)
 const SCHEMA_CACHE = new Map();
+const NON_PARCEL_TABLE_KEYWORDS = ['donvihanhchinh', 'hanh_chinh', 'administrative', 'ranh_gioi', 'dia_gioi', 'boundary'];
 
 export const syncRegisteredSpatialTables = async (pool) => {
-    const generateRandomParcelCode = () => {
-        let result = '';
-        for (let i = 0; i < 12; i += 1) {
-            result += Math.floor(Math.random() * 10).toString();
+    const generateGeohashParcelCode = async (tableName, rowIdColumn, rowId) => {
+        const geomRes = await pool.query(
+            `SELECT ST_X(ST_Centroid(geometry)) as lon, ST_Y(ST_Centroid(geometry)) as lat FROM "${tableName}" WHERE "${rowIdColumn}" = $1`,
+            [rowId]
+        );
+        if (geomRes.rows.length === 0) {
+            throw new Error('Không thể lấy tọa độ từ geometry.');
         }
-        return result;
+        const { lon, lat } = geomRes.rows[0];
+        return geohash.encode(lat, lon, 12);
     };
 
-    const generateUniqueParcelCode = async (tableName, codeColumn) => {
+    const generateUniqueParcelCode = async (tableName, codeColumn, rowIdColumn, rowId) => {
         for (let attempt = 0; attempt < 20; attempt += 1) {
-            const candidate = generateRandomParcelCode();
+            const candidate = await generateGeohashParcelCode(tableName, rowIdColumn, rowId);
             const exists = await pool.query(
                 `SELECT 1 FROM "${tableName}" WHERE "${codeColumn}" = $1 LIMIT 1`,
                 [candidate]
@@ -54,6 +60,7 @@ export const syncRegisteredSpatialTables = async (pool) => {
     for (const row of result.rows) {
         const tableName = String(row.table_name || '').toLowerCase().trim();
         if (!tableName) continue;
+        if (NON_PARCEL_TABLE_KEYWORDS.some((keyword) => tableName.includes(keyword))) continue;
 
         try {
             const res = await pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name = $1`, [tableName]);
@@ -95,7 +102,7 @@ export const syncRegisteredSpatialTables = async (pool) => {
 
             const missingCodeRows = await pool.query(`SELECT "${rowIdColumn}" AS row_id FROM "${tableName}" WHERE "${parcelCodeColumn}" IS NULL OR BTRIM("${parcelCodeColumn}"::text) = ''`);
             for (const record of missingCodeRows.rows) {
-                const parcelCode = await generateUniqueParcelCode(tableName, parcelCodeColumn);
+                const parcelCode = await generateUniqueParcelCode(tableName, parcelCodeColumn, rowIdColumn, record.row_id);
                 await pool.query(`UPDATE "${tableName}" SET "${parcelCodeColumn}" = $1 WHERE "${rowIdColumn}" = $2`, [parcelCode, record.row_id]);
             }
 
@@ -134,17 +141,42 @@ export default function(pool, logSystemAction) {
         return table;
     };
 
-    const generateRandomParcelCode = () => {
-        let result = '';
-        for (let i = 0; i < 12; i += 1) {
-            result += Math.floor(Math.random() * 10).toString();
+    const generateGeohashParcelCode = async (tableName, rowIdColumn, rowId) => {
+        const geomRes = await pool.query(
+            `SELECT ST_X(ST_Centroid(geometry)) as lon, ST_Y(ST_Centroid(geometry)) as lat FROM "${tableName}" WHERE "${rowIdColumn}" = $1`,
+            [rowId]
+        );
+        if (geomRes.rows.length === 0) {
+            throw new Error('Không thể lấy tọa độ từ geometry.');
         }
-        return result;
+        const { lon, lat } = geomRes.rows[0];
+        return geohash.encode(lat, lon, 12);
     };
 
-    const generateUniqueParcelCode = async (db, tableName, codeColumn) => {
+    const generateGeohashFromGeoJSON = (geoJsonGeometry) => {
+        if (!geoJsonGeometry || !geoJsonGeometry.coordinates) {
+            throw new Error('Geometry không hợp lệ.');
+        }
+        let lon, lat;
+        if (geoJsonGeometry.type === 'Point') {
+            [lon, lat] = geoJsonGeometry.coordinates;
+        } else if (geoJsonGeometry.type === 'Polygon' || geoJsonGeometry.type === 'MultiPolygon') {
+            const coords = geoJsonGeometry.type === 'Polygon'
+                ? geoJsonGeometry.coordinates[0]
+                : geoJsonGeometry.coordinates[0][0];
+            const centerLon = coords.reduce((sum, c) => sum + c[0], 0) / coords.length;
+            const centerLat = coords.reduce((sum, c) => sum + c[1], 0) / coords.length;
+            lon = centerLon;
+            lat = centerLat;
+        } else {
+            throw new Error('Loại geometry không được hỗ trợ.');
+        }
+        return geohash.encode(lat, lon, 12);
+    };
+
+    const generateUniqueParcelCode = async (db, tableName, codeColumn, rowIdColumn, rowId) => {
         for (let attempt = 0; attempt < 20; attempt += 1) {
-            const candidate = generateRandomParcelCode();
+            const candidate = await generateGeohashParcelCode(tableName, rowIdColumn, rowId);
             const exists = await db.query(
                 `SELECT 1 FROM "${tableName}" WHERE "${codeColumn}" = $1 LIMIT 1`,
                 [candidate]
@@ -264,18 +296,26 @@ export default function(pool, logSystemAction) {
 
             const refreshedCols = await pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name = $1`, [tableName]);
             const refreshedColSet = new Set(refreshedCols.rows.map(r => r.column_name.toLowerCase()));
+            const refreshedColsMap = {};
+            refreshedCols.rows.forEach(r => {
+                refreshedColsMap[r.column_name.toLowerCase()] = r.column_name;
+            });
             const parcelCodeColumn = currentMap.madinhdanh || (refreshedColSet.has('madinhdanh') ? 'madinhdanh' : null);
-            if (parcelCodeColumn) {
-                const missingCodeRows = await pool.query(`SELECT gid FROM "${tableName}" WHERE "${parcelCodeColumn}" IS NULL OR BTRIM("${parcelCodeColumn}") = ''`);
+            const rowIdColumn = ['gid', 'id', 'objectid', 'ogc_fid', 'fid'].find((candidate) => refreshedColSet.has(candidate));
+            if (parcelCodeColumn && rowIdColumn) {
+                const actualRowIdColumn = refreshedColsMap[rowIdColumn] || rowIdColumn;
+                const missingCodeRows = await pool.query(`SELECT "${actualRowIdColumn}" AS row_id FROM "${tableName}" WHERE "${parcelCodeColumn}" IS NULL OR BTRIM("${parcelCodeColumn}"::text) = ''`);
                 for (const row of missingCodeRows.rows) {
                     const parcelCode = await generateUniqueParcelCode(pool, tableName, parcelCodeColumn);
-                    await pool.query(`UPDATE "${tableName}" SET "${parcelCodeColumn}" = $1 WHERE gid = $2`, [parcelCode, row.gid]);
+                    await pool.query(`UPDATE "${tableName}" SET "${parcelCodeColumn}" = $1 WHERE "${actualRowIdColumn}" = $2`, [parcelCode, row.row_id]);
                 }
                 await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS "${tableName}_${parcelCodeColumn}_uniq" ON "${tableName}" ("${parcelCodeColumn}")`);
             }
 
+            const hasGeometryColumn = refreshedColSet.has('geometry');
+
             // 2. Tự động sửa SRID 4326 -> 9210 nếu cần
-            if (currentMap._srid !== 9210) {
+            if (hasGeometryColumn && currentMap._srid !== 9210) {
                 try {
                     await pool.query(`
                         ALTER TABLE "${tableName}"
@@ -288,7 +328,9 @@ export default function(pool, logSystemAction) {
                 }
             }
 
-            await pool.query(`CREATE INDEX IF NOT EXISTS "${tableName}_geom_idx" ON "${tableName}" USING GIST (geometry)`);
+            if (hasGeometryColumn) {
+                await pool.query(`CREATE INDEX IF NOT EXISTS "${tableName}_geom_idx" ON "${tableName}" USING GIST (geometry)`);
+            }
             SCHEMA_CACHE.delete(tableName);
         } catch (e) {
             console.error(`[Schema Sync] Error syncing table ${tableName}:`, e.message);
@@ -338,6 +380,72 @@ export default function(pool, logSystemAction) {
                     return res.status(500).json({ error: fallbackError.message });
                 }
             }
+            res.status(500).json({ error: e.message });
+        }
+    });
+
+    router.get('/spatial-tables/debug-sync-status', async (req, res) => {
+        try {
+            const registry = await pool.query(`SELECT table_name FROM spatial_tables_registry ORDER BY table_name ASC`);
+            const tables = [];
+
+            for (const row of registry.rows) {
+                const tableName = String(row.table_name || '').toLowerCase().trim();
+                if (!tableName) continue;
+
+                const colRes = await pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name = $1`, [tableName]);
+                const dbColsMap = {};
+                const existingCols = colRes.rows.map(r => String(r.column_name || '').toLowerCase());
+                colRes.rows.forEach(r => {
+                    dbColsMap[String(r.column_name || '').toLowerCase()] = String(r.column_name || '');
+                });
+
+                let parcelCodeColumn = null;
+                for (const candidate of ['madinhdanh', 'ma_dinh_danh', 'ma_thua', 'parcel_code', 'parcel_id', 'land_id', 'identifier']) {
+                    if (dbColsMap[candidate]) {
+                        parcelCodeColumn = dbColsMap[candidate];
+                        break;
+                    }
+                }
+
+                let rowIdColumn = null;
+                for (const candidate of ['gid', 'id', 'objectid', 'ogc_fid', 'fid']) {
+                    if (dbColsMap[candidate]) {
+                        rowIdColumn = dbColsMap[candidate];
+                        break;
+                    }
+                }
+
+                let totalRows = 0;
+                let missingCodeRows = 0;
+                if (colRes.rows.length > 0) {
+                    const totalRes = await pool.query(`SELECT COUNT(*)::int AS total FROM "${tableName}"`);
+                    totalRows = Number(totalRes.rows[0]?.total || 0);
+                    if (parcelCodeColumn) {
+                        const missingRes = await pool.query(`SELECT COUNT(*)::int AS total FROM "${tableName}" WHERE "${parcelCodeColumn}" IS NULL OR BTRIM("${parcelCodeColumn}"::text) = ''`);
+                        missingCodeRows = Number(missingRes.rows[0]?.total || 0);
+                    } else {
+                        missingCodeRows = totalRows;
+                    }
+                }
+
+                tables.push({
+                    tableName,
+                    hasPhysicalTable: colRes.rows.length > 0,
+                    rowIdColumn,
+                    parcelCodeColumn,
+                    hasMadinhdanhColumn: existingCols.includes('madinhdanh'),
+                    totalRows,
+                    missingCodeRows
+                });
+            }
+
+            res.json({
+                version: 'sync-fix-2026-05-17-v1',
+                totalTables: tables.length,
+                tables
+            });
+        } catch (e) {
             res.status(500).json({ error: e.message });
         }
     });
@@ -894,7 +1002,10 @@ export default function(pool, logSystemAction) {
             const table = await resolveSafeTableName(req.params.table);
             const cols = await resolveTableColumns(table);
             const targetSrid = cols._srid || 4326;
-            const parcelCode = cols.madinhdanh ? await generateUniqueParcelCode(pool, table, cols.madinhdanh) : null;
+            let parcelCode = null;
+            if (cols.madinhdanh && data.geometry) {
+                parcelCode = generateGeohashFromGeoJSON(data.geometry);
+            }
 
             const fields = [];
             const placeholders = [];
@@ -1152,6 +1263,20 @@ export default function(pool, logSystemAction) {
             await pool.query(`DELETE FROM "${table}" WHERE gid=$1`, [gid]);
             res.json({ status: 'ok' });
         } catch (e) { res.status(500).json({ error: e.message }); }
+    });
+
+    router.post('/sync-spatial-tables', authenticateToken, async (req, res) => {
+        try {
+            const syncSummary = await syncRegisteredSpatialTables(pool);
+            await logSystemAction(req, 'SYNC_SPATIAL_TABLES', JSON.stringify(syncSummary));
+            res.json({
+                status: 'ok',
+                message: `Đã đồng bộ ${syncSummary.synced.length}/${syncSummary.total} bảng đã đăng ký.`,
+                summary: syncSummary
+            });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
     });
 
     return router;
