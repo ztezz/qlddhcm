@@ -273,6 +273,13 @@ export const parcelApi = {
             });
             return await handleResponse(res);
         },
+        syncParcelCode: async (tableName: string) => {
+            const res = await fetch(`${API_URL}/api/sync-table/${tableName}`, {
+                method: 'POST',
+                headers: { ...getAuthHeaders() }
+            });
+            return await handleResponse(res);
+        },
         unlink: async (tableName: string) => {
             const name = (tableName || '').toLowerCase().trim();
             const res = await fetch(`${API_URL}/api/spatial-tables/unlink`, { 

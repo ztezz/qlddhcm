@@ -418,6 +418,11 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus, permissions = [] 
                 message = `Bạn có chắc chắn muốn sửa lỗi cấu trúc cho bảng "${name}"? Thao tác này sẽ tự động thêm các cột còn thiếu (như image_url) vào bảng trong Database.`;
                 isDangerous = true;
                 break;
+            case 'SYNC_PARCEL_CODE':
+                title = 'Tạo mã định danh';
+                message = `Tạo mã định danh (geohash + gid) cho tất cả hàng trong bảng "${name}"? Mã cũ sẽ bị ghi đè.`;
+                isDangerous = true;
+                break;
         }
 
         setConfirmDialog({
@@ -444,6 +449,7 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus, permissions = [] 
                 case 'DELETE_BASEMAP': await adminService.deleteBasemap(targetId); break;
                 case 'SYNC': await parcelApi.manageTables.syncTable(targetId); break;
                 case 'REPAIR': await parcelApi.manageTables.repairTable(targetId); break;
+                case 'SYNC_PARCEL_CODE': await parcelApi.manageTables.syncParcelCode(targetId); break;
             }
             await loadData();
         } catch (e: any) {
@@ -693,13 +699,6 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus, permissions = [] 
                     </span>
                     <div className="flex items-center gap-2">
                         <button
-                            onClick={handleSyncAllTables}
-                            disabled={!canSyncTable || loading || spatialTables.length === 0}
-                            className="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-1.5 rounded text-sm font-bold flex items-center gap-1 transition-all"
-                        >
-                            <RefreshCw size={16} className={loading ? 'animate-spin' : ''}/> Sync all
-                        </button>
-                        <button
                             onClick={() => setIsGeoJsonImportOpen(true)}
                             disabled={!canImportGeoJsonParcels}
                             className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-1.5 rounded text-sm font-bold flex items-center gap-1 transition-all"
@@ -725,6 +724,7 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus, permissions = [] 
                                     <td className="p-4 font-medium text-white">{t.display_name || t.table_name}</td>
                                     <td className="p-4 text-xs text-gray-500 truncate max-w-[200px]">{t.description || '--'}</td>
                                     <td className="p-4 flex justify-end gap-1">
+                                        <button onClick={() => triggerConfirm('SYNC_PARCEL_CODE', t.table_name, t.display_name || t.table_name)} disabled={!canSyncTable} className="p-2 text-purple-400 hover:bg-purple-400/10 rounded disabled:opacity-40 disabled:cursor-not-allowed" title="Tạo mã định danh"><Tags size={16}/></button>
                                         <button onClick={() => triggerConfirm('SYNC', t.table_name, t.display_name || t.table_name)} disabled={!canSyncTable} className="p-2 text-emerald-400 hover:bg-emerald-400/10 rounded disabled:opacity-40 disabled:cursor-not-allowed" title="Đồng bộ cấu trúc"><DatabaseZap size={16}/></button>
                                         <button onClick={() => triggerConfirm('REPAIR', t.table_name, t.display_name || t.table_name)} disabled={!canRepairTable} className="p-2 text-orange-400 hover:bg-orange-400/10 rounded disabled:opacity-40 disabled:cursor-not-allowed" title="Sửa lỗi cấu trúc (Thêm cột image_url)"><Wrench size={16}/></button>
                                         <button onClick={() => openModal('TABLE', t)} disabled={!canEditTable} className="p-2 text-blue-400 hover:bg-blue-400/10 rounded disabled:opacity-40 disabled:cursor-not-allowed" title="Sửa thông số"><Edit2 size={16}/></button>
