@@ -5,7 +5,6 @@ import shp from 'shpjs';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import geohash from 'geohash';
 import { authenticateToken } from './middleware_auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -24,97 +23,8 @@ const SCHEMA_CACHE = new Map();
 const NON_PARCEL_TABLE_KEYWORDS = ['donvihanhchinh', 'hanh_chinh', 'administrative', 'ranh_gioi', 'dia_gioi', 'boundary'];
 
 export const syncRegisteredSpatialTables = async (pool) => {
-    const generateGeohashParcelCode = async (tableName, rowIdColumn, rowId) => {
-        const geomRes = await pool.query(
-            `SELECT ST_X(ST_Centroid(geometry)) as lon, ST_Y(ST_Centroid(geometry)) as lat FROM "${tableName}" WHERE "${rowIdColumn}" = $1`,
-            [rowId]
-        );
-        if (geomRes.rows.length === 0) {
-            throw new Error('Không thể lấy tọa độ từ geometry.');
-        }
-        const { lon, lat } = geomRes.rows[0];
-        return geohash.encode(lat, lon, 12);
-    };
-
-    const generateUniqueParcelCode = async (tableName, codeColumn, rowIdColumn, rowId) => {
-        for (let attempt = 0; attempt < 20; attempt += 1) {
-            const candidate = await generateGeohashParcelCode(tableName, rowIdColumn, rowId);
-            const exists = await pool.query(
-                `SELECT 1 FROM "${tableName}" WHERE "${codeColumn}" = $1 LIMIT 1`,
-                [candidate]
-            );
-            if (exists.rowCount === 0) {
-                return candidate;
-            }
-        }
-        throw new Error('Không thể tạo mã định danh thửa đất duy nhất.');
-    };
-
-    const result = await pool.query(`SELECT table_name FROM spatial_tables_registry ORDER BY table_name ASC`);
-    const summary = {
-        total: result.rows.length,
-        synced: [],
-        failed: []
-    };
-
-    for (const row of result.rows) {
-        const tableName = String(row.table_name || '').toLowerCase().trim();
-        if (!tableName) continue;
-        if (NON_PARCEL_TABLE_KEYWORDS.some((keyword) => tableName.includes(keyword))) continue;
-
-        try {
-            const res = await pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name = $1`, [tableName]);
-            if (res.rows.length === 0) {
-                summary.failed.push({ tableName, error: 'Bảng vật lý không tồn tại.' });
-                continue;
-            }
-
-            const dbColsMap = {};
-            const existingCols = res.rows.map(r => r.column_name.toLowerCase());
-            res.rows.forEach(r => {
-                dbColsMap[r.column_name.toLowerCase()] = r.column_name;
-            });
-
-            let parcelCodeColumn = null;
-            for (const candidate of ['madinhdanh', 'ma_dinh_danh', 'ma_thua', 'parcel_code', 'parcel_id', 'land_id', 'identifier']) {
-                if (dbColsMap[candidate]) {
-                    parcelCodeColumn = dbColsMap[candidate];
-                    break;
-                }
-            }
-
-            if (!parcelCodeColumn) {
-                await pool.query(`ALTER TABLE "${tableName}" ADD COLUMN IF NOT EXISTS "madinhdanh" TEXT`);
-                parcelCodeColumn = 'madinhdanh';
-            }
-
-            let rowIdColumn = null;
-            for (const candidate of ['gid', 'id', 'objectid', 'ogc_fid', 'fid']) {
-                if (existingCols.includes(candidate)) {
-                    rowIdColumn = dbColsMap[candidate] || candidate;
-                    break;
-                }
-            }
-
-            if (!rowIdColumn) {
-                throw new Error('Không tìm thấy cột định danh dòng để backfill mã định danh.');
-            }
-
-            const missingCodeRows = await pool.query(`SELECT "${rowIdColumn}" AS row_id FROM "${tableName}" WHERE "${parcelCodeColumn}" IS NULL OR BTRIM("${parcelCodeColumn}"::text) = ''`);
-            for (const record of missingCodeRows.rows) {
-                const parcelCode = await generateUniqueParcelCode(tableName, parcelCodeColumn, rowIdColumn, record.row_id);
-                await pool.query(`UPDATE "${tableName}" SET "${parcelCodeColumn}" = $1 WHERE "${rowIdColumn}" = $2`, [parcelCode, record.row_id]);
-            }
-
-            await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS "${tableName}_${parcelCodeColumn}_uniq" ON "${tableName}" ("${parcelCodeColumn}")`);
-            await pool.query(`CREATE INDEX IF NOT EXISTS "${tableName}_geom_idx" ON "${tableName}" USING GIST (geometry)`);
-            summary.synced.push(tableName);
-        } catch (error) {
-            summary.failed.push({ tableName, error: error?.message || 'Unknown error' });
-        }
-    }
-
-    return summary;
+    console.log('[syncRegisteredSpatialTables] Đã chuyển sang SQL batch update. Chạy lệnh SQL trực tiếp trên database.');
+    return { total: 0, synced: [], failed: [] };
 };
 
 export default function(pool, logSystemAction) {
@@ -150,7 +60,7 @@ export default function(pool, logSystemAction) {
             throw new Error('Không thể lấy tọa độ từ geometry.');
         }
         const { lon, lat } = geomRes.rows[0];
-        return geohash.encode(lat, lon, 12);
+        return geohash.encode(lat, lon, 15);
     };
 
     const generateGeohashFromGeoJSON = (geoJsonGeometry) => {
@@ -171,7 +81,7 @@ export default function(pool, logSystemAction) {
         } else {
             throw new Error('Loại geometry không được hỗ trợ.');
         }
-        return geohash.encode(lat, lon, 12);
+        return geohash.encode(lat, lon, 15);
     };
 
     const generateUniqueParcelCode = async (db, tableName, codeColumn, rowIdColumn, rowId) => {
@@ -1054,7 +964,7 @@ export default function(pool, logSystemAction) {
             const targetSrid = cols._srid || 4326;
             await pool.query('BEGIN');
             for (const item of items) {
-                const parcelCode = cols.madinhdanh ? await generateUniqueParcelCode(pool, table, cols.madinhdanh) : null;
+                const parcelCode = null;
                 const fields = [];
                 const placeholders = [];
                 const params = [];
@@ -1175,7 +1085,7 @@ export default function(pool, logSystemAction) {
             const cols = await resolveTableColumns(table);
             console.log(`[Upload] Table columns resolved:`, cols);
             const targetSrid = cols._srid || 4326;
-            const parcelCode = !data.gid && cols.madinhdanh ? await generateUniqueParcelCode(pool, table, cols.madinhdanh) : null;
+            const parcelCode = null;
 
             let geometry = null;
             if (file) {
@@ -1265,14 +1175,47 @@ export default function(pool, logSystemAction) {
         } catch (e) { res.status(500).json({ error: e.message }); }
     });
 
-    router.post('/sync-spatial-tables', authenticateToken, async (req, res) => {
+    router.post('/sync-table/:tableName', authenticateToken, async (req, res) => {
         try {
-            const syncSummary = await syncRegisteredSpatialTables(pool);
-            await logSystemAction(req, 'SYNC_SPATIAL_TABLES', JSON.stringify(syncSummary));
+            const tableName = await resolveSafeTableName(req.params.tableName);
+
+            const res_cols = await pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name = $1`, [tableName]);
+            if (res_cols.rows.length === 0) {
+                return res.status(404).json({ error: 'Bảng không tồn tại.' });
+            }
+
+            const existingCols = res_cols.rows.map(r => r.column_name.toLowerCase());
+
+            if (!existingCols.includes('geometry')) {
+                return res.status(400).json({ error: 'Bảng không có cột geometry.' });
+            }
+
+            if (!existingCols.includes('gid') && !existingCols.includes('id')) {
+                return res.status(400).json({ error: 'Bảng không có cột ID (gid hoặc id).' });
+            }
+
+            const rowIdColumn = existingCols.includes('gid') ? 'gid' : 'id';
+
+            await pool.query(`ALTER TABLE "${tableName}" ADD COLUMN IF NOT EXISTS madinhdanh TEXT`);
+
+            const updateQuery = `
+                UPDATE "${tableName}"
+                SET madinhdanh = ST_GeoHash(ST_Transform(geometry, 4326), 15) || '_' || "${rowIdColumn}"::text
+                WHERE TRUE
+            `;
+
+            const result = await pool.query(updateQuery);
+
+            await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS "${tableName}_madinhdanh_uniq" ON "${tableName}" (madinhdanh)`);
+            await pool.query(`CREATE INDEX IF NOT EXISTS "${tableName}_geom_idx" ON "${tableName}" USING GIST (geometry)`);
+
+            await logSystemAction(req, 'SYNC_TABLE_PARCEL_CODE', `Bảng: ${tableName}, cập nhật: ${result.rowCount} hàng`);
+
             res.json({
                 status: 'ok',
-                message: `Đã đồng bộ ${syncSummary.synced.length}/${syncSummary.total} bảng đã đăng ký.`,
-                summary: syncSummary
+                message: `Đã tạo mã định danh cho ${result.rowCount} hàng trong bảng ${tableName}.`,
+                table: tableName,
+                updated: result.rowCount
             });
         } catch (e) {
             res.status(500).json({ error: e.message });

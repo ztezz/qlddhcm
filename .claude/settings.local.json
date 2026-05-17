@@ -13,7 +13,8 @@
       "Bash(timeout 15)",
       "PowerShell(Get-Process *)",
       "mcp__ide__getDiagnostics",
-      "Bash(node *)"
+      "Bash(node *)",
+      "PowerShell(Tee-Object *)"
     ]
   }
 }
