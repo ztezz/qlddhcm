@@ -38,23 +38,28 @@
 pg_dump -U postgres -d your_database > backup_before_update.sql
 ```
 
-### Bước 2: Chạy script xóa UNIQUE constraints
+### Bước 2: Chạy script xóa trigger cũ
+```bash
+psql -U postgres -d your_database -f remove_old_triggers.sql
+```
+
+### Bước 3: Chạy script xóa UNIQUE constraints
 ```bash
 psql -U postgres -d your_database -f remove_unique_constraints.sql
 ```
 
-### Bước 3: Chạy script cập nhật mã geohash
+### Bước 4: Chạy script cập nhật mã geohash
 ```bash
 psql -U postgres -d your_database -f update_geohash_12chars.sql
 ```
 
-### Bước 4: Khởi động lại Backend
+### Bước 5: Khởi động lại Backend
 ```bash
 cd backend_guide
 npm start
 ```
 
-### Bước 5: Khởi động lại Frontend
+### Bước 6: Khởi động lại Frontend
 ```bash
 npm run dev
 ```
