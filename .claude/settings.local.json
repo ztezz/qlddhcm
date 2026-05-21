@@ -16,7 +16,8 @@
       "Bash(node *)",
       "PowerShell(Tee-Object *)",
       "Bash(npm list *)",
-      "Bash(grep -E \"\\\\.\\(sql|md\\)$\")"
+      "Bash(grep -E \"\\\\.\\(sql|md\\)$\")",
+      "Bash(git commit *)"
     ]
   }
 }
