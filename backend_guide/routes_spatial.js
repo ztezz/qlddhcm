@@ -6,6 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { authenticateToken } from './middleware_auth.js';
+import geohash from 'ngeohash';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -60,7 +61,7 @@ export default function(pool, logSystemAction) {
             throw new Error('Không thể lấy tọa độ từ geometry.');
         }
         const { lon, lat } = geomRes.rows[0];
-        return geohash.encode(lat, lon, 15);
+        return geohash.encode(lat, lon, 12);
     };
 
     const generateGeohashFromGeoJSON = (geoJsonGeometry) => {
@@ -81,21 +82,7 @@ export default function(pool, logSystemAction) {
         } else {
             throw new Error('Loại geometry không được hỗ trợ.');
         }
-        return geohash.encode(lat, lon, 15);
-    };
-
-    const generateUniqueParcelCode = async (db, tableName, codeColumn, rowIdColumn, rowId) => {
-        for (let attempt = 0; attempt < 20; attempt += 1) {
-            const candidate = await generateGeohashParcelCode(tableName, rowIdColumn, rowId);
-            const exists = await db.query(
-                `SELECT 1 FROM "${tableName}" WHERE "${codeColumn}" = $1 LIMIT 1`,
-                [candidate]
-            );
-            if (exists.rowCount === 0) {
-                return candidate;
-            }
-        }
-        throw new Error('Không thể tạo mã định danh thửa đất duy nhất.');
+        return geohash.encode(lat, lon, 12);
     };
 
     const COLUMN_VARIANTS = {
@@ -216,10 +203,9 @@ export default function(pool, logSystemAction) {
                 const actualRowIdColumn = refreshedColsMap[rowIdColumn] || rowIdColumn;
                 const missingCodeRows = await pool.query(`SELECT "${actualRowIdColumn}" AS row_id FROM "${tableName}" WHERE "${parcelCodeColumn}" IS NULL OR BTRIM("${parcelCodeColumn}"::text) = ''`);
                 for (const row of missingCodeRows.rows) {
-                    const parcelCode = await generateUniqueParcelCode(pool, tableName, parcelCodeColumn);
+                    const parcelCode = await generateGeohashParcelCode(tableName, actualRowIdColumn, row.row_id);
                     await pool.query(`UPDATE "${tableName}" SET "${parcelCodeColumn}" = $1 WHERE "${actualRowIdColumn}" = $2`, [parcelCode, row.row_id]);
                 }
-                await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS "${tableName}_${parcelCodeColumn}_uniq" ON "${tableName}" ("${parcelCodeColumn}")`);
             }
 
             const hasGeometryColumn = refreshedColSet.has('geometry');
@@ -387,7 +373,7 @@ export default function(pool, logSystemAction) {
             await pool.query(`
                 CREATE TABLE IF NOT EXISTS "${safeName}" (
                     gid SERIAL PRIMARY KEY,
-                    madinhdanh TEXT UNIQUE,
+                    madinhdanh TEXT,
                     sodoto TEXT, sothua TEXT, tenchu TEXT, diachi TEXT, kyhieumucd TEXT, dientich NUMERIC,
                     image_url TEXT,
                     geometry GEOMETRY(Geometry, 9210),
@@ -480,7 +466,7 @@ export default function(pool, logSystemAction) {
             await client.query(`
                 CREATE TABLE IF NOT EXISTS "${safeName}" (
                     gid SERIAL PRIMARY KEY,
-                    madinhdanh TEXT UNIQUE,
+                    madinhdanh TEXT,
                     sodoto TEXT,
                     sothua TEXT,
                     tenchu TEXT,
@@ -567,7 +553,7 @@ export default function(pool, logSystemAction) {
                     ? null
                     : Number(String(dientichRaw).replace(',', '.'));
 
-                const parcelCode = await generateUniqueParcelCode(client, safeName, 'madinhdanh');
+                const parcelCode = generateGeohashFromGeoJSON(geometry);
                 rowsToInsert.push([
                     parcelCode,
                     String(sodoto),
@@ -964,7 +950,12 @@ export default function(pool, logSystemAction) {
             const targetSrid = cols._srid || 4326;
             await pool.query('BEGIN');
             for (const item of items) {
-                const parcelCode = null;
+                // Tự động tạo mã geohash từ geometry
+                let parcelCode = item.madinhdanh || null;
+                if (cols.madinhdanh && item.geometry) {
+                    parcelCode = generateGeohashFromGeoJSON(item.geometry);
+                }
+
                 const fields = [];
                 const placeholders = [];
                 const params = [];
@@ -979,7 +970,7 @@ export default function(pool, logSystemAction) {
                     }
                 };
 
-            addField('madinhdanh', item.madinhdanh || parcelCode);
+            addField('madinhdanh', parcelCode);
                 addField('sodoto', item.sodoto);
                 addField('sothua', item.sothua);
                 addField('tenchu', item.tenchu);
@@ -1026,7 +1017,13 @@ export default function(pool, logSystemAction) {
                 }
             };
 
-            addField('madinhdanh', data.madinhdanh);
+            // Tự động tạo lại mã geohash nếu có geometry
+            let parcelCode = data.madinhdanh;
+            if (cols.madinhdanh && data.geometry) {
+                parcelCode = generateGeohashFromGeoJSON(data.geometry);
+            }
+
+            addField('madinhdanh', parcelCode);
             addField('sodoto', data.sodoto);
             addField('sothua', data.sothua);
             addField('tenchu', data.tenchu);
@@ -1085,7 +1082,6 @@ export default function(pool, logSystemAction) {
             const cols = await resolveTableColumns(table);
             console.log(`[Upload] Table columns resolved:`, cols);
             const targetSrid = cols._srid || 4326;
-            const parcelCode = null;
 
             let geometry = null;
             if (file) {
@@ -1107,6 +1103,12 @@ export default function(pool, logSystemAction) {
                 else geometry = geojson;
 
                 fs.unlinkSync(file.path);
+            }
+
+            // Tự động tạo mã geohash từ geometry
+            let parcelCode = data.madinhdanh || null;
+            if (cols.madinhdanh && geometry) {
+                parcelCode = generateGeohashFromGeoJSON(geometry);
             }
 
             const fields = [];

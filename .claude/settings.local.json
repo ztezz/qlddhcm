@@ -14,7 +14,9 @@
       "PowerShell(Get-Process *)",
       "mcp__ide__getDiagnostics",
       "Bash(node *)",
-      "PowerShell(Tee-Object *)"
+      "PowerShell(Tee-Object *)",
+      "Bash(npm list *)",
+      "Bash(grep -E \"\\\\.\\(sql|md\\)$\")"
     ]
   }
 }
