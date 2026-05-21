@@ -16,10 +16,11 @@ BEGIN
 
         -- Xóa các UNIQUE constraint trên cột madinhdanh
         FOR constraint_record IN
-            SELECT constraint_name
+            SELECT tc.constraint_name
             FROM information_schema.table_constraints tc
             JOIN information_schema.constraint_column_usage ccu
                 ON tc.constraint_name = ccu.constraint_name
+                AND tc.table_schema = ccu.table_schema
             WHERE tc.table_name = table_record.table_name
                 AND tc.constraint_type = 'UNIQUE'
                 AND ccu.column_name = 'madinhdanh'
