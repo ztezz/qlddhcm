@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ClipboardList, Download, Plus, FileDigit, Tag, Save, RefreshCw, Hash, Trash2, FileUp, FileDown, CloudUpload, List, Edit3, AlertCircle, FileJson } from 'lucide-react';
+import { ClipboardList, Download, Plus, FileDigit, Tag, Save, RefreshCw, Hash, Trash2, FileUp, FileDown, CloudUpload, List, Edit3, AlertCircle, FileJson, Search } from 'lucide-react';
 import * as proj from 'ol/proj';
 
 interface EditorSidebarProps {
@@ -28,6 +28,7 @@ interface EditorSidebarProps {
     onExportShpZip: () => void;
     onExportDXF: () => void;
     onOpenDxfImport: () => void;
+    onOpenParcelModal: () => void;
     area: number;
     hasSelected: boolean;
 
@@ -37,7 +38,7 @@ interface EditorSidebarProps {
     onSelectFeature: (uid: string) => void;
     onSaveFeature: (uid: string) => void;
     selectedFeatureUid: string | null;
-    
+
     // Batch save props
     onBatchSave: () => void;
     batchProgress: { current: number; total: number; isActive: boolean };
@@ -47,9 +48,11 @@ interface EditorSidebarProps {
 const EditorSidebar: React.FC<EditorSidebarProps> = (props) => {
     const [activeTab, setActiveTab] = useState<'ATTR' | 'LIST'>('ATTR');
 
-    const progressPercent = props.batchProgress.total > 0 
-        ? Math.round((props.batchProgress.current / props.batchProgress.total) * 100) 
+    const progressPercent = props.batchProgress.total > 0
+        ? Math.round((props.batchProgress.current / props.batchProgress.total) * 100)
         : 0;
+    const soToText = String(props.soTo ?? '');
+    const soThuaText = String(props.soThua ?? '');
 
     return (
         <div className="w-[400px] bg-[#0d1117] border-l border-slate-800 flex flex-col z-20 shadow-2xl">
@@ -84,7 +87,16 @@ const EditorSidebar: React.FC<EditorSidebarProps> = (props) => {
             {activeTab === 'ATTR' && (
                 <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
                     <div className="space-y-4 bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
-                        <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-2"><FileDigit size={12}/> Thông tin định danh</h4>
+                        <div className="flex justify-between items-center">
+                            <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-2"><FileDigit size={12}/> Thông tin định danh</h4>
+                            <button
+                                onClick={props.onOpenParcelModal}
+                                className="flex items-center gap-1.5 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all border border-emerald-500/20"
+                                title="Tra cứu thửa đất từ số tờ/số thửa"
+                            >
+                                <Search size={10}/> Tra cứu thửa
+                            </button>
+                        </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1.5">
                                 <label className="text-[9px] font-black text-gray-500 uppercase ml-1">Số tờ *</label>
@@ -110,7 +122,7 @@ const EditorSidebar: React.FC<EditorSidebarProps> = (props) => {
                             <div className="flex gap-2">
                                 <button
                                     onClick={props.onSaveToDB}
-                                    disabled={props.loading || !props.hasSelected || !props.soTo.trim() || !props.soThua.trim()}
+                                    disabled={props.loading || !props.hasSelected || !soToText.trim() || !soThuaText.trim()}
                                     className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-30 shadow-xl"
                                     title="Lưu thửa được chọn"
                                 >

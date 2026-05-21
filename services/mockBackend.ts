@@ -173,6 +173,38 @@ export const gisService = {
     getBasemaps: async (): Promise<BasemapConfig[]> => { try { const data = await apiCall('/basemaps'); return Array.isArray(data) ? data : []; } catch { return []; } },
     getSpatialTables: async (): Promise<any[]> => { try { const data = await apiCall('/spatial-tables'); return Array.isArray(data) ? data : []; } catch { return []; } },
     getExtent: async (tableName: string): Promise<any> => { try { return await apiCall(`/data/${tableName}/extent`); } catch { return null; } },
+    getWardsFromParcels: async (): Promise<string[]> => {
+        try {
+            const tables = await gisService.getSpatialTables();
+            if (!tables || tables.length === 0) return [];
+
+            const wardsSet = new Set<string>();
+
+            // Lấy phường/xã từ từng bảng thửa đất
+            for (const table of tables) {
+                try {
+                    const parcels = await gisService.searchParcels(table.table_name, {});
+                    if (parcels && parcels.length > 0) {
+                        parcels.forEach(parcel => {
+                            const props = parcel.properties || {};
+                            const ward = pickFirstValue(props, ['phuongxa', 'phuong_xa', 'ward', 'ward_name', 'xa', 'ten_xa', 'diachi']);
+                            if (ward) {
+                                // Lấy phần phường/xã từ địa chỉ (giả sử phường/xã là phần đầu tiên trước dấu phẩy hoặc từ khóa)
+                                const wardName = String(ward).split(',')[0].trim();
+                                if (wardName) wardsSet.add(wardName);
+                            }
+                        });
+                    }
+                } catch (e) {
+                    continue;
+                }
+            }
+
+            return Array.from(wardsSet).sort();
+        } catch {
+            return [];
+        }
+    },
     searchParcels: async (tableName: string, filters: any): Promise<LandParcel[]> => {
         try {
              const normalizedTableName = String(tableName || '').trim().toLowerCase();
@@ -315,7 +347,38 @@ export const adminService = {
     deletePrice: async (landType: string) => apiCall(`/land-prices/${landType}`, { method: 'DELETE' }),
 
     // Land Price 2026 Admin & Lookup
-    getLandPriceWards: async (): Promise<string[]> => { try { return await apiCall('/land-prices-2026/wards'); } catch { return []; } },
+    // Lấy phường/xã từ các bảng thửa đất đã đăng ký (không phải từ bảng giá đất)
+    getLandPriceWards: async (): Promise<string[]> => {
+        try {
+            const tables = await gisService.getSpatialTables();
+            if (!tables || tables.length === 0) return [];
+
+            const wardsSet = new Set<string>();
+
+            // Lấy phường/xã từ từng bảng thửa đất
+            for (const table of tables) {
+                try {
+                    const parcels = await gisService.searchParcels(table.table_name, {});
+                    if (parcels && parcels.length > 0) {
+                        parcels.forEach(parcel => {
+                            const props = parcel.properties || {};
+                            const ward = pickFirstValue(props, ['phuongxa', 'phuong_xa', 'ward', 'ward_name', 'xa', 'ten_xa', 'diachi']);
+                            if (ward) {
+                                const wardName = String(ward).split(',')[0].trim();
+                                if (wardName) wardsSet.add(wardName);
+                            }
+                        });
+                    }
+                } catch (e) {
+                    continue;
+                }
+            }
+
+            return Array.from(wardsSet).sort();
+        } catch {
+            return [];
+        }
+    },
     getLandPriceSuggestions: async (phuongxa?: string, tinhcu?: string): Promise<{streets: string[], fromPoints: string[], toPoints: string[]}> => {
         let qs = `?t=${Date.now()}`;
         if (phuongxa) qs += `&phuongxa=${encodeURIComponent(phuongxa)}`;

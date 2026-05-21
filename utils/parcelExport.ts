@@ -59,7 +59,23 @@ export const exportShpZipFile = async (featureCollection: GeoJsonFeatureCollecti
         compression: 'STORE'
     });
 
-    downloadBlob(new Blob([zipped], { type: 'application/zip' }), filename);
+    downloadBlob(new Blob([toZipBlobPart(zipped)], { type: 'application/zip' }), filename);
+};
+
+const toZipBlobPart = (input: unknown): BlobPart => {
+    if (input instanceof ArrayBuffer || input instanceof Blob || typeof input === 'string') {
+        return input;
+    }
+    if (ArrayBuffer.isView(input)) {
+        const bytes = new Uint8Array(input.byteLength);
+        bytes.set(new Uint8Array(input.buffer, input.byteOffset, input.byteLength));
+        return bytes.buffer;
+    }
+    if (Array.isArray(input)) {
+        const bytes = new Uint8Array(input.map((v) => Number(v) || 0));
+        return bytes.buffer;
+    }
+    throw new Error('Dữ liệu SHP ZIP không hợp lệ.');
 };
 
 export const exportDxfFile = (featureCollection: GeoJsonFeatureCollection, filename: string, coordSystem: 'WGS84' | 'VN2000' = 'VN2000') => {

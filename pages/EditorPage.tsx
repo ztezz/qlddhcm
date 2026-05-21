@@ -9,6 +9,9 @@ import { register } from 'ol/proj/proj4';
 import { exportDxfFile, exportGeoJsonFile, exportShpZipFile } from '../utils/parcelExport';
 import { importDxfAsPolygonFeatures } from '../utils/dxfImport';
 
+// Icons
+import { Search, X, RefreshCw } from 'lucide-react';
+
 // Components
 import EditorToolbar from '../components/editor/EditorToolbar';
 import EditorSidebar from '../components/editor/EditorSidebar';
@@ -81,9 +84,14 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     // Modal States
     const [searchModal, setSearchModal] = useState({ isOpen: false, coords: { x: '', y: '' } });
     const [manualModal, setManualModal] = useState({ isOpen: false, text: '' });
+    const [parcelModal, setParcelModal] = useState({ isOpen: false, soTo: '', soThua: '', phuongXa: '', searchTable: '' });
     const dxfInputRef = useRef<HTMLInputElement | null>(null);
     const [currentBasemap, setCurrentBasemap] = useState('google-satellite');
     const [dialog, setDialog] = useState<{ isOpen: boolean; type: 'success' | 'error' | 'info'; title: string; message: string; }>({ isOpen: false, type: 'info', title: '', message: '' });
+    const [loadingParcel, setLoadingParcel] = useState(false);
+    const [parcelList, setParcelList] = useState<any[]>([]);
+    const [wardList, setWardList] = useState<string[]>([]);
+    const [loadingWards, setLoadingWards] = useState(false);
 
     // Custom Hooks for History and Draft Management
     const updateFeatureListState = useCallback(() => {
@@ -215,9 +223,9 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     // Sync Inputs with Selected Feature
     useEffect(() => {
         if (selectedFeature) {
-            setSoTo(selectedFeature.get('sodoto') || '');
-            setSoThua(selectedFeature.get('sothua') || '');
-            setLoaiDat(selectedFeature.get('loaidat') || '');
+            setSoTo(String(selectedFeature.get('sodoto') ?? ''));
+            setSoThua(String(selectedFeature.get('sothua') ?? ''));
+            setLoaiDat(String(selectedFeature.get('loaidat') ?? ''));
             updateVerticesFromFeature(selectedFeature);
         } else {
             setSoTo(''); setSoThua(''); setLoaiDat('');
@@ -485,6 +493,22 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         loadPermissions();
     }, []);
 
+    // Load danh sách phường/xã từ các bảng thửa đất đã đăng ký
+    useEffect(() => {
+        const loadWards = async () => {
+            try {
+                setLoadingWards(true);
+                const wards = await gisService.getWardsFromParcels();
+                setWardList(wards || []);
+            } catch {
+                setWardList([]);
+            } finally {
+                setLoadingWards(false);
+            }
+        };
+        loadWards();
+    }, []);
+
     useEffect(() => {
         initMap();
         return () => {
@@ -563,6 +587,102 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         }
     }, [activeInteraction, isSnapping, updateVerticesFromFeature, updateFeatureListState]);
 
+    // Xử lý tra cứu thông tin thửa đất
+    const handleSearchParcel = async () => {
+        const soTo = parcelModal.soTo.trim();
+        const soThua = parcelModal.soThua.trim();
+        const targetTable = parcelModal.searchTable.trim();
+
+        if (!targetTable) {
+            setDialog({ isOpen: true, type: 'error', title: 'Lỗi', message: 'Vui lòng chọn bảng dữ liệu để tra cứu.' });
+            return;
+        }
+
+        if (!soTo && !soThua) {
+            setDialog({ isOpen: true, type: 'error', title: 'Lỗi', message: 'Vui lòng nhập số tờ hoặc số thửa.' });
+            return;
+        }
+
+        setLoadingParcel(true);
+        setParcelList([]);
+        try {
+            const filters: any = {};
+            if (soTo) filters.sodoto = soTo;
+            if (soThua) filters.sothua = soThua;
+
+            const parcels = await gisService.searchParcels(targetTable, filters);
+
+            if (!parcels || parcels.length === 0) {
+                let msg = 'Không tìm thấy thửa đất với điều kiện:';
+                if (soTo) msg += ` Tờ ${soTo}`;
+                if (soThua) msg += ` Thửa ${soThua}`;
+                throw new Error(msg);
+            }
+
+            setParcelList(parcels);
+            setParcelModal({ ...parcelModal, isOpen: true });
+
+        } catch (e: any) {
+            setDialog({ isOpen: true, type: 'error', title: 'Lỗi', message: e.message || 'Không thể tra cứu thông tin thửa.' });
+        } finally {
+            setLoadingParcel(false);
+        }
+    };
+
+    // Chọn thửa từ danh sách kết quả
+    const handleSelectParcel = (parcel: any) => {
+        try {
+            const props = parcel.properties || {};
+            const soTo = props.so_to || props.sodoto || '';
+            const soThua = props.so_thua || props.sothua || '';
+            const loaiDat = props.loai_dat || props.loaidat || '';
+            const geometry = parcel.geometry;
+
+            if (!geometry) {
+                throw new Error('Không có dữ liệu hình học cho thửa đất này.');
+            }
+
+            const format = new GeoJSON();
+            const olFeature = format.readFeature(geometry, {
+                dataProjection: 'EPSG:9210',
+                featureProjection: 'EPSG:3857'
+            }) as Feature;
+
+            if (!olFeature) {
+                throw new Error('Không thể đọc hình học từ dữ liệu thửa đất.');
+            }
+
+            olFeature.set('sodoto', soTo);
+            olFeature.set('sothua', soThua);
+            olFeature.set('loaidat', loaiDat);
+
+            editSource.current.clear();
+            editSource.current.addFeature(olFeature);
+            setSelectedFeature(olFeature);
+            updateVerticesFromFeature(olFeature);
+            updateFeatureListState();
+
+            setSoTo(soTo);
+            setSoThua(soThua);
+            setLoaiDat(loaiDat);
+
+            mapInstance.current?.getView().fit(olFeature.getGeometry()?.getExtent() || [0, 0, 0, 0], { padding: [100, 100, 100, 100], duration: 800 });
+
+            setDialog({
+                isOpen: true,
+                type: 'success',
+                title: 'Thành công',
+                message: `Đã lấy thông tin thửa: ${soThua}/${soTo} (${Math.round(getArea(olFeature.getGeometry() as any)).toLocaleString()}m²)`
+            });
+
+            setParcelModal({ ...parcelModal, isOpen: false, soTo: '', soThua: '', searchTable: '' });
+            setParcelList([]);
+        } catch (e: any) {
+            console.error('Lỗi khi chọn thửa đất:', e);
+            setDialog({ isOpen: true, type: 'error', title: 'Lỗi', message: e.message || 'Không thể chọn thửa đất. Vui lòng thử lại.' });
+        }
+    };
+
     const handleProcessManualInput = (inputText: string) => {
         try {
             const lines = inputText.trim().split(/[\n;]+/);
@@ -574,10 +694,10 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                 if (x > 300000 && x < 900000) return proj.transform([x, y], 'EPSG:9210', 'EPSG:3857');
                 return proj.fromLonLat([x, y]);
             }).filter(Boolean) as [number, number][];
-            
+
             if (coords.length < 3) throw new Error("Cần ít nhất 3 điểm.");
             if (coords[0][0] !== coords[coords.length-1][0] || coords[0][1] !== coords[coords.length-1][1]) coords.push([...coords[0]] as [number, number]);
-            
+
             const polygon = new Polygon([coords]);
             const feature = new Feature({ geometry: polygon });
             editSource.current.addFeature(feature);
@@ -1081,6 +1201,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                 onExportShpZip={handleExportShpZip}
                 onExportDXF={handleExportDXF}
                 onOpenDxfImport={() => dxfInputRef.current?.click()}
+                onOpenParcelModal={() => setParcelModal({...parcelModal, isOpen: true})}
                 area={area}
                 hasSelected={!!selectedFeature}
                 
@@ -1105,6 +1226,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                 className="hidden"
             />
 
+            {/* Modal tra cứu thửa đất */}
             <EditorModals
                 searchModal={{
                     isOpen: searchModal.isOpen,
@@ -1125,6 +1247,172 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                     onClose: () => setDialog({...dialog, isOpen: false})
                 }}
             />
+
+            {/* Modal nhập thông tin tìm kiếm thửa */}
+            {!parcelList.length && parcelModal.isOpen && (
+                <div className="fixed inset-0 z-[1000] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
+                    <div className="bg-gray-900 border border-gray-800 rounded-[2.5rem] w-full max-w-md shadow-2xl overflow-hidden flex flex-col">
+                        <div className="p-6 border-b border-gray-800 flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-500">
+                                    <Search size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-black uppercase tracking-tight text-white">Tra cứu thửa đất</h3>
+                                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Nhập số tờ, số thửa và phường/xã để tìm kiếm</p>
+                                </div>
+                            </div>
+                            <button onClick={() => { setParcelModal({...parcelModal, isOpen: false, soTo: '', soThua: '', searchTable: ''}); setParcelList([]); }} className="text-gray-500 hover:text-white p-2 hover:bg-gray-800 rounded-full transition-all">
+                                <X size={28} />
+                            </button>
+                        </div>
+                        <div className="p-8 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-1">Số tờ *</label>
+                                    <input
+                                        autoFocus
+                                        className="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:border-emerald-500 outline-none font-black text-white transition-all shadow-inner"
+                                        placeholder="VD: 12"
+                                        value={parcelModal.soTo}
+                                        onChange={e => setParcelModal({...parcelModal, soTo: e.target.value})}
+                                        onKeyDown={e => e.key === 'Enter' && handleSearchParcel()}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-1">Số thửa *</label>
+                                    <input
+                                        className="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:border-emerald-500 outline-none font-black text-white transition-all shadow-inner"
+                                        placeholder="VD: 450"
+                                        value={parcelModal.soThua}
+                                        onChange={e => setParcelModal({...parcelModal, soThua: e.target.value})}
+                                        onKeyDown={e => e.key === 'Enter' && handleSearchParcel()}
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-1">Bảng dữ liệu *</label>
+                                <div className="relative">
+                                    <select
+                                        className="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:border-emerald-500 outline-none font-bold text-white transition-all shadow-inner appearance-none"
+                                        value={parcelModal.searchTable}
+                                        onChange={e => setParcelModal({...parcelModal, searchTable: e.target.value})}
+                                        onKeyDown={e => e.key === 'Enter' && handleSearchParcel()}
+                                    >
+                                        <option value="">-- Chọn bảng dữ liệu --</option>
+                                        {spatialTables
+                                            .filter(t => !t.table_name.toLowerCase().includes('donvihanhchinh') && !t.table_name.toLowerCase().includes('hanh_chinh'))
+                                            .map((table, idx) => (
+                                                <option key={idx} value={table.table_name}>{table.display_name || table.table_name}</option>
+                                            ))}
+                                    </select>
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
+                                        <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                                            <path d="M6 9l6 6 6-6"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="bg-emerald-900/10 border border-emerald-500/20 rounded-xl p-4 space-y-2">
+                                <p className="text-[9px] text-emerald-400 font-bold uppercase tracking-widest">Hướng dẫn</p>
+                                <ul className="text-[10px] text-gray-400 space-y-1 list-disc pl-4">
+                                    <li>Nhập số tờ (VD: 12)</li>
+                                    <li>Nhập số thửa (VD: 450)</li>
+                                    <li>Chọn bảng dữ liệu để tra cứu</li>
+                                    <li>Hệ thống sẽ tìm kiếm trên bảng được chọn</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div className="p-6 bg-gray-950 border-t border-gray-800 flex gap-3">
+                            <button
+                                onClick={() => { setParcelModal({...parcelModal, isOpen: false, soTo: '', soThua: '', searchTable: ''}); setParcelList([]); }}
+                                className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-400 py-3 rounded-xl font-black uppercase text-xs tracking-widest transition-all"
+                            >
+                                Hủy bỏ
+                            </button>
+                            <button
+                                onClick={handleSearchParcel}
+                                disabled={loadingParcel || (!parcelModal.soTo.trim() && !parcelModal.soThua.trim()) || !parcelModal.searchTable}
+                                className="flex-[2] bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-black uppercase text-xs tracking-[0.2em] flex justify-center items-center gap-2 shadow-xl shadow-emerald-900/30 active:scale-95 disabled:opacity-50 transition-all"
+                            >
+                                {loadingParcel ? <RefreshCw className="animate-spin" size={18}/> : <Search size={18}/>} TÌM KIẾM
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal danh sách kết quả tìm kiếm thửa */}
+            {parcelList.length > 0 && parcelModal.isOpen && (
+                <div className="fixed inset-0 z-[1000] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
+                    <div className="bg-gray-900 border border-gray-800 rounded-[2.5rem] w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col">
+                        <div className="p-6 border-b border-gray-800 flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-500">
+                                    <Search size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-black uppercase tracking-tight text-white">Danh sách thửa đất tìm thấy</h3>
+                                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Chọn thửa để tự động điền thông tin</p>
+                                </div>
+                            </div>
+                            <button onClick={() => { setParcelModal({...parcelModal, isOpen: false, soTo: '', soThua: '', searchTable: ''}); setParcelList([]); }} className="text-gray-500 hover:text-white p-2 hover:bg-gray-800 rounded-full transition-all">
+                                <X size={28} />
+                            </button>
+                        </div>
+                        <div className="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar space-y-3">
+                            {parcelList.map((parcel, idx) => {
+                                const props = parcel.properties || {};
+                                const soTo = props.so_to || props.sodoto || '';
+                                const soThua = props.so_thua || props.sothua || '';
+                                const area = Math.round((props.area || 0));
+                                const tableName = props.tableName || '';
+                                return (
+                                    <div
+                                        key={idx}
+                                        onClick={() => handleSelectParcel(parcel)}
+                                        className="p-4 bg-slate-900 border border-slate-700 rounded-xl hover:border-emerald-500/50 hover:bg-slate-800 cursor-pointer transition-all flex items-center justify-between group"
+                                    >
+                                        <div className="space-y-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-lg font-black text-white">{soThua}</span>
+                                                <span className="text-xs text-slate-500">/</span>
+                                                <span className="text-sm font-bold text-blue-400">Tờ {soTo}</span>
+                                            </div>
+                                            <div className="text-[10px] text-slate-400 flex items-center gap-3">
+                                                <span>Diện tích: <span className="text-emerald-500 font-bold">{area.toLocaleString()} m²</span></span>
+                                                <span className="text-slate-600">|</span>
+                                                <span>Table: {tableName}</span>
+                                            </div>
+                                        </div>
+                                        <div className="w-8 h-8 rounded-lg bg-emerald-600/10 text-emerald-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
+                                            <Search size={16} />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            {parcelList.length === 0 && (
+                                <div className="text-center py-12">
+                                    <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-4">
+                                        <Search size={32} className="text-slate-600" />
+                                    </div>
+                                    <p className="text-[10px] text-gray-500 font-black uppercase">Không có kết quả</p>
+                                </div>
+                            )}
+                        </div>
+                        <div className="p-6 bg-gray-950 border-t border-gray-800">
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => { setParcelModal({...parcelModal, isOpen: false, searchTable: ''}); setParcelList([]); }}
+                                    className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-400 py-3 rounded-xl font-black uppercase text-xs tracking-widest transition-all"
+                                >
+                                    Đóng
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

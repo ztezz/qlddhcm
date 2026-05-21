@@ -12,6 +12,8 @@ interface LayerManagerProps {
     permissions?: string[];
 }
 
+type ConfirmActionType = 'UNLINK' | 'DROP_TABLE' | 'DELETE_WMS' | 'DELETE_BASEMAP' | 'SYNC' | 'REPAIR' | 'SYNC_PARCEL_CODE';
+
 const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus, permissions = [] }) => {
     const TIFF_MARKER = '#TIFF';
     const ACTIVE_TAB_STORAGE_KEY = 'admin.layerManager.activeTab';
@@ -101,7 +103,7 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus, permissions = [] 
         isOpen: boolean;
         title: string;
         message: string;
-        actionType: 'UNLINK' | 'DROP_TABLE' | 'DELETE_WMS' | 'DELETE_BASEMAP' | 'SYNC' | 'REPAIR';
+        actionType: ConfirmActionType;
         targetId: string;
         targetName: string;
         isDangerous?: boolean;
@@ -375,7 +377,7 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus, permissions = [] 
         } finally { setLoading(false); }
     };
 
-    const triggerConfirm = (type: typeof confirmDialog['actionType'], id: string, name: string) => {
+    const triggerConfirm = (type: ConfirmActionType, id: string, name: string) => {
         const blocked = (
             (type === 'SYNC' && !canSyncTable) ||
             (type === 'REPAIR' && !canRepairTable) ||
