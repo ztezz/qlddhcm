@@ -1092,7 +1092,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                     const fArea = getArea(feature.getGeometry() as any);
                     const geom = feature.getGeometry();
 
-                    let geometryObject = format.writeGeometryObject(geom, { dataProjection: 'EPSG:9210', featureProjection: 'EPSG:3857' });
+                    let geometryObject = format.writeGeometryObject(geom, { dataProjection: 'EPSG:4326', featureProjection: 'EPSG:3857' });
                     if (geometryObject.type === 'Polygon') {
                         geometryObject = { type: 'MultiPolygon', coordinates: [geometryObject.coordinates] };
                     }

@@ -1049,7 +1049,7 @@ export default function(pool, logSystemAction) {
             addField('image_url', data.image_url);
 
             if (data.geometry) {
-                updates.push(`geometry=ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON($${idx}), ${targetSrid}))`);
+                updates.push(`geometry=ST_Multi(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($${idx}), 4326), ${targetSrid}))`);
                 params.push(JSON.stringify(data.geometry));
                 idx++;
             }
