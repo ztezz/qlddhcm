@@ -87,7 +87,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     // Modal States
     const [searchModal, setSearchModal] = useState({ isOpen: false, coords: { x: '', y: '' } });
     const [manualModal, setManualModal] = useState({ isOpen: false, text: '' });
-    const [parcelModal, setParcelModal] = useState({ isOpen: false, soTo: '', soThua: '', phuongXa: '', searchTable: '' });
+    const [parcelModal, setParcelModal] = useState({ isOpen: false, soTo: '', soThua: '', phuongXa: '', searchTable: '', includeNearby: false, nearbyRadiusMeters: '50' });
     const dxfInputRef = useRef<HTMLInputElement | null>(null);
     const [currentBasemap, setCurrentBasemap] = useState('google-satellite');
     const [dialog, setDialog] = useState<{ isOpen: boolean; type: 'success' | 'error' | 'info'; title: string; message: string; }>({ isOpen: false, type: 'info', title: '', message: '' });
@@ -633,7 +633,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     };
 
     // Chọn thửa từ danh sách kết quả
-    const handleSelectParcel = (parcel: any) => {
+    const handleSelectParcel = async (parcel: any) => {
         try {
             const props = parcel.properties || {};
             const soTo = props.so_to || props.sodoto || '';
@@ -680,14 +680,64 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                 setTargetTable(sourceTableName);
             }
 
-            mapInstance.current?.getView().fit(olFeature.getGeometry()?.getExtent() || [0, 0, 0, 0], { padding: [100, 100, 100, 100], duration: 800 });
+            if (parcelModal.includeNearby && Number.isFinite(sourceGid) && sourceGid > 0) {
+                const radius = Number(parcelModal.nearbyRadiusMeters || '50');
+                if (!Number.isFinite(radius) || radius <= 0) {
+                    throw new Error('Bán kính lân cận không hợp lệ.');
+                }
+                const nearbyParcels = await gisService.searchNearbyParcels(sourceTableName || targetTable || parcelModal.searchTable, {
+                    gid: sourceGid,
+                    radius,
+                    includeSelf: true
+                });
+                if (nearbyParcels.length > 0) {
+                    const nearbyFeatures = nearbyParcels
+                        .map((p: any) => {
+                            const pProps = p.properties || {};
+                            const pSoTo = pProps.so_to || pProps.sodoto || '';
+                            const pSoThua = pProps.so_thua || pProps.sothua || '';
+                            const pLoaiDat = pProps.loai_dat || pProps.loaidat || pProps.landType || '';
+                            const pSourceGid = Number(pProps.gid ?? pProps.id);
+                            const pGeometry = p.geometry;
+                            const pSourceTableName = String(pProps.tableName || pProps.table_name || sourceTableName || targetTable || parcelModal.searchTable || '').trim();
 
-            setDialog({
-                isOpen: true,
-                type: 'success',
-                title: 'Thành công',
-                message: `Đã lấy thông tin thửa: ${soThua}/${soTo} (${Math.round(getArea(olFeature.getGeometry() as any)).toLocaleString()}m²)`
-            });
+                            if (!pGeometry) return null;
+                            const f = format.readFeature(pGeometry, {
+                                dataProjection: 'EPSG:9210',
+                                featureProjection: 'EPSG:3857'
+                            }) as Feature;
+                            if (!f) return null;
+
+                            f.set('sodoto', pSoTo);
+                            f.set('sothua', pSoThua);
+                            f.set('loaidat', pLoaiDat);
+                            if (Number.isFinite(pSourceGid) && pSourceGid > 0) {
+                                f.set('gid', pSourceGid);
+                            }
+                            if (pSourceTableName) {
+                                f.set('source_table', pSourceTableName);
+                            }
+                            return f;
+                        })
+                        .filter(Boolean) as Feature[];
+
+                    if (nearbyFeatures.length > 0) {
+                        editSource.current.clear();
+                        editSource.current.addFeatures(nearbyFeatures);
+                        const selectedByGid = nearbyFeatures.find((f) => Number(f.get('gid')) === sourceGid) || nearbyFeatures[0];
+                        if (selectedByGid) {
+                            setSelectedFeature(selectedByGid);
+                            updateVerticesFromFeature(selectedByGid);
+                        }
+                        updateFeatureListState();
+                    }
+                }
+            }
+
+            const extent = editSource.current.getExtent();
+            if (!isExtentEmpty(extent)) {
+                mapInstance.current?.getView().fit(extent, { padding: [100, 100, 100, 100], duration: 800, maxZoom: 20 });
+            }
 
             setParcelModal({ ...parcelModal, isOpen: false, soTo: '', soThua: '', searchTable: '' });
             setParcelList([]);

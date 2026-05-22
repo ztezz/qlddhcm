@@ -934,7 +934,7 @@ export default function(pool, logSystemAction) {
 
             if (data.geometry) {
                 fields.push('geometry');
-                placeholders.push(`ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON($${idx}), ${targetSrid}))`);
+                placeholders.push(`ST_Multi(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($${idx}), 4326), ${targetSrid}))`);
                 params.push(JSON.stringify(data.geometry));
                 idx++;
             }
@@ -992,7 +992,7 @@ export default function(pool, logSystemAction) {
 
                 if (item.geometry) {
                     fields.push('geometry');
-                    placeholders.push(`ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON($${idx}), ${targetSrid}))`);
+                    placeholders.push(`ST_Multi(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($${idx}), 4326), ${targetSrid}))`);
                     params.push(JSON.stringify(item.geometry));
                     idx++;
                 }
@@ -1152,7 +1152,7 @@ export default function(pool, logSystemAction) {
 
             if (geometry) {
                 fields.push('geometry');
-                placeholders.push(`ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON($${idx}), ${targetSrid}))`);
+                placeholders.push(`ST_Multi(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($${idx}), 4326), ${targetSrid}))`);
                 params.push(JSON.stringify(geometry));
                 idx++;
             }
@@ -1171,6 +1171,53 @@ export default function(pool, logSystemAction) {
         } catch (e) {
             if (file && fs.existsSync(file.path)) fs.unlinkSync(file.path);
             if (imageFile && fs.existsSync(imageFile.path)) fs.unlinkSync(imageFile.path);
+            res.status(500).json({ error: e.message });
+        }
+    });
+
+    router.get('/data/:table/nearby', async (req, res) => {
+        try {
+            const table = await resolveSafeTableName(req.params.table);
+            const gid = Number(req.query.gid || 0);
+            const radius = Number(req.query.radius || 0);
+            const includeSelf = String(req.query.includeSelf || 'true') !== 'false';
+
+            if (!Number.isFinite(gid) || gid <= 0) {
+                return res.status(400).json({ error: 'gid không hợp lệ.' });
+            }
+            if (!Number.isFinite(radius) || radius <= 0) {
+                return res.status(400).json({ error: 'radius không hợp lệ.' });
+            }
+
+            const cols = await resolveTableColumns(table);
+            const rowIdCol = cols._rowId || 'gid';
+            const colRes = await pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name = $1`, [table]);
+            const hasGid = colRes.rows.some(r => String(r.column_name).toLowerCase() === 'gid');
+            const idCol = hasGid ? 'gid' : 'id';
+
+            const seed = await pool.query(`SELECT geometry FROM "${table}" WHERE "${idCol}" = $1 LIMIT 1`, [gid]);
+            if (!seed.rows.length || !seed.rows[0].geometry) {
+                return res.status(404).json({ error: 'Không tìm thấy thửa gốc.' });
+            }
+
+            const selfClause = includeSelf ? '' : ` AND t."${idCol}" <> $3`;
+            const params = includeSelf ? [gid, radius] : [gid, radius, gid];
+            const query = `
+                WITH seed AS (
+                    SELECT geometry AS geom FROM "${table}" WHERE "${idCol}" = $1
+                )
+                SELECT t.*, ST_AsGeoJSON(t.geometry)::json as geometry,
+                       ROUND(ST_Distance(t.geometry, seed.geom)::numeric, 3) as distance_m
+                FROM "${table}" t, seed
+                WHERE ST_DWithin(t.geometry, seed.geom, $2)
+                ${selfClause}
+                ORDER BY ST_Distance(t.geometry, seed.geom) ASC
+                LIMIT 500
+            `;
+
+            const result = await pool.query(query, params);
+            res.json(result.rows);
+        } catch (e) {
             res.status(500).json({ error: e.message });
         }
     });

@@ -7,6 +7,8 @@ interface ParcelModalState {
     soThua: string;
     phuongXa: string;
     searchTable: string;
+    includeNearby?: boolean;
+    nearbyRadiusMeters?: string;
 }
 
 interface ParcelSearchDialogProps {
@@ -91,6 +93,28 @@ export const ParcelSearchDialog: React.FC<ParcelSearchDialogProps> = ({
                                 </svg>
                             </div>
                         </div>
+                    </div>
+
+                    <div className="bg-slate-950/60 border border-slate-700 rounded-xl p-3 space-y-3">
+                        <label className="flex items-center gap-2 text-[11px] font-bold text-slate-300 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={!!parcelModal.includeNearby}
+                                onChange={(e) => setParcelModal({ ...parcelModal, includeNearby: e.target.checked })}
+                            />
+                            Lấy thêm các thửa lân cận
+                        </label>
+                        {parcelModal.includeNearby && (
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-1">Bán kính (m)</label>
+                                <input
+                                    className="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:border-emerald-500 outline-none font-black text-white transition-all shadow-inner"
+                                    placeholder="VD: 50"
+                                    value={parcelModal.nearbyRadiusMeters || '50'}
+                                    onChange={(e) => setParcelModal({ ...parcelModal, nearbyRadiusMeters: e.target.value })}
+                                />
+                            </div>
+                        )}
                     </div>
                     <div className="bg-emerald-900/10 border border-emerald-500/20 rounded-xl p-4 space-y-2">
                         <p className="text-[9px] text-emerald-400 font-bold uppercase tracking-widest">Hướng dẫn</p>

@@ -262,6 +262,52 @@ export const gisService = {
         } catch (error) {
             throw error;
         }
+    },
+    searchNearbyParcels: async (tableName: string, options: { gid: number; radius: number; includeSelf?: boolean }): Promise<LandParcel[]> => {
+        const normalizedTableName = String(tableName || '').trim().toLowerCase();
+        const gid = Number(options?.gid || 0);
+        const radius = Number(options?.radius || 0);
+        const includeSelf = options?.includeSelf !== false;
+
+        if (!normalizedTableName || !Number.isFinite(gid) || gid <= 0 || !Number.isFinite(radius) || radius <= 0) return [];
+
+        const qs = `?t=${Date.now()}&gid=${gid}&radius=${radius}&includeSelf=${includeSelf ? 'true' : 'false'}`;
+        const payload = await apiCall(`/data/${encodeURIComponent(normalizedTableName)}/nearby${qs}`, undefined, { suppressAuthReload: true });
+        const rows = Array.isArray(payload)
+            ? payload
+            : (Array.isArray(payload?.data) ? payload.data : []);
+
+        if (!Array.isArray(rows)) return [];
+
+        return rows.map((item: any, index: number) => {
+            const parcelCode = pickFirstValue(item, ['madinhdanh', 'ma_dinh_danh', 'ma_thua', 'parcel_code', 'parcel_id', 'land_id', 'identifier']);
+            const soTo = pickFirstValue(item, ['sodoto', 'so_to', 'shbando', 'sh_ban_do', 'tobando']);
+            const soThua = pickFirstValue(item, ['sothua', 'so_thua', 'shthua', 'sh_thua', 'thua_dat']);
+            const ownerName = pickFirstValue(item, ['tenchu', 'ten_chu', 'ownerName', 'owner_name', 'chusudung']);
+            const address = pickFirstValue(item, ['diachi', 'dia_chi', 'address', 'location', 'vitri', 'vi_tri']);
+            const area = pickFirstValue(item, ['dientich', 'dien_tich', 'area', 'shape_area', 'st_area']);
+            const landType = pickFirstValue(item, ['loaidat', 'loai_dat', 'kyhieumucd', 'ky_hieu_muc_dich', 'mucdich', 'mdsd']);
+            const geometry = typeof item.geometry === 'string' ? JSON.parse(item.geometry) : item.geometry;
+            const rowGid = Number(item.gid);
+            const fallbackId = [normalizedTableName, soTo, soThua, index].filter(Boolean).join('-') || `n-${index}`;
+
+            return {
+                id: Number.isFinite(rowGid) && rowGid > 0 ? String(rowGid) : fallbackId,
+                gid: Number.isFinite(rowGid) && rowGid > 0 ? rowGid : item.gid,
+                geometry,
+                properties: {
+                    ...item,
+                    madinhdanh: parcelCode,
+                    so_to: soTo,
+                    so_thua: soThua,
+                    ownerName,
+                    address,
+                    area,
+                    landType: landType || 'Chưa cập nhật',
+                    tableName: normalizedTableName
+                }
+            };
+        });
     }
 };
 
