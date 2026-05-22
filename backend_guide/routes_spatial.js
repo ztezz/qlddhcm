@@ -898,9 +898,15 @@ export default function(pool, logSystemAction) {
             const table = await resolveSafeTableName(req.params.table);
             const cols = await resolveTableColumns(table);
             const targetSrid = cols._srid || 4326;
-            let parcelCode = null;
-            if (cols.madinhdanh && data.geometry) {
+            let parcelCode = data.madinhdanh || null;
+            if (cols.madinhdanh) {
+                if (!data.geometry) {
+                    return res.status(400).json({ error: 'Thiếu geometry để sinh mã định danh geohash.' });
+                }
                 parcelCode = generateGeohashFromGeoJSON(data.geometry);
+                if (!parcelCode) {
+                    return res.status(400).json({ error: 'Không thể sinh mã định danh geohash từ geometry.' });
+                }
             }
 
             const fields = [];
@@ -950,10 +956,15 @@ export default function(pool, logSystemAction) {
             const targetSrid = cols._srid || 4326;
             await pool.query('BEGIN');
             for (const item of items) {
-                // Tự động tạo mã geohash từ geometry
                 let parcelCode = item.madinhdanh || null;
-                if (cols.madinhdanh && item.geometry) {
+                if (cols.madinhdanh) {
+                    if (!item.geometry) {
+                        throw new Error('Thiếu geometry để sinh mã định danh geohash cho dữ liệu lưu lô.');
+                    }
                     parcelCode = generateGeohashFromGeoJSON(item.geometry);
+                    if (!parcelCode) {
+                        throw new Error('Không thể sinh mã định danh geohash cho dữ liệu lưu lô.');
+                    }
                 }
 
                 const fields = [];
@@ -1017,10 +1028,15 @@ export default function(pool, logSystemAction) {
                 }
             };
 
-            // Tự động tạo lại mã geohash nếu có geometry
             let parcelCode = data.madinhdanh;
-            if (cols.madinhdanh && data.geometry) {
+            if (cols.madinhdanh) {
+                if (!data.geometry) {
+                    return res.status(400).json({ error: 'Thiếu geometry để sinh mã định danh geohash.' });
+                }
                 parcelCode = generateGeohashFromGeoJSON(data.geometry);
+                if (!parcelCode) {
+                    return res.status(400).json({ error: 'Không thể sinh mã định danh geohash từ geometry.' });
+                }
             }
 
             addField('madinhdanh', parcelCode);
