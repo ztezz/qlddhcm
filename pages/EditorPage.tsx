@@ -1091,6 +1091,8 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
 
             while (retries <= maxRetries && !saved) {
                 try {
+                    const sourceGidRaw = Number(feature.get('gid'));
+                    const sourceGid = Number.isFinite(sourceGidRaw) && sourceGidRaw > 0 ? sourceGidRaw : null;
                     const fSoTo = feature.get('sodoto');
                     const fSoThua = feature.get('sothua');
                     const fLoaiDat = feature.get('loaidat');
@@ -1102,13 +1104,19 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                         geometryObject = { type: 'MultiPolygon', coordinates: [geometryObject.coordinates] };
                     }
 
-                    await parcelApi.create(targetTable, {
+                    const payload = {
                         sodoto: fSoTo,
                         sothua: fSoThua,
                         loaidat: fLoaiDat || 'Chưa xác định',
                         dientich: Math.round(fArea * 100) / 100,
                         geometry: geometryObject
-                    });
+                    };
+
+                    if (sourceGid) {
+                        await parcelApi.update(targetTable, sourceGid, payload);
+                    } else {
+                        await parcelApi.create(targetTable, payload);
+                    }
 
                     results.success += 1;
                     saved = true;
