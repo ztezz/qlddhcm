@@ -666,6 +666,8 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
             if (sourceTableName) {
                 olFeature.set('source_table', sourceTableName);
             }
+            olFeature.set('is_primary', true);
+            olFeature.set('is_nearby', false);
 
             editSource.current.clear();
             editSource.current.addFeature(olFeature);
@@ -717,6 +719,9 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                             if (pSourceTableName) {
                                 f.set('source_table', pSourceTableName);
                             }
+                            const isPrimary = Number.isFinite(pSourceGid) && pSourceGid > 0 && pSourceGid === sourceGid;
+                            f.set('is_primary', isPrimary);
+                            f.set('is_nearby', !isPrimary);
                             return f;
                         })
                         .filter(Boolean) as Feature[];

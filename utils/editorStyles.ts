@@ -3,10 +3,15 @@ import { Polygon, MultiPolygon, Point } from 'ol/geom';
 import * as style from 'ol/style';
 
 export const getEditStyle = (feature: Feature): style.Style[] => {
+    const isNearby = Boolean(feature.get('is_nearby'));
+    const isPrimary = Boolean(feature.get('is_primary'));
+    const strokeColor = isPrimary ? '#f59e0b' : (isNearby ? '#10b981' : '#3b82f6');
+    const fillColor = isPrimary ? 'rgba(245, 158, 11, 0.18)' : (isNearby ? 'rgba(16, 185, 129, 0.14)' : 'rgba(59, 130, 246, 0.1)');
+
     const styles = [
         new style.Style({
-            fill: new style.Fill({ color: 'rgba(59, 130, 246, 0.1)' }),
-            stroke: new style.Stroke({ color: '#3b82f6', width: 2 })
+            fill: new style.Fill({ color: fillColor }),
+            stroke: new style.Stroke({ color: strokeColor, width: isPrimary ? 2.5 : 2 })
         })
     ];
 
@@ -28,7 +33,7 @@ export const getEditStyle = (feature: Feature): style.Style[] => {
                 image: new style.Circle({
                     radius: 4,
                     fill: new style.Fill({ color: '#fff' }),
-                    stroke: new style.Stroke({ color: '#3b82f6', width: 2 })
+                    stroke: new style.Stroke({ color: strokeColor, width: 2 })
                 }),
                 text: new style.Text({
                     text: (index + 1).toString(),
