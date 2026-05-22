@@ -347,37 +347,10 @@ export const adminService = {
     deletePrice: async (landType: string) => apiCall(`/land-prices/${landType}`, { method: 'DELETE' }),
 
     // Land Price 2026 Admin & Lookup
-    // Lấy phường/xã từ các bảng thửa đất đã đăng ký (không phải từ bảng giá đất)
+    // Lấy phường/xã từ bảng giá đất 2026
     getLandPriceWards: async (): Promise<string[]> => {
-        try {
-            const tables = await gisService.getSpatialTables();
-            if (!tables || tables.length === 0) return [];
-
-            const wardsSet = new Set<string>();
-
-            // Lấy phường/xã từ từng bảng thửa đất
-            for (const table of tables) {
-                try {
-                    const parcels = await gisService.searchParcels(table.table_name, {});
-                    if (parcels && parcels.length > 0) {
-                        parcels.forEach(parcel => {
-                            const props = parcel.properties || {};
-                            const ward = pickFirstValue(props, ['phuongxa', 'phuong_xa', 'ward', 'ward_name', 'xa', 'ten_xa', 'diachi']);
-                            if (ward) {
-                                const wardName = String(ward).split(',')[0].trim();
-                                if (wardName) wardsSet.add(wardName);
-                            }
-                        });
-                    }
-                } catch (e) {
-                    continue;
-                }
-            }
-
-            return Array.from(wardsSet).sort();
-        } catch {
-            return [];
-        }
+        const data = await apiCall(`/land-prices-2026/wards?t=${Date.now()}`);
+        return Array.isArray(data) ? data : [];
     },
     getLandPriceSuggestions: async (phuongxa?: string, tinhcu?: string): Promise<{streets: string[], fromPoints: string[], toPoints: string[]}> => {
         let qs = `?t=${Date.now()}`;
