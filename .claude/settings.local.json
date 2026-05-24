@@ -19,7 +19,11 @@
       "Bash(grep -E \"\\\\.\\(sql|md\\)$\")",
       "Bash(git commit *)",
       "Bash(Get-ChildItem -Path D:\\\\code\\\\qlddhcm)",
-      "Bash(Format-Table -AutoSize)"
+      "Bash(Format-Table -AutoSize)",
+      "Bash(curl -s http://localhost:3001)",
+      "Bash(npx tsc *)",
+      "PowerShell(npm run *)",
+      "PowerShell(git diff *)"
     ]
   }
 }

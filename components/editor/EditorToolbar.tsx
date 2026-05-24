@@ -1,5 +1,5 @@
 import React from 'react';
-import { MousePointer2, Plus, Move, Maximize, Search, Map as MapIcon, Grid, Keyboard, Magnet, Trash2, Undo2, Redo2, ChevronDown } from 'lucide-react';
+import { MousePointer2, Plus, Move, Maximize, Search, Map as MapIcon, Grid, Keyboard, Magnet, Trash2, Undo2, Redo2, ChevronDown, Scissors, Combine } from 'lucide-react';
 
 interface EditorToolbarProps {
     activeInteraction: 'SELECT' | 'DRAW' | 'MODIFY';
@@ -20,6 +20,11 @@ interface EditorToolbarProps {
     onClearAll: () => void;
     currentBasemap?: string;
     onChangeBasemap?: (basemap: string) => void;
+    // Split/Merge props
+    onSplitFeature: () => void;
+    onMergeFeatures: () => void;
+    canSplit: boolean;
+    canMerge: boolean;
 }
 
 const EditorToolbar: React.FC<EditorToolbarProps> = ({
@@ -29,7 +34,8 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
     showGrid, setShowGrid,
     onFitView, onUndo, onRedo, canUndo, canRedo, onOpenSearch, onOpenManual, onClearAll,
     currentBasemap = 'google-satellite',
-    onChangeBasemap
+    onChangeBasemap,
+    onSplitFeature, onMergeFeatures, canSplit, canMerge
 }) => {
     const [showBasemapMenu, setShowBasemapMenu] = React.useState(false);
 
@@ -46,6 +52,23 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
             <button onClick={() => setActiveInteraction('SELECT')} className={`p-3 rounded-xl transition-all ${activeInteraction === 'SELECT' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'}`} title="Chọn đối tượng (V)"><MousePointer2 size={20}/></button>
             <button onClick={() => setActiveInteraction('DRAW')} className={`p-3 rounded-xl transition-all ${activeInteraction === 'DRAW' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'}`} title="Vẽ vùng mới (P)"><Plus size={20}/></button>
             <button onClick={() => setActiveInteraction('MODIFY')} className={`p-3 rounded-xl transition-all ${activeInteraction === 'MODIFY' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'}`} title="Chỉnh sửa đỉnh (M)"><Move size={20}/></button>
+            <div className="w-8 h-px bg-slate-800 my-2" />
+            <button
+                onClick={onSplitFeature}
+                disabled={!canSplit}
+                className={`p-3 rounded-xl transition-all ${canSplit ? 'text-orange-400 hover:bg-orange-600/20' : 'text-slate-700 cursor-not-allowed'}`}
+                title="Tách thửa - Cắt thửa đất thành nhiều phần"
+            >
+                <Scissors size={20}/>
+            </button>
+            <button
+                onClick={onMergeFeatures}
+                disabled={!canMerge}
+                className={`p-3 rounded-xl transition-all ${canMerge ? 'text-violet-400 hover:bg-violet-600/20' : 'text-slate-700 cursor-not-allowed'}`}
+                title="Gộp thửa - Ghép nhiều thửa thành một"
+            >
+                <Combine size={20}/>
+            </button>
             <div className="w-8 h-px bg-slate-800 my-2" />
             <button onClick={onFitView} className="p-3 rounded-xl text-slate-500 hover:bg-slate-800 hover:text-emerald-400" title="Xem toàn bộ hình vẽ (Fit View)"><Maximize size={20}/></button>
             <button disabled={!canUndo} onClick={onUndo} className={`p-3 rounded-xl transition-all ${canUndo ? 'text-slate-400 hover:bg-slate-800 hover:text-amber-300' : 'text-slate-700 cursor-not-allowed'}`} title="Hoàn tác (Ctrl+Z)"><Undo2 size={20}/></button>
