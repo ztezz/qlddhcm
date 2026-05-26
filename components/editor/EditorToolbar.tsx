@@ -37,7 +37,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
     onChangeBasemap,
     onSplitFeature, onMergeFeatures, canSplit, canMerge
 }) => {
-    const [showBasemapMenu, setShowBasemapMenu] = React.useState(false);
+    const [openGroup, setOpenGroup] = React.useState<'edit' | 'parcel' | 'view' | 'tools' | null>('edit');
 
     const basemaps = [
         { key: 'google-satellite', name: 'Google Satellite' },
@@ -47,59 +47,102 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
         { key: 'google-hybrid', name: 'Google Satellite Hybrid' },
         { key: 'esri-satellite', name: 'ESRI Satellite' }
     ];
+
+    const buttonBase = 'p-3 rounded-xl transition-all flex items-center justify-center';
+    const groupButtonBase = 'w-11 h-11 rounded-xl transition-all flex items-center justify-center relative';
+
+    const ToolbarButton = ({
+        children,
+        onClick,
+        disabled,
+        className,
+        title
+    }: {
+        children: React.ReactNode;
+        onClick: () => void;
+        disabled?: boolean;
+        className: string;
+        title: string;
+    }) => (
+        <button onClick={onClick} disabled={disabled} className={`${buttonBase} ${className}`} title={title}>
+            {children}
+        </button>
+    );
+
+    const ToolbarGroup = ({
+        id,
+        icon,
+        title,
+        children,
+        accentClass = 'text-slate-400'
+    }: {
+        id: 'edit' | 'parcel' | 'view' | 'tools';
+        icon: React.ReactNode;
+        title: string;
+        children: React.ReactNode;
+        accentClass?: string;
+    }) => {
+        const isOpen = openGroup === id;
+        return (
+            <div className="relative">
+                <button
+                    onClick={() => setOpenGroup(isOpen ? null : id)}
+                    className={`${groupButtonBase} ${isOpen ? 'bg-slate-800 text-white shadow-lg' : `${accentClass} hover:bg-slate-800`}`}
+                    title={title}
+                >
+                    {icon}
+                    <ChevronDown size={12} className={`absolute -bottom-0.5 right-1 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {isOpen && (
+                    <div className="absolute left-full top-0 z-[1000] ml-2 flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-900/95 p-2 shadow-2xl backdrop-blur-md">
+                        {children}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     return (
-        <div className="w-16 bg-slate-900 border-r border-slate-800 flex flex-col items-center py-6 gap-3 z-20 shadow-2xl">
-            <button onClick={() => setActiveInteraction('SELECT')} className={`p-3 rounded-xl transition-all ${activeInteraction === 'SELECT' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'}`} title="Chọn đối tượng (V)"><MousePointer2 size={20}/></button>
-            <button onClick={() => setActiveInteraction('DRAW')} className={`p-3 rounded-xl transition-all ${activeInteraction === 'DRAW' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'}`} title="Vẽ vùng mới (P)"><Plus size={20}/></button>
-            <button onClick={() => setActiveInteraction('MODIFY')} className={`p-3 rounded-xl transition-all ${activeInteraction === 'MODIFY' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'}`} title="Chỉnh sửa đỉnh (M)"><Move size={20}/></button>
-            <div className="w-8 h-px bg-slate-800 my-2" />
-            <button
-                onClick={onSplitFeature}
-                disabled={!canSplit}
-                className={`p-3 rounded-xl transition-all ${canSplit ? 'text-orange-400 hover:bg-orange-600/20' : 'text-slate-700 cursor-not-allowed'}`}
-                title="Tách thửa - Cắt thửa đất thành nhiều phần"
-            >
-                <Scissors size={20}/>
-            </button>
-            <button
-                onClick={onMergeFeatures}
-                disabled={!canMerge}
-                className={`p-3 rounded-xl transition-all ${canMerge ? 'text-violet-400 hover:bg-violet-600/20' : 'text-slate-700 cursor-not-allowed'}`}
-                title="Gộp thửa - Ghép nhiều thửa thành một"
-            >
-                <Combine size={20}/>
-            </button>
-            <div className="w-8 h-px bg-slate-800 my-2" />
-            <button onClick={onFitView} className="p-3 rounded-xl text-slate-500 hover:bg-slate-800 hover:text-emerald-400" title="Xem toàn bộ hình vẽ (Fit View)"><Maximize size={20}/></button>
-            <button disabled={!canUndo} onClick={onUndo} className={`p-3 rounded-xl transition-all ${canUndo ? 'text-slate-400 hover:bg-slate-800 hover:text-amber-300' : 'text-slate-700 cursor-not-allowed'}`} title="Hoàn tác (Ctrl+Z)"><Undo2 size={20}/></button>
-            <button disabled={!canRedo} onClick={onRedo} className={`p-3 rounded-xl transition-all ${canRedo ? 'text-slate-400 hover:bg-slate-800 hover:text-amber-300' : 'text-slate-700 cursor-not-allowed'}`} title="Làm lại (Ctrl+Y)"><Redo2 size={20}/></button>
-            <button onClick={onOpenSearch} className="p-3 rounded-xl text-slate-500 hover:bg-slate-800 hover:text-blue-400" title="Tìm tọa độ (Go to)"><Search size={20}/></button>
-            <div className="w-8 h-px bg-slate-800 my-2" />
-            <button onClick={() => setShowBasemap(!showBasemap)} className={`p-3 rounded-xl transition-all relative ${showBasemap ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'}`} title="Bật/Tắt bản đồ nền vệ tinh"><MapIcon size={20}/></button>
-            {showBasemap && (
-                <div className="absolute left-20 top-40 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50">
-                    {basemaps.map(bm => (
-                        <button
-                            key={bm.key}
-                            onClick={() => {
-                                onChangeBasemap?.(bm.key);
-                                setShowBasemapMenu(false);
-                            }}
-                            className={`block w-full text-left px-4 py-2 text-sm transition-all ${
-                                currentBasemap === bm.key
-                                    ? 'bg-indigo-600 text-white'
-                                    : 'text-slate-300 hover:bg-slate-700'
-                            }`}
-                        >
-                            {bm.name}
-                        </button>
-                    ))}
-                </div>
-            )}
-            <button onClick={() => setShowGrid(!showGrid)} className={`p-3 rounded-xl transition-all ${showGrid ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30' : 'text-slate-500 hover:bg-slate-800'}`} title="Bật/Tắt Lưới tọa độ"><Grid size={20}/></button>
-            <button onClick={onOpenManual} className="p-3 rounded-xl text-slate-500 hover:bg-slate-800 hover:text-blue-400" title="Nhập tọa độ tay"><Keyboard size={20}/></button>
-            <button onClick={() => setIsSnapping(!isSnapping)} className={`p-3 rounded-xl transition-all ${isSnapping ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30' : 'text-slate-500 hover:bg-slate-800'}`} title="Chế độ bắt điểm (Snap)"><Magnet size={20}/></button>
-            <button onClick={onClearAll} className="p-3 rounded-xl text-slate-500 hover:bg-red-600/20 hover:text-red-500 mt-auto" title="Xóa toàn bộ"><Trash2 size={20}/></button>
+        <div className="w-16 shrink-0 bg-slate-900 border-r border-slate-800 flex flex-col items-center py-4 gap-3 z-50 shadow-2xl overflow-visible">
+            <ToolbarGroup id="edit" icon={<MousePointer2 size={20}/>} title="Vẽ / chỉnh sửa" accentClass="text-blue-400">
+                <ToolbarButton onClick={() => setActiveInteraction('SELECT')} className={activeInteraction === 'SELECT' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'} title="Chọn đối tượng (V)"><MousePointer2 size={20}/></ToolbarButton>
+                <ToolbarButton onClick={() => setActiveInteraction('DRAW')} className={activeInteraction === 'DRAW' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'} title="Vẽ vùng mới (P)"><Plus size={20}/></ToolbarButton>
+                <ToolbarButton onClick={() => setActiveInteraction('MODIFY')} className={activeInteraction === 'MODIFY' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'} title="Chỉnh sửa đỉnh (M)"><Move size={20}/></ToolbarButton>
+            </ToolbarGroup>
+
+            <ToolbarGroup id="parcel" icon={<Scissors size={20}/>} title="Tách / gộp thửa" accentClass="text-orange-400">
+                <ToolbarButton onClick={onSplitFeature} disabled={!canSplit} className={canSplit ? 'text-orange-400 hover:bg-orange-600/20' : 'text-slate-700 cursor-not-allowed'} title="Tách thửa - Cắt thửa đất thành nhiều phần"><Scissors size={20}/></ToolbarButton>
+                <ToolbarButton onClick={onMergeFeatures} disabled={!canMerge} className={canMerge ? 'text-violet-400 hover:bg-violet-600/20' : 'text-slate-700 cursor-not-allowed'} title="Gộp thửa - Ghép nhiều thửa thành một"><Combine size={20}/></ToolbarButton>
+            </ToolbarGroup>
+
+            <ToolbarGroup id="view" icon={<MapIcon size={20}/>} title="Bản đồ / hiển thị" accentClass="text-indigo-400">
+                <ToolbarButton onClick={onFitView} className="text-slate-500 hover:bg-slate-800 hover:text-emerald-400" title="Xem toàn bộ hình vẽ (Fit View)"><Maximize size={20}/></ToolbarButton>
+                <ToolbarButton onClick={() => setShowBasemap(!showBasemap)} className={showBasemap ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'} title="Bật/Tắt bản đồ nền vệ tinh"><MapIcon size={20}/></ToolbarButton>
+                {showBasemap && (
+                    <div className="w-44 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden">
+                        {basemaps.map((bm) => (
+                            <button
+                                key={bm.key}
+                                onClick={() => onChangeBasemap?.(bm.key)}
+                                className={`block w-full text-left px-3 py-2 text-xs transition-all ${currentBasemap === bm.key ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-700'}`}
+                            >
+                                {bm.name}
+                            </button>
+                        ))}
+                    </div>
+                )}
+                <ToolbarButton onClick={() => setShowGrid(!showGrid)} className={showGrid ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30' : 'text-slate-500 hover:bg-slate-800'} title="Bật/Tắt Lưới tọa độ"><Grid size={20}/></ToolbarButton>
+            </ToolbarGroup>
+
+            <ToolbarGroup id="tools" icon={<Keyboard size={20}/>} title="Công cụ khác" accentClass="text-emerald-400">
+                <ToolbarButton onClick={onOpenSearch} className="text-slate-500 hover:bg-slate-800 hover:text-blue-400" title="Tìm tọa độ (Go to)"><Search size={20}/></ToolbarButton>
+                <ToolbarButton onClick={onOpenManual} className="text-slate-500 hover:bg-slate-800 hover:text-blue-400" title="Nhập tọa độ tay"><Keyboard size={20}/></ToolbarButton>
+                <ToolbarButton onClick={() => setIsSnapping(!isSnapping)} className={isSnapping ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30' : 'text-slate-500 hover:bg-slate-800'} title="Chế độ bắt điểm (Snap)"><Magnet size={20}/></ToolbarButton>
+                <ToolbarButton disabled={!canUndo} onClick={onUndo} className={canUndo ? 'text-slate-400 hover:bg-slate-800 hover:text-amber-300' : 'text-slate-700 cursor-not-allowed'} title="Hoàn tác (Ctrl+Z)"><Undo2 size={20}/></ToolbarButton>
+                <ToolbarButton disabled={!canRedo} onClick={onRedo} className={canRedo ? 'text-slate-400 hover:bg-slate-800 hover:text-amber-300' : 'text-slate-700 cursor-not-allowed'} title="Làm lại (Ctrl+Y)"><Redo2 size={20}/></ToolbarButton>
+            </ToolbarGroup>
+
+            <button onClick={onClearAll} className="p-3 rounded-xl text-slate-500 hover:bg-red-600/20 hover:text-red-500 mt-auto transition-all" title="Xóa toàn bộ"><Trash2 size={20}/></button>
         </div>
     );
 };
