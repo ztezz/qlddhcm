@@ -748,6 +748,8 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
 
             editSource.current.clear();
             editSource.current.addFeature(olFeature);
+            selectInteraction.current?.getFeatures().clear();
+            selectInteraction.current?.getFeatures().push(olFeature);
             setSelectedFeature(olFeature);
             updateVerticesFromFeature(olFeature);
             updateFeatureListState();
@@ -808,6 +810,8 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                         editSource.current.addFeatures(nearbyFeatures);
                         const selectedByGid = nearbyFeatures.find((f) => Number(f.get('gid')) === sourceGid) || nearbyFeatures[0];
                         if (selectedByGid) {
+                            selectInteraction.current?.getFeatures().clear();
+                            selectInteraction.current?.getFeatures().push(selectedByGid);
                             setSelectedFeature(selectedByGid);
                             updateVerticesFromFeature(selectedByGid);
                         }
@@ -1429,7 +1433,22 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         try {
             pushHistorySnapshot();
 
-            const originalPolygon = feature.getGeometry() as Polygon;
+            const featureGeometry = feature.getGeometry();
+            let originalPolygon: Polygon | null = null;
+            if (featureGeometry instanceof Polygon) {
+                originalPolygon = featureGeometry;
+            } else if (featureGeometry instanceof MultiPolygon) {
+                const polygons = featureGeometry.getPolygons();
+                originalPolygon = polygons[0] || null;
+            }
+
+            if (!originalPolygon) {
+                setDialog({ isOpen: true, type: 'error', title: 'Lỗi', message: 'Thửa đất cần tách phải là vùng polygon hợp lệ.' });
+                setIsSplitMode(false);
+                setActiveInteraction('SELECT');
+                return;
+            }
+
             const originalArea = getArea(originalPolygon);
             const originalInfo = {
                 sodoto: feature.get('sodoto'),
