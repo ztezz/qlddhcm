@@ -1453,15 +1453,38 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                     ringPosition: number;
                 };
 
-                const segmentIntersection = (a: [number, number], b: [number, number], c: [number, number], d: [number, number]) => {
+                const segmentIntersections = (a: [number, number], b: [number, number], c: [number, number], d: [number, number]) => {
                     const r = [b[0] - a[0], b[1] - a[1]];
                     const s = [d[0] - c[0], d[1] - c[1]];
                     const denom = r[0] * s[1] - r[1] * s[0];
-                    if (Math.abs(denom) < 1e-9) return null;
+                    const cross = (p: [number, number], q: [number, number], origin: [number, number]) => (p[0] - origin[0]) * (q[1] - origin[1]) - (p[1] - origin[1]) * (q[0] - origin[0]);
+                    const lineLengthSq = r[0] * r[0] + r[1] * r[1];
+                    const ringLengthSq = s[0] * s[0] + s[1] * s[1];
+                    if (lineLengthSq === 0 || ringLengthSq === 0) return [];
+
+                    if (Math.abs(denom) < 1e-9) {
+                        if (Math.abs(cross(c, b, a)) > 0.001 || Math.abs(cross(d, b, a)) > 0.001) return [];
+
+                        const projected = [
+                            { point: c, lineT: ((c[0] - a[0]) * r[0] + (c[1] - a[1]) * r[1]) / lineLengthSq, ringT: 0 },
+                            { point: d, lineT: ((d[0] - a[0]) * r[0] + (d[1] - a[1]) * r[1]) / lineLengthSq, ringT: 1 },
+                        ].filter(({ lineT }) => lineT >= -1e-9 && lineT <= 1 + 1e-9);
+
+                        return projected.map(({ point, lineT, ringT }) => ({
+                            point: [...point] as [number, number],
+                            lineIndex: 0,
+                            lineT,
+                            lineDistance: 0,
+                            ringIndex: 0,
+                            ringT,
+                            ringPosition: 0
+                        }));
+                    }
+
                     const u = ((c[0] - a[0]) * r[1] - (c[1] - a[1]) * r[0]) / denom;
                     const t = ((c[0] - a[0]) * s[1] - (c[1] - a[1]) * s[0]) / denom;
-                    if (t < -1e-9 || t > 1 + 1e-9 || u < -1e-9 || u > 1 + 1e-9) return null;
-                    return {
+                    if (t < -1e-9 || t > 1 + 1e-9 || u < -1e-9 || u > 1 + 1e-9) return [];
+                    return [{
                         point: [a[0] + t * r[0], a[1] + t * r[1]] as [number, number],
                         lineIndex: 0,
                         lineT: t,
@@ -1469,7 +1492,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                         ringIndex: 0,
                         ringT: u,
                         ringPosition: 0
-                    };
+                    }];
                 };
 
                 const lineLengths: number[] = [0];
@@ -1482,8 +1505,8 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                 const intersections: SplitIntersection[] = [];
                 for (let li = 0; li < lineCoords.length - 1; li++) {
                     for (let ri = 0; ri < ring.length - 1; ri++) {
-                        const hit = segmentIntersection(lineCoords[li], lineCoords[li + 1], ring[ri], ring[ri + 1]);
-                        if (hit) {
+                        const hits = segmentIntersections(lineCoords[li], lineCoords[li + 1], ring[ri], ring[ri + 1]);
+                        hits.forEach((hit) => {
                             hit.lineIndex = li;
                             hit.ringIndex = ri;
                             hit.lineDistance = lineLengths[li] + hit.lineT * Math.hypot(lineCoords[li + 1][0] - lineCoords[li][0], lineCoords[li + 1][1] - lineCoords[li][1]);
@@ -1491,7 +1514,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                             if (!intersections.some(existing => Math.hypot(existing.point[0] - hit.point[0], existing.point[1] - hit.point[1]) < 0.001)) {
                                 intersections.push(hit);
                             }
-                        }
+                        });
                     }
                 }
 

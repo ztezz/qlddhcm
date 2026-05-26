@@ -23,7 +23,8 @@
       "Bash(curl -s http://localhost:3001)",
       "Bash(npx tsc *)",
       "PowerShell(npm run *)",
-      "PowerShell(git diff *)"
+      "PowerShell(git diff *)",
+      "PowerShell(git status *)"
     ]
   }
 }
