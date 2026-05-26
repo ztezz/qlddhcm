@@ -34,7 +34,7 @@ interface EditorModalsProps {
         isOpen: boolean;
         onClose: () => void;
         originalFeature: FeatureInfo | null;
-        onSplit: (cutMode: 'line' | 'polygon', soTo: string, soThuaStart: number) => void;
+        onSplit: (soTo: string, soThuaStart: number) => void;
     };
     // Merge modal
     mergeModal: {
@@ -146,35 +146,16 @@ const EditorModals: React.FC<EditorModalsProps> = ({ searchModal, manualModal, d
                                     defaultValue={splitModal.originalFeature ? String(parseInt(splitModal.originalFeature.sothua) + 1) : '1'}
                                 />
                             </div>
-                            <div className="p-4 bg-slate-800/30 rounded-xl border border-slate-700">
-                                <p className="text-[10px] text-gray-400 mb-3">Chọn cách cắt:</p>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <button
-                                        onClick={() => {
-                                            const soToInput = document.getElementById('split-soTo') as HTMLInputElement;
-                                            const soThuaInput = document.getElementById('split-soThuaStart') as HTMLInputElement;
-                                            splitModal.onSplit('line', soToInput?.value || '', parseInt(soThuaInput?.value) || 1);
-                                        }}
-                                        className="flex flex-col items-center justify-center p-4 bg-orange-600/20 hover:bg-orange-600/30 border border-orange-500/30 rounded-xl transition-all"
-                                    >
-                                        <Scissors size={24} className="text-orange-400 mb-2"/>
-                                        <span className="text-[10px] font-black text-orange-400 uppercase">Đường thẳng</span>
-                                        <span className="text-[8px] text-gray-500 mt-1">2 điểm cắt ngang</span>
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            const soToInput = document.getElementById('split-soTo') as HTMLInputElement;
-                                            const soThuaInput = document.getElementById('split-soThuaStart') as HTMLInputElement;
-                                            splitModal.onSplit('polygon', soToInput?.value || '', parseInt(soThuaInput?.value) || 1);
-                                        }}
-                                        className="flex flex-col items-center justify-center p-4 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 rounded-xl transition-all"
-                                    >
-                                        <Scissors size={24} className="text-blue-400 mb-2"/>
-                                        <span className="text-[10px] font-black text-blue-400 uppercase">Đa giác cắt</span>
-                                        <span className="text-[8px] text-gray-500 mt-1">Vẽ vùng cắt tự do</span>
-                                    </button>
-                                </div>
-                            </div>
+                            <button
+                                onClick={() => {
+                                    const soToInput = document.getElementById('split-soTo') as HTMLInputElement;
+                                    const soThuaInput = document.getElementById('split-soThuaStart') as HTMLInputElement;
+                                    splitModal.onSplit(soToInput?.value || '', parseInt(soThuaInput?.value) || 1);
+                                }}
+                                className="w-full bg-orange-600 hover:bg-orange-500 text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95"
+                            >
+                                <Scissors size={16}/> VẼ ĐƯỜNG CẮT
+                            </button>
                         </div>
                     </div>
                 </div>

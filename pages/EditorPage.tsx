@@ -29,11 +29,9 @@ import { getEditStyle, getSelectedStyle } from '../utils/editorStyles';
 import {
     olCoordsToTurfPolygon,
     turfPolygonToOlPolygon,
-    olGeomToTurfFeature,
     mergePolygons,
     createFeatureFromPolygon,
-    calculateArea,
-    turfCoordsToOlPolygon
+    calculateArea
 } from '../utils/geometryUtils';
 
 // Turf.js for geometry operations
@@ -119,7 +117,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         newFeatures: [] as any[]
     });
     // For split mode - store the split config
-    const splitConfigRef = useRef<{ soTo: string; soThuaStart: number; cutMode: 'line' | 'polygon' } | null>(null);
+    const splitConfigRef = useRef<{ soTo: string; soThuaStart: number } | null>(null);
     const [isSplitMode, setIsSplitMode] = useState(false);
     // CRITICAL: Store the feature to split in a ref BEFORE mode switch
     // This prevents React state batching from clearing it when interaction changes
@@ -651,12 +649,12 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         if (drawInteraction.current) {
             // Only activate polygon draw when NOT in split mode
             // OR when in split mode but using polygon cut (not line)
-            const usePolygonDraw = activeInteraction === 'DRAW' && (!isSplitMode || splitConfigRef.current?.cutMode === 'polygon');
+            const usePolygonDraw = activeInteraction === 'DRAW' && !isSplitMode;
             drawInteraction.current.setActive(usePolygonDraw);
         }
         if (drawLineInteraction.current) {
             // Activate line draw only when in split mode with line cut
-            const useLineDraw = activeInteraction === 'DRAW' && isSplitMode && splitConfigRef.current?.cutMode === 'line';
+            const useLineDraw = activeInteraction === 'DRAW' && isSplitMode;
             drawLineInteraction.current.setActive(useLineDraw);
         }
         if (modifyInteraction.current) {
@@ -1339,12 +1337,11 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         setSplitModal({ isOpen: true });
     };
 
-    const handleOpenSplitModal = (cutMode: 'line' | 'polygon', soTo: string, soThuaStart: number) => {
+    const handleOpenSplitModal = (soTo: string, soThuaStart: number) => {
         setSplitModal({ isOpen: false });
-        splitConfigRef.current = { soTo, soThuaStart, cutMode };
+        splitConfigRef.current = { soTo, soThuaStart };
         featureToSplitRef.current = selectedFeature;
         setIsSplitMode(true);
-        // Switch to DRAW mode - this will trigger the interaction effect which may clear selectedFeature state
         setActiveInteraction('DRAW');
     };
 
@@ -1420,7 +1417,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         }
     };
 
-    const executeSplit = (cutGeom: Polygon | LineString, featureToSplit?: Feature, config?: { soTo: string; soThuaStart: number; cutMode: 'line' | 'polygon' }) => {
+    const executeSplit = (cutGeom: LineString, featureToSplit?: Feature, config?: { soTo: string; soThuaStart: number }) => {
         const feature = featureToSplit || featureToSplitRef.current || selectedFeature;
         const splitConfig = config || splitConfigRef.current;
 
@@ -1428,7 +1425,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
             return;
         }
 
-        const { soTo, soThuaStart, cutMode } = splitConfig;
+        const { soTo, soThuaStart } = splitConfig;
 
         try {
             pushHistorySnapshot();
@@ -1458,7 +1455,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
 
             let newPolygons: Polygon[] = [];
 
-            if (cutMode === 'line' && cutGeom instanceof LineString) {
+            {
                 const ring = originalPolygon.getCoordinates()[0] as [number, number][];
                 const lineCoords = cutGeom.getCoordinates() as [number, number][];
 
@@ -1595,55 +1592,6 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                         }
                     }
                 });
-            } else if (cutMode === 'polygon' && cutGeom instanceof Polygon) {
-                // Split by polygon mask:
-                // 1. Get intersection (the part covered by cutter) → new parcel 1
-                // 2. Get difference (original minus cutter) → new parcel 2
-                const turfPoly = olGeomToTurfFeature(originalPolygon);
-                const turfCutter = olGeomToTurfFeature(cutGeom);
-                if (!turfPoly || !turfCutter) throw new Error('Không thể chuyển đổi polygon');
-
-                // Get intersection (overlap area)
-                let overlapPoly: Polygon | null = null;
-                try {
-                    const intersection = turf.intersect(turf.featureCollection([turfPoly, turfCutter]) as any);
-                    if (intersection && intersection.geometry.type === 'Polygon') {
-                        // intersection.geometry.coordinates is number[][][] (array of rings)
-                        const rings = intersection.geometry.coordinates as number[][][];
-                        if (rings.length > 0 && rings[0].length >= 3) {
-                            const olCoords = turfCoordsToOlPolygon(rings[0]);
-                            if (olCoords.length > 0) {
-                                newPolygons.push(new Polygon(olCoords[0] as any));
-                            }
-                        }
-                    }
-                } catch (e) {
-                    // No overlap between the cutter and the original parcel.
-                }
-
-                // Get difference (original minus cutter)
-                const diff = (turf.difference as any)(turf.featureCollection([turfPoly, turfCutter]));
-                if (diff) {
-                    if (diff.geometry.type === 'Polygon') {
-                        // diff.geometry.coordinates is number[][][] (array of rings)
-                        const rings = diff.geometry.coordinates as number[][][];
-                        if (rings.length > 0 && rings[0].length >= 3) {
-                            const olCoords = turfCoordsToOlPolygon(rings[0]);
-                            if (olCoords.length > 0) {
-                                newPolygons.push(new Polygon(olCoords[0] as any));
-                            }
-                        }
-                    } else if (diff.geometry.type === 'MultiPolygon') {
-                        diff.geometry.coordinates.forEach((polyRings: number[][][]) => {
-                            if (polyRings.length > 0 && polyRings[0].length >= 3) {
-                                const olCoords = turfCoordsToOlPolygon(polyRings[0]);
-                                if (olCoords.length > 0) {
-                                    newPolygons.push(new Polygon(olCoords[0] as any));
-                                }
-                            }
-                        });
-                    }
-                }
             }
 
             if (newPolygons.length < 2) {
