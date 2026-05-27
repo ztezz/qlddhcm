@@ -38,6 +38,7 @@ interface EditorSidebarProps {
     onSelectFeature: (uid: string) => void;
     onSaveFeature: (uid: string) => void;
     selectedFeatureUid: string | null;
+    selectedFeatureUids: string[];
 
     // Batch save props
     onBatchSave: () => void;
@@ -230,7 +231,7 @@ const EditorSidebar: React.FC<EditorSidebarProps> = (props) => {
                                 <div 
                                     key={f.uid} 
                                     onClick={() => { props.onSelectFeature(f.uid); setActiveTab('ATTR'); }}
-                                    className={`p-3 rounded-xl border transition-all cursor-pointer group flex items-center gap-3 relative ${props.selectedFeatureUid === f.uid ? 'bg-blue-900/10 border-blue-600 shadow-lg' : 'bg-slate-900 border-slate-800 hover:border-slate-600'}`}
+                                    className={`p-3 rounded-xl border transition-all cursor-pointer group flex items-center gap-3 relative ${props.selectedFeatureUids.includes(f.uid) ? 'bg-blue-900/10 border-blue-600 shadow-lg' : 'bg-slate-900 border-slate-800 hover:border-slate-600'}`}
                                 >
                                     <div className="w-8 h-8 rounded-lg bg-slate-950 flex items-center justify-center border border-slate-800 shrink-0 font-mono text-[10px] text-gray-500 font-bold">
                                         {idx + 1}

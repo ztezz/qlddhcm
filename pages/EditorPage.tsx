@@ -47,10 +47,10 @@ import * as style from 'ol/style';
 import { Polygon, Point, MultiPolygon, LineString } from 'ol/geom';
 import GeoJSON from 'ol/format/GeoJSON';
 import Feature from 'ol/Feature';
-import { Draw, Modify, Snap, Select } from 'ol/interaction';
+import { Draw, Modify, Snap, Select, DragBox } from 'ol/interaction';
 import { getArea } from 'ol/sphere';
 import { isEmpty as isExtentEmpty } from 'ol/extent';
-import { click } from 'ol/events/condition';
+import { click, shiftKeyOnly } from 'ol/events/condition';
 
 // Register VN-2000 (EPSG:9210 - Kinh tuyến trục 105.75 cho khu vực miền Nam)
 proj4.defs("EPSG:9210", "+proj=tmerc +lat_0=0 +lon_0=105.75 +k=0.9999 +x_0=500000 +y_0=0 +ellps=WGS84 +towgs84=-191.904,-39.303,-111.450,0,0,0,0 +units=m +no_defs");
@@ -64,6 +64,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     const selectInteraction = useRef<Select | null>(null);
     const drawInteraction = useRef<Draw | null>(null);
     const drawLineInteraction = useRef<Draw | null>(null);
+    const dragBoxInteraction = useRef<DragBox | null>(null);
     const modifyInteraction = useRef<Modify | null>(null);
     const snapInteraction = useRef<Snap | null>(null);
     
@@ -73,6 +74,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     const [showBasemap, setShowBasemap] = useState(false);
     const [showGrid, setShowGrid] = useState(true);
     const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
+    const [selectedFeatureUids, setSelectedFeatureUids] = useState<string[]>([]);
     const [featuresList, setFeaturesList] = useState<any[]>([]);
     const [isSidebarVisible, setIsSidebarVisible] = useState(true);
     
@@ -271,6 +273,25 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
             updateFeatureListState();
         }
     };
+    const updateSelectionState = useCallback((primary?: Feature | null) => {
+        const selected = selectInteraction.current?.getFeatures().getArray() || [];
+        const nextUids = selected.map((f) => getUid(f));
+        setSelectedFeatureUids(nextUids);
+        if (primary !== undefined) {
+            setSelectedFeature(primary);
+            return;
+        }
+        if (selectedFeature && nextUids.includes(getUid(selectedFeature))) {
+            return;
+        }
+        setSelectedFeature(selected[0] || null);
+    }, [selectedFeature]);
+
+    const handleClearSelection = useCallback(() => {
+        selectInteraction.current?.getFeatures().clear();
+        setSelectedFeature(null);
+        setSelectedFeatureUids([]);
+    }, []);
     const handleSoThuaChange = (val: string) => {
         setSoThua(val);
         if (selectedFeature) {
@@ -320,16 +341,38 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
             controls: []
         });
 
-        const select = new Select({ 
+        const select = new Select({
             style: (feature) => getSelectedStyle(feature as Feature),
             condition: click
         });
         map.addInteraction(select);
         select.on('select', (e) => {
-            const feature = e.selected[0] || null;
-            setSelectedFeature(feature);
+            const selected = select.getFeatures().getArray();
+            if ((e as any).mapBrowserEvent?.originalEvent?.shiftKey) {
+                setSelectedFeature((prev) => prev || selected[0] || null);
+                setSelectedFeatureUids(selected.map((f) => getUid(f)));
+                return;
+            }
+            const feature = selected[0] || null;
+            updateSelectionState(feature);
         });
         selectInteraction.current = select;
+
+        const dragBox = new DragBox({ condition: shiftKeyOnly });
+        dragBox.setActive(activeInteraction === 'SELECT');
+        dragBox.on('boxend', () => {
+            const geometry = dragBox.getGeometry();
+            const extent = geometry.getExtent();
+            const selectedCollection = select.getFeatures();
+            editSource.current.forEachFeatureInExtent(extent, (feature) => {
+                if (feature.getGeometry()?.intersectsExtent(extent) && !selectedCollection.getArray().includes(feature)) {
+                    selectedCollection.push(feature);
+                }
+            });
+            updateSelectionState();
+        });
+        map.addInteraction(dragBox);
+        dragBoxInteraction.current = dragBox;
 
         const draw = new Draw({ source: editSource.current, type: 'Polygon' });
         draw.setActive(activeInteraction === 'DRAW');
@@ -352,6 +395,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                 }
             } else {
                 setSelectedFeature(e.feature);
+                updateSelectionState(e.feature);
                 updateVerticesFromFeature(e.feature);
                 updateFeatureListState();
                 setTimeout(() => setActiveInteraction('SELECT'), 50);
@@ -644,7 +688,11 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
             if (!selectMode) {
                 selectInteraction.current.getFeatures().clear();
                 setSelectedFeature(null);
+                setSelectedFeatureUids([]);
             }
+        }
+        if (dragBoxInteraction.current) {
+            dragBoxInteraction.current.setActive(activeInteraction === 'SELECT');
         }
         if (drawInteraction.current) {
             // Only activate polygon draw when NOT in split mode
@@ -748,7 +796,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
             editSource.current.addFeature(olFeature);
             selectInteraction.current?.getFeatures().clear();
             selectInteraction.current?.getFeatures().push(olFeature);
-            setSelectedFeature(olFeature);
+            updateSelectionState(olFeature);
             updateVerticesFromFeature(olFeature);
             updateFeatureListState();
 
@@ -810,7 +858,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                         if (selectedByGid) {
                             selectInteraction.current?.getFeatures().clear();
                             selectInteraction.current?.getFeatures().push(selectedByGid);
-                            setSelectedFeature(selectedByGid);
+                            updateSelectionState(selectedByGid);
                             updateVerticesFromFeature(selectedByGid);
                         }
                         updateFeatureListState();
@@ -849,7 +897,9 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
             const polygon = new Polygon([coords]);
             const feature = new Feature({ geometry: polygon });
             editSource.current.addFeature(feature);
-            setSelectedFeature(feature);
+            selectInteraction.current?.getFeatures().clear();
+            selectInteraction.current?.getFeatures().push(feature);
+            updateSelectionState(feature);
             updateVerticesFromFeature(feature);
             updateFeatureListState();
             mapInstance.current?.getView().fit(polygon.getExtent(), { padding: [100, 100, 100, 100], duration: 800 });
@@ -948,7 +998,9 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
 
         editSource.current.addFeatures(features);
         const lastFeature = features[features.length - 1];
-        setSelectedFeature(lastFeature);
+        selectInteraction.current?.getFeatures().clear();
+        selectInteraction.current?.getFeatures().push(lastFeature);
+        updateSelectionState(lastFeature);
         updateVerticesFromFeature(lastFeature);
         updateFeatureListState();
 
@@ -1287,7 +1339,13 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         const feature = editSource.current.getFeatures().find(f => getUid(f) === uid);
         if (feature) {
             editSource.current.removeFeature(feature);
-            if (selectedFeature === feature) setSelectedFeature(null);
+            const selectedCollection = selectInteraction.current?.getFeatures();
+            selectedCollection?.remove(feature);
+            if (selectedFeature === feature) {
+                updateSelectionState(selectedCollection?.item(0) || null);
+            } else {
+                updateSelectionState();
+            }
             updateFeatureListState();
         }
     };
@@ -1298,8 +1356,8 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
             // Select logic
             selectInteraction.current?.getFeatures().clear();
             selectInteraction.current?.getFeatures().push(feature);
-            setSelectedFeature(feature);
-            
+            updateSelectionState(feature);
+
             // Zoom to feature
             const extent = feature.getGeometry()?.getExtent();
             if (extent) {
@@ -1662,7 +1720,8 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                 canRedo={canRedo}
                 onOpenSearch={() => setSearchModal({ ...searchModal, isOpen: true })}
                 onOpenManual={() => setManualModal({ ...manualModal, isOpen: true })}
-                onClearAll={() => { editSource.current.clear(); setSelectedFeature(null); setVertices([]); updateFeatureListState(); clearDraft(); }}
+                onClearSelection={handleClearSelection}
+                onClearAll={() => { editSource.current.clear(); handleClearSelection(); setVertices([]); updateFeatureListState(); clearDraft(); }}
                 currentBasemap={currentBasemap}
                 onChangeBasemap={handleChangeBasemap}
                 onSplitFeature={handleSplitFeature}
@@ -1705,6 +1764,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                     hasSelected: !!selectedFeature,
                     featuresList,
                     selectedFeatureUid: selectedFeature ? getUid(selectedFeature) : null,
+                    selectedFeatureUids,
                     onDeleteFeature: handleDeleteFeature,
                     onSelectFeature: handleSelectFeatureFromList,
                     onSaveFeature: handleSaveFeatureFromList,
