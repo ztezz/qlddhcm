@@ -360,10 +360,16 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
 
         const dragBox = new DragBox();
         dragBox.setActive(activeInteraction === 'SELECT');
-        dragBox.on('boxend', () => {
+        dragBox.on('boxend', (e) => {
             const geometry = dragBox.getGeometry();
             const extent = geometry.getExtent();
             const selectedCollection = select.getFeatures();
+            const keepExistingSelection = !!(e as any)?.mapBrowserEvent?.originalEvent?.shiftKey;
+
+            if (!keepExistingSelection) {
+                selectedCollection.clear();
+            }
+
             editSource.current.forEachFeatureInExtent(extent, (feature) => {
                 if (feature.getGeometry()?.intersectsExtent(extent) && !selectedCollection.getArray().includes(feature)) {
                     selectedCollection.push(feature);
