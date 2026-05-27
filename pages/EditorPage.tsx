@@ -50,7 +50,7 @@ import Feature from 'ol/Feature';
 import { Draw, Modify, Snap, Select, DragBox } from 'ol/interaction';
 import { getArea } from 'ol/sphere';
 import { isEmpty as isExtentEmpty } from 'ol/extent';
-import { click, shiftKeyOnly } from 'ol/events/condition';
+import { click } from 'ol/events/condition';
 
 // Register VN-2000 (EPSG:9210 - Kinh tuyến trục 105.75 cho khu vực miền Nam)
 proj4.defs("EPSG:9210", "+proj=tmerc +lat_0=0 +lon_0=105.75 +k=0.9999 +x_0=500000 +y_0=0 +ellps=WGS84 +towgs84=-191.904,-39.303,-111.450,0,0,0,0 +units=m +no_defs");
@@ -69,7 +69,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     const snapInteraction = useRef<Snap | null>(null);
     
     // States
-    const [activeInteraction, setActiveInteraction] = useState<'SELECT' | 'DRAW' | 'MODIFY'>('SELECT');
+    const [activeInteraction, setActiveInteraction] = useState<'SELECT' | 'AREA_SELECT' | 'DRAW' | 'MODIFY'>('SELECT');
     const [isSnapping, setIsSnapping] = useState(true);
     const [showBasemap, setShowBasemap] = useState(false);
     const [showGrid, setShowGrid] = useState(true);
@@ -358,7 +358,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         });
         selectInteraction.current = select;
 
-        const dragBox = new DragBox({ condition: shiftKeyOnly });
+        const dragBox = new DragBox();
         dragBox.setActive(activeInteraction === 'SELECT');
         dragBox.on('boxend', () => {
             const geometry = dragBox.getGeometry();
@@ -692,7 +692,13 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
             }
         }
         if (dragBoxInteraction.current) {
-            dragBoxInteraction.current.setActive(activeInteraction === 'SELECT');
+            const areaSelectMode = activeInteraction === 'AREA_SELECT';
+            dragBoxInteraction.current.setActive(areaSelectMode);
+            if (!areaSelectMode) {
+                selectInteraction.current?.getFeatures().clear();
+                setSelectedFeature(null);
+                setSelectedFeatureUids([]);
+            }
         }
         if (drawInteraction.current) {
             // Only activate polygon draw when NOT in split mode

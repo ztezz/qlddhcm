@@ -1,9 +1,9 @@
 import React from 'react';
-import { MousePointer2, Plus, Move, Maximize, Search, Map as MapIcon, Grid, Keyboard, Magnet, Trash2, Undo2, Redo2, ChevronDown, Scissors, Combine, X } from 'lucide-react';
+import { MousePointer2, Plus, Move, Maximize, Search, Map as MapIcon, Grid, Keyboard, Magnet, Trash2, Undo2, Redo2, ChevronDown, Scissors, Combine, X, SquareDashedMousePointer } from 'lucide-react';
 
 interface EditorToolbarProps {
-    activeInteraction: 'SELECT' | 'DRAW' | 'MODIFY';
-    setActiveInteraction: (val: 'SELECT' | 'DRAW' | 'MODIFY') => void;
+    activeInteraction: 'SELECT' | 'AREA_SELECT' | 'DRAW' | 'MODIFY';
+    setActiveInteraction: (val: 'SELECT' | 'AREA_SELECT' | 'DRAW' | 'MODIFY') => void;
     isSnapping: boolean;
     setIsSnapping: (val: boolean) => void;
     showBasemap: boolean;
@@ -107,6 +107,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
         <div className="w-16 shrink-0 bg-slate-900 border-r border-slate-800 flex flex-col items-center py-4 gap-3 z-50 shadow-2xl overflow-visible">
             <ToolbarGroup id="edit" icon={<MousePointer2 size={20}/>} title="Vẽ / chỉnh sửa" accentClass="text-blue-400">
                 <ToolbarButton onClick={() => setActiveInteraction('SELECT')} className={activeInteraction === 'SELECT' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'} title="Chọn đối tượng (V)"><MousePointer2 size={20}/></ToolbarButton>
+                <ToolbarButton onClick={() => setActiveInteraction('AREA_SELECT')} className={activeInteraction === 'AREA_SELECT' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'} title="Chọn theo vùng (kéo chuột)"><SquareDashedMousePointer size={20}/></ToolbarButton>
                 <ToolbarButton onClick={() => setActiveInteraction('DRAW')} className={activeInteraction === 'DRAW' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'} title="Vẽ vùng mới (P)"><Plus size={20}/></ToolbarButton>
                 <ToolbarButton onClick={() => setActiveInteraction('MODIFY')} className={activeInteraction === 'MODIFY' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'} title="Chỉnh sửa đỉnh (M)"><Move size={20}/></ToolbarButton>
             </ToolbarGroup>
