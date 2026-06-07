@@ -1,0 +1,13 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: qlddhcm-backend
+    restart: unless-stopped
+    ports:
+      - "3004:3004"
+    env_file:
+      - ./backend_guide/.env
+    volumes:
+      - ./backend_guide/uploads:/app/backend_guide/uploads
