@@ -8,7 +8,7 @@ const ALLOWED_PROXY_DOMAINS = [
     'images.vietbando.com',
     'localhost',
     '10.12.32.11',
-    'api.datdaihcm.pro',
+    'thuonghongthai97-qlddhcm.hf.space',
     'datdaihcm.pro',
     'openstreetmap.org',
     'tile.openstreetmap.org',

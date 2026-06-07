@@ -1,7 +1,7 @@
 
 import { LandParcel } from '../types';
 
-const PRODUCTION_API_URL = 'https://api.datdaihcm.pro';
+const PRODUCTION_API_URL = 'https://thuonghongthai97-qlddhcm.hf.space';
 
 const isPrivateNetworkHost = (hostname: string) => {
     if (/^10\./.test(hostname)) return true;

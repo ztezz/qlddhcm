@@ -1,7 +1,7 @@
 
 import { User, UserRole, Branch, LandParcel, DashboardStats, SystemLog, LandPriceConfig, WMSLayerConfig, SystemSetting, RoleConfig, PermissionDefinition, BasemapConfig, MenuItem, Message, SystemNotification, LandPrice2026, LandPriceSearchResult } from '../types';
 
-const PRODUCTION_API_URL = 'https://api.datdaihcm.pro';
+const PRODUCTION_API_URL = 'https://thuonghongthai97-qlddhcm.hf.space';
 
 const ALLOWED_HOSTS = [
     'geo.gisvn.space', 
