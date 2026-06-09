@@ -1029,10 +1029,7 @@ export default function(pool, logSystemAction) {
             };
 
             let parcelCode = data.madinhdanh;
-            if (cols.madinhdanh) {
-                if (!data.geometry) {
-                    return res.status(400).json({ error: 'Thiếu geometry để sinh mã định danh geohash.' });
-                }
+            if (cols.madinhdanh && data.geometry) {
                 parcelCode = generateGeohashFromGeoJSON(data.geometry);
                 if (!parcelCode) {
                     return res.status(400).json({ error: 'Không thể sinh mã định danh geohash từ geometry.' });
