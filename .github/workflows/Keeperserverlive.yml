@@ -35,56 +35,60 @@ jobs:
         node -e "
         const { chromium } = require('playwright');
         (async () => {
-          // 1. Mở trình duyệt ẩn danh với các tham số tối ưu cho môi trường không màn hình (Headless)
+          // Khởi chạy trình duyệt với tập hợp cờ tối ưu triệt để cho WebGL trên Ubuntu Headless
           const browser = await chromium.launch({ 
             headless: true,
             args: [
-              '--no-sandbox', 
-              '--disable-setuid-sandbox', 
-              '--disable-gl-drawing-for-tests',
-              '--use-gl=angle', 
-              '--use-angle=swiftshader' // Ép trình duyệt render WebGL bằng CPU thay vì GPU
+              '--no-sandbox',
+              '--disable-setuid-sandbox',
+              '--disable-gpu',               // Vô hiệu hóa phần cứng GPU thật
+              '--disable-software-rasterizer', // Tránh xung đột phần mềm cũ
+              '--use-gl=swiftshader',         // Ép Chrome dùng thư viện đồ họa phần mềm SwiftShader
+              '--hide-scrollbars'
             ]
           });
-          const page = await browser.newPage();
+          
+          const context = await browser.newContext({
+            ignoreHTTPSErrors: true // Bỏ qua nếu có lỗi SSL/HTTPS của domain
+          });
+          const page = await context.newPage();
           
           // Đặt kích thước màn hình giả lập
           await page.setViewportSize({ width: 1280, height: 720 });
 
-          // 2. Đi tới trang Frontend
           const url = 'https://qlddhcm.io.vn';
           console.log('Đang truy cập vào: ' + url);
           
           try {
-            // Chờ cho đến khi mạng không còn tải thêm gì nữa (trong ít nhất 500ms)
-            await page.goto(url, { waitUntil: 'networkidle', timeout: 90000 });
+            // Chờ load xong dom content thay vì networkidle nếu mạng bị nghẽn
+            await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
           } catch(e) {
-            console.log('Chờ tải trang hết hạn hoặc gặp lỗi mạng, nhưng vẫn tiếp tục...');
+            console.log('Hết thời gian chờ trang load, tiếp tục chạy...');
           }
 
-          // Đợi thêm 20 giây cho các layer GeoServer tải và hiển thị
-          console.log('Đang chờ 20 giây cho bản đồ render các layer...');
-          await page.waitForTimeout(20000); 
+          // Chờ thêm 25 giây cố định để Mapbox/OpenLayers render xong canvas
+          console.log('Đang chờ 25 giây cho bản đồ render các layer...');
+          await page.waitForTimeout(25000); 
 
-          // 3. Thao tác cuộn chuột xuống đáy trang rồi cuộn lên
+          // Thao tác cuộn trang
           console.log('Đang thực hiện cuộn trang...');
           await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
           await page.waitForTimeout(2000);
           await page.evaluate(() => window.scrollTo(0, 0));
           await page.waitForTimeout(2000);
 
-          // 4. Thao tác mô phỏng CUỘN BÁNH XE CHUỘT (Mouse Wheel) để ZOOM
+          // Giả lập zoom
           console.log('Đang giả lập cuộn chuột để ZOOM IN...');
           await page.mouse.move(640, 360);
-          await page.mouse.wheel(0, -500); // Phóng to
-          await page.waitForTimeout(3000); // Tăng thời gian chờ bản đồ load lại sau khi zoom
+          await page.mouse.wheel(0, -500); 
+          await page.waitForTimeout(4000); // Chờ bản đồ load tile mới sau zoom
 
           console.log('Đang giả lập cuộn chuột để ZOOM OUT...');
-          await page.mouse.wheel(0, 500);  // Thu nhỏ
-          await page.waitForTimeout(5000); // Chờ 5 giây cuối cùng để hình ảnh ổn định trước khi chụp
+          await page.mouse.wheel(0, 500);  
+          await page.waitForTimeout(5000); // Chờ ổn định ảnh trước khi chụp
 
-          // 5. Chụp ảnh màn hình toàn trang để tránh bỏ sót
-          await page.screenshot({ path: 'geoserver-status.png', fullPage: true });
+          // Chụp màn hình theo khung viewport cố định để tránh lỗi tính toán chiều cao canvas
+          await page.screenshot({ path: 'geoserver-status.png' });
           console.log('Đã tương tác xong và chụp ảnh màn hình.');
 
           await browser.close();
