@@ -52,7 +52,7 @@ jobs:
           await page.setViewportSize({ width: 1280, height: 720 });
 
           // 2. Đi tới trang Frontend
-          const url = 'https://qllddhcm.io.vn';
+          const url = 'https://qlddhcm.io.vn';
           console.log('Đang truy cập vào: ' + url);
           
           try {
