@@ -1,0 +1,77 @@
+name: Advanced GeoServer Keeper (Scroll & Zoom)
+
+on:
+  schedule:
+    - cron: '*/30 * * * *' # Chạy mỗi 30 phút
+  workflow_dispatch: # Cho phép bấm chạy bằng tay
+
+jobs:
+  browse-geoserver:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-node-version: '20'
+
+    - name: Install Playwright (Trình duyệt ảo)
+      run: |
+        npm install playwright
+        npx playwright install chromium --with-deps
+
+    - name: Run Zoom & Scroll Script
+      run: |
+        node -e "
+        const { chromium } = require('playwright');
+        (async () => {
+          // 1. Mở trình duyệt ẩn danh
+          const browser = await chromium.launch({ headless: true });
+          const page = await browser.newPage();
+          
+          // Đặt kích thước màn hình giả lập
+          await page.setViewportSize({ width: 1280, height: 720 });
+
+          // 2. Đi tới trang GeoServer của bạn (Thay link bản đồ/web của bạn vào đây)
+          const url = 'https://your-geoserver-url.com/geoserver/web/';
+          console.log('Đang truy cập vào: ' + url);
+          await page.goto(url, { waitUntil: 'networkidle' });
+
+          // Đợi 3 giây cho bản đồ load xong
+          await page.waitForTimeout(3000); 
+
+          // 3. Thao tác cuộn chuột xuống đáy trang rồi cuộn lên
+          console.log('Đang thực hiện cuộn trang...');
+          await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+          await page.waitForTimeout(1000);
+          await page.evaluate(() => window.scrollTo(0, 0));
+
+          // 4. Thao tác mô phỏng CUỘN BÁNH XE CHUỘT (Mouse Wheel) để ZOOM
+          // Ta sẽ đưa chuột vào giữa màn hình (tọa độ x:640, y:360) và cuộn
+          console.log('Đang giả lập cuộn chuột để ZOOM IN...');
+          await page.mouse.move(640, 360);
+          await page.mouse.wheel(0, -500); // Giá trị âm để phóng to (Zoom in)
+          
+          await page.waitForTimeout(2000); // Giữ nguyên trạng thái 2 giây
+
+          console.log('Đang giả lập cuộn chuột để ZOOM OUT...');
+          await page.mouse.wheel(0, 500);  // Giá trị dương để thu nhỏ (Zoom out)
+          await page.waitForTimeout(2000);
+
+          // 5. Chụp ảnh màn hình lại để bạn kiểm tra xem nó làm đúng không
+          await page.screenshot({ path: 'geoserver-status.png' });
+          console.log('Đã tương tác xong và chụp ảnh màn hình.');
+
+          await browser.close();
+        })();
+        "
+
+    # Bước này giúp bạn xem được bức ảnh chụp màn hình mà bot vừa tương tác
+    - name: Upload Screenshot
+      uses: actions/upload-artifact@v4
+      with:
+        name: geoserver-screenshot
+        path: geoserver-status.png
