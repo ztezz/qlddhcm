@@ -2,7 +2,7 @@ name: Advanced GeoServer Keeper (Scroll & Zoom)
 
 on:
   schedule:
-    - cron: '*/30 * * * *' # Chạy mỗi 30 phút
+    - cron: '*/10 * * *' # Chạy mỗi 30 phút
   workflow_dispatch: # Cho phép bấm chạy bằng tay
 
 jobs:
@@ -36,12 +36,12 @@ jobs:
           await page.setViewportSize({ width: 1280, height: 720 });
 
           // 2. Đi tới trang GeoServer của bạn (Thay link bản đồ/web của bạn vào đây)
-          const url = 'https://your-geoserver-url.com/geoserver/web/';
+          const url = 'https://qlddhcm.io.vn';
           console.log('Đang truy cập vào: ' + url);
           await page.goto(url, { waitUntil: 'networkidle' });
 
           // Đợi 3 giây cho bản đồ load xong
-          await page.waitForTimeout(3000); 
+          await page.waitForTimeout(20000); 
 
           // 3. Thao tác cuộn chuột xuống đáy trang rồi cuộn lên
           console.log('Đang thực hiện cuộn trang...');
