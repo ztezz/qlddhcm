@@ -3,7 +3,7 @@ name: Advanced GeoServer Keeper (Scroll & Zoom)
 # Cấu hình thời gian chạy tự động
 on:
   schedule:
-    # Đã sửa: Chạy chính xác mỗi 10 tiếng một lần (vào phút thứ 0)
+    # Chạy chính xác mỗi 10 tiếng một lần (vào phút thứ 0)
     - cron: '0 */10 * * *'
   # Cho phép bấm nút "Run workflow" bằng tay trên giao diện GitHub Actions để test
   workflow_dispatch: 
@@ -21,7 +21,7 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20' # Đã sửa lỗi 'node-node-version'
+        node-version: '20'
 
     # Bước 3: Cài đặt thư viện Playwright
     - name: Install Playwright (Trình duyệt ảo)
@@ -35,46 +35,56 @@ jobs:
         node -e "
         const { chromium } = require('playwright');
         (async () => {
-          // 1. Mở trình duyệt ẩn danh
-          const browser = await chromium.launch({ headless: true });
+          // 1. Mở trình duyệt ẩn danh với các tham số tối ưu cho môi trường không màn hình (Headless)
+          const browser = await chromium.launch({ 
+            headless: true,
+            args: [
+              '--no-sandbox', 
+              '--disable-setuid-sandbox', 
+              '--disable-gl-drawing-for-tests',
+              '--use-gl=angle', 
+              '--use-angle=swiftshader' // Ép trình duyệt render WebGL bằng CPU thay vì GPU
+            ]
+          });
           const page = await browser.newPage();
           
           // Đặt kích thước màn hình giả lập
           await page.setViewportSize({ width: 1280, height: 720 });
 
-          // 2. Đi tới trang Frontend của bạn (Vui lòng kiểm tra lại link qllddhcm hay qlddhcm nhé)
+          // 2. Đi tới trang Frontend
           const url = 'https://qllddhcm.io.vn';
           console.log('Đang truy cập vào: ' + url);
           
           try {
-            await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
+            // Chờ cho đến khi mạng không còn tải thêm gì nữa (trong ít nhất 500ms)
+            await page.goto(url, { waitUntil: 'networkidle', timeout: 90000 });
           } catch(e) {
-            console.log('Chờ tải trang hết hạn nhưng vẫn tiếp tục...');
+            console.log('Chờ tải trang hết hạn hoặc gặp lỗi mạng, nhưng vẫn tiếp tục...');
           }
 
-          // Đã sửa: Đợi 20 giây (20000ms) cho bản đồ load xong hoàn toàn
+          // Đợi thêm 20 giây cho các layer GeoServer tải và hiển thị
           console.log('Đang chờ 20 giây cho bản đồ render các layer...');
           await page.waitForTimeout(20000); 
 
           // 3. Thao tác cuộn chuột xuống đáy trang rồi cuộn lên
           console.log('Đang thực hiện cuộn trang...');
           await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-          await page.waitForTimeout(1500);
+          await page.waitForTimeout(2000);
           await page.evaluate(() => window.scrollTo(0, 0));
-          await page.waitForTimeout(1500);
+          await page.waitForTimeout(2000);
 
           // 4. Thao tác mô phỏng CUỘN BÁNH XE CHUỘT (Mouse Wheel) để ZOOM
           console.log('Đang giả lập cuộn chuột để ZOOM IN...');
           await page.mouse.move(640, 360);
           await page.mouse.wheel(0, -500); // Phóng to
-          await page.waitForTimeout(2000);
+          await page.waitForTimeout(3000); // Tăng thời gian chờ bản đồ load lại sau khi zoom
 
           console.log('Đang giả lập cuộn chuột để ZOOM OUT...');
           await page.mouse.wheel(0, 500);  // Thu nhỏ
-          await page.waitForTimeout(2000);
+          await page.waitForTimeout(5000); // Chờ 5 giây cuối cùng để hình ảnh ổn định trước khi chụp
 
-          // 5. Chụp ảnh màn hình lại để làm bằng chứng
-          await page.screenshot({ path: 'geoserver-status.png' });
+          // 5. Chụp ảnh màn hình toàn trang để tránh bỏ sót
+          await page.screenshot({ path: 'geoserver-status.png', fullPage: true });
           console.log('Đã tương tác xong và chụp ảnh màn hình.');
 
           await browser.close();
