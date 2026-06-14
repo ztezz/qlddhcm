@@ -1,28 +1,35 @@
 name: Advanced GeoServer Keeper (Scroll & Zoom)
 
+# Cấu hình thời gian chạy tự động
 on:
   schedule:
-    - cron: '*/10 * * *' # Chạy mỗi 30 phút
-  workflow_dispatch: # Cho phép bấm chạy bằng tay
+    # Đã sửa: Chạy chính xác mỗi 10 tiếng một lần (vào phút thứ 0)
+    - cron: '0 */10 * * *'
+  # Cho phép bấm nút "Run workflow" bằng tay trên giao diện GitHub Actions để test
+  workflow_dispatch: 
 
 jobs:
   browse-geoserver:
     runs-on: ubuntu-latest
 
     steps:
+    # Bước 1: Lấy mã nguồn từ repo
     - name: Checkout code
       uses: actions/checkout@v4
 
+    # Bước 2: Cài đặt Node.js môi trường
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-node-version: '20'
+        node-version: '20' # Đã sửa lỗi 'node-node-version'
 
+    # Bước 3: Cài đặt thư viện Playwright
     - name: Install Playwright (Trình duyệt ảo)
       run: |
         npm install playwright
         npx playwright install chromium --with-deps
 
+    # Bước 4: Chạy script mở trình duyệt ảo, truy cập Frontend, cuộn trang và zoom bản đồ
     - name: Run Zoom & Scroll Script
       run: |
         node -e "
@@ -35,33 +42,38 @@ jobs:
           // Đặt kích thước màn hình giả lập
           await page.setViewportSize({ width: 1280, height: 720 });
 
-          // 2. Đi tới trang GeoServer của bạn (Thay link bản đồ/web của bạn vào đây)
-          const url = 'https://qlddhcm.io.vn';
+          // 2. Đi tới trang Frontend của bạn (Vui lòng kiểm tra lại link qllddhcm hay qlddhcm nhé)
+          const url = 'https://qllddhcm.io.vn';
           console.log('Đang truy cập vào: ' + url);
-          await page.goto(url, { waitUntil: 'networkidle' });
+          
+          try {
+            await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
+          } catch(e) {
+            console.log('Chờ tải trang hết hạn nhưng vẫn tiếp tục...');
+          }
 
-          // Đợi 3 giây cho bản đồ load xong
+          // Đã sửa: Đợi 20 giây (20000ms) cho bản đồ load xong hoàn toàn
+          console.log('Đang chờ 20 giây cho bản đồ render các layer...');
           await page.waitForTimeout(20000); 
 
           // 3. Thao tác cuộn chuột xuống đáy trang rồi cuộn lên
           console.log('Đang thực hiện cuộn trang...');
           await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-          await page.waitForTimeout(1000);
+          await page.waitForTimeout(1500);
           await page.evaluate(() => window.scrollTo(0, 0));
+          await page.waitForTimeout(1500);
 
           // 4. Thao tác mô phỏng CUỘN BÁNH XE CHUỘT (Mouse Wheel) để ZOOM
-          // Ta sẽ đưa chuột vào giữa màn hình (tọa độ x:640, y:360) và cuộn
           console.log('Đang giả lập cuộn chuột để ZOOM IN...');
           await page.mouse.move(640, 360);
-          await page.mouse.wheel(0, -500); // Giá trị âm để phóng to (Zoom in)
-          
-          await page.waitForTimeout(2000); // Giữ nguyên trạng thái 2 giây
-
-          console.log('Đang giả lập cuộn chuột để ZOOM OUT...');
-          await page.mouse.wheel(0, 500);  // Giá trị dương để thu nhỏ (Zoom out)
+          await page.mouse.wheel(0, -500); // Phóng to
           await page.waitForTimeout(2000);
 
-          // 5. Chụp ảnh màn hình lại để bạn kiểm tra xem nó làm đúng không
+          console.log('Đang giả lập cuộn chuột để ZOOM OUT...');
+          await page.mouse.wheel(0, 500);  // Thu nhỏ
+          await page.waitForTimeout(2000);
+
+          // 5. Chụp ảnh màn hình lại để làm bằng chứng
           await page.screenshot({ path: 'geoserver-status.png' });
           console.log('Đã tương tác xong và chụp ảnh màn hình.');
 
@@ -69,9 +81,10 @@ jobs:
         })();
         "
 
-    # Bước này giúp bạn xem được bức ảnh chụp màn hình mà bot vừa tương tác
+    # Bước 5: Đẩy bức ảnh chụp màn hình lên mục Artifact của GitHub
     - name: Upload Screenshot
       uses: actions/upload-artifact@v4
       with:
         name: geoserver-screenshot
         path: geoserver-status.png
+        retention-days: 3
