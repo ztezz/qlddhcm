@@ -46,6 +46,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onCancel, systemName, logoUrl, f
   const [captchaCodeLength, setCaptchaCodeLength] = useState(5);
   const [captchaChallengeId, setCaptchaChallengeId] = useState('');
   const [captchaInput, setCaptchaInput] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState('');
 
   // OTP State
   const [otpCode, setOtpCode] = useState('');
@@ -103,9 +104,85 @@ const Login: React.FC<LoginProps> = ({ onLogin, onCancel, systemName, logoUrl, f
             setRememberMe(true);
         }
       setCaptchaInput('');
-      loadCaptchaChallenge();
+      setTurnstileToken('');
     }
   }, [view]);
+
+  // Load Cloudflare Turnstile Script
+  useEffect(() => {
+    if (view !== 'LOGIN') return;
+
+    const scriptId = 'cloudflare-turnstile-script';
+    let script = document.getElementById(scriptId) as HTMLScriptElement;
+    if (!script) {
+      script = document.createElement('script');
+      script.id = scriptId;
+      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      script.async = true;
+      script.defer = true;
+      document.body.appendChild(script);
+    }
+
+    let widgetId: string | null = null;
+    let isMounted = true;
+
+    const renderTurnstile = () => {
+      const container = document.getElementById('turnstile-container');
+      if (container && (window as any).turnstile && isMounted) {
+        try {
+          container.innerHTML = '';
+          const newDiv = document.createElement('div');
+          container.appendChild(newDiv);
+          
+          widgetId = (window as any).turnstile.render(newDiv, {
+            sitekey: import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AB',
+            theme: theme === 'dark' ? 'dark' : 'light',
+            callback: (token: string) => {
+              setTurnstileToken(token);
+              setError('');
+            },
+            'expired-callback': () => {
+              setTurnstileToken('');
+            },
+            'error-callback': () => {
+              setTurnstileToken('');
+              setError('Xác thực Turnstile CAPTCHA gặp lỗi. Vui lòng thử lại.');
+            }
+          });
+        } catch (err) {
+          console.error('Turnstile render error:', err);
+        }
+      }
+    };
+
+    const checkAndRender = () => {
+      if ((window as any).turnstile) {
+        renderTurnstile();
+      } else {
+        const interval = setInterval(() => {
+          if ((window as any).turnstile) {
+            clearInterval(interval);
+            renderTurnstile();
+          }
+        }, 100);
+        return () => clearInterval(interval);
+      }
+    };
+
+    const cleanupInterval = checkAndRender();
+
+    return () => {
+      isMounted = false;
+      if (cleanupInterval) cleanupInterval();
+      if (widgetId && (window as any).turnstile) {
+        try {
+          (window as any).turnstile.remove(widgetId);
+        } catch (err) {
+          // ignore
+        }
+      }
+    };
+  }, [view, theme]);
 
   // Password strength checker
   const getPasswordStrength = (pwd: string): { score: number; text: string; color: string } => {
@@ -132,16 +209,15 @@ const Login: React.FC<LoginProps> = ({ onLogin, onCancel, systemName, logoUrl, f
     e.preventDefault();
     setError('');
 
-    if (!captchaChallengeId || !captchaInput.trim()) {
-      setError('Vui lòng nhập CAPTCHA hợp lệ trước khi đăng nhập.');
-      setCaptchaInput('');
+    if (!turnstileToken) {
+      setError('Vui lòng hoàn thành xác thực Cloudflare Turnstile.');
       return;
     }
 
     setLoading(true);
     try {
-      // Verify CAPTCHA first, then use short-lived verification token for login
-      const verifyResult = await authService.verifyCaptcha(captchaChallengeId, captchaInput.trim());
+      // Verify Turnstile first, then use short-lived verification token for login
+      const verifyResult = await authService.verifyTurnstile(turnstileToken);
       const user = await authService.login(emailOrUsername, password, verifyResult.captchaVerificationToken);
       if (rememberMe) {
         localStorage.setItem('rememberedLogin', emailOrUsername);
@@ -152,8 +228,14 @@ const Login: React.FC<LoginProps> = ({ onLogin, onCancel, systemName, logoUrl, f
     } catch (err: any) {
       setError(err.message || 'Email/Tên tài khoản hoặc mật khẩu không đúng');
       showDialog('error', 'Đăng nhập thất bại', err.message || 'Email/Tên tài khoản hoặc mật khẩu không đúng');
-      loadCaptchaChallenge();
-      setCaptchaInput('');
+      if ((window as any).turnstile) {
+        try {
+          (window as any).turnstile.reset();
+        } catch (rErr) {
+          console.error("Turnstile reset error:", rErr);
+        }
+      }
+      setTurnstileToken('');
     } finally {
       setLoading(false);
     }
@@ -381,52 +463,10 @@ const Login: React.FC<LoginProps> = ({ onLogin, onCancel, systemName, logoUrl, f
             <div>
               <label className={`block text-sm mb-2 uppercase font-black tracking-widest text-[11px] ${
                 theme === 'dark' ? 'text-gray-400' : 'text-gray-700'
-              }`}>CAPTCHA Bảo Mật</label>
-              <div className="grid grid-cols-[1fr_auto] gap-2 mb-2">
-                <div className={`rounded-lg px-2 py-2 text-center ${
-                  theme === 'dark'
-                    ? 'bg-gray-800 border border-gray-600'
-                    : 'bg-blue-50 border border-blue-200'
-                }`}>
-                  {captchaImageUrl ? (
-                    <img
-                      src={captchaImageUrl}
-                      alt="CAPTCHA"
-                      className="mx-auto h-14 w-full max-w-[200px] object-contain"
-                    />
-                  ) : (
-                    <div className={`font-mono font-black tracking-[0.15em] ${theme === 'dark' ? 'text-cyan-300' : 'text-blue-700'}`}>
-                      {captchaQuestion}
-                    </div>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    loadCaptchaChallenge(true);
-                    setCaptchaInput('');
-                  }}
-                  className={`rounded-lg px-3 transition-colors ${
-                    theme === 'dark'
-                      ? 'bg-gray-800 border border-gray-600 text-gray-300 hover:text-white hover:border-blue-500'
-                      : 'bg-white border border-gray-300 text-gray-600 hover:text-black hover:border-blue-400'
-                  }`}
-                  aria-label="Làm mới CAPTCHA"
-                >
-                  <RefreshCw size={16} />
-                </button>
-              </div>
-              <input
-                type="text"
-                value={captchaInput}
-                onChange={(e) => setCaptchaInput(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, captchaCodeLength))}
-                className={`w-full rounded-lg p-3 text-sm font-medium transition-all duration-200 ${
-                  theme === 'dark'
-                    ? 'bg-gray-800 border border-gray-600 text-white focus:outline-none focus:border-cyan-500 focus:shadow-lg focus:shadow-cyan-500/20'
-                    : 'bg-gray-50 border border-gray-300 text-black focus:outline-none focus:border-cyan-500 focus:shadow-lg focus:shadow-cyan-500/10'
-                }`}
-                required
-                placeholder="Nhập mã trong hình"
+              }`}>Xác thực Bảo Mật (Turnstile CAPTCHA)</label>
+              <div 
+                id="turnstile-container" 
+                className="w-full flex justify-center mb-2 min-h-[65px]"
               />
             </div>
             

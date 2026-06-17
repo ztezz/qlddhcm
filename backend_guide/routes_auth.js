@@ -374,10 +374,43 @@ export default function(pool, logSystemAction) {
 
     // --- CAPTCHA VERIFY ---
     router.post('/captcha-verify', async (req, res) => {
-        const { captchaChallengeId, captchaAnswer } = req.body;
-        const submittedAnswer = String(captchaAnswer || '').trim().toLowerCase();
+        const { captchaChallengeId, captchaAnswer, turnstileToken } = req.body;
 
         cleanupCaptchaStore();
+
+        // Support Cloudflare Turnstile verify
+        if (turnstileToken) {
+            try {
+                const secretKey = process.env.TURNSTILE_SECRET_KEY || '1x00000000000000000000000000000000';
+                const verifyUrl = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+                
+                const response = await fetch(verifyUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        secret: secretKey,
+                        response: turnstileToken,
+                        remoteip: getClientIp(req)
+                    })
+                });
+
+                const result = await response.json();
+                if (!result.success) {
+                    return res.status(400).json({ error: "Xác thực Turnstile CAPTCHA thất bại hoặc đã hết hạn." });
+                }
+
+                const captchaVerificationToken = createCaptchaVerificationToken(req, 'turnstile');
+                return res.json({
+                    captchaVerificationToken,
+                    expiresInSec: CAPTCHA_VERIFY_TOKEN_TTL_MS / 1000
+                });
+            } catch (err) {
+                console.error("Turnstile verification error:", err);
+                return res.status(500).json({ error: "Lỗi kết nối tới hệ thống xác thực CAPTCHA." });
+            }
+        }
+
+        const submittedAnswer = String(captchaAnswer || '').trim().toLowerCase();
 
         const challenge = captchaStore.get(captchaChallengeId);
         if (!captchaChallengeId || !challenge) {

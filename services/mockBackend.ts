@@ -609,6 +609,12 @@ export const authService = {
             body: JSON.stringify({ captchaChallengeId, captchaAnswer })
         });
     },
+    verifyTurnstile: async (turnstileToken: string): Promise<{ captchaVerificationToken: string; expiresInSec: number }> => {
+        return apiCall('/auth/captcha-verify', {
+            method: 'POST',
+            body: JSON.stringify({ turnstileToken })
+        });
+    },
     login: async (identifier: string, pass: string, captchaVerificationToken: string): Promise<User> => {
         const response = await apiCall('/auth/login', {
             method: 'POST',
