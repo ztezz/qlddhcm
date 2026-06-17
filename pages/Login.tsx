@@ -135,7 +135,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onCancel, systemName, logoUrl, f
           container.appendChild(newDiv);
           
           widgetId = (window as any).turnstile.render(newDiv, {
-            sitekey: import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AB',
+            sitekey: import.meta.env.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAADmjl2xLy20RuhXS',
             theme: theme === 'dark' ? 'dark' : 'light',
             callback: (token: string) => {
               setTurnstileToken(token);
