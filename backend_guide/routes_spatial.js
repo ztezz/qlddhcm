@@ -12,7 +12,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Đảm bảo thư mục uploads tồn tại
-const uploadDir = process.env.UPLOAD_DIR || (process.platform !== 'win32' && fs.existsSync('/data') ? '/data' : path.join(__dirname, 'uploads'));
+const uploadDir = process.env.UPLOAD_DIR || (process.platform !== 'win32' && fs.existsSync('/data') ? '/data/uploads' : path.join(__dirname, 'uploads'));
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -24,7 +24,7 @@ const SCHEMA_CACHE = new Map();
 const NON_PARCEL_TABLE_KEYWORDS = ['donvihanhchinh', 'hanh_chinh', 'administrative', 'ranh_gioi', 'dia_gioi', 'boundary'];
 
 export const syncRegisteredSpatialTables = async (pool) => {
-    console.log('[syncRegisteredSpatialTables] Đã chuyển sang SQL batch update. Chạy lệnh SQL trực tiếp trên database.');
+    // console.log('[syncRegisteredSpatialTables] Đã chuyển sang SQL batch update. Chạy lệnh SQL trực tiếp trên database.');
     return { total: 0, synced: [], failed: [] };
 };
 

@@ -9,7 +9,7 @@ import { authenticateToken } from './middleware_auth.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const uploadRoot = process.env.UPLOAD_DIR || (process.platform !== 'win32' && fs.existsSync('/data') ? '/data' : path.join(__dirname, 'uploads'));
+const uploadRoot = process.env.UPLOAD_DIR || (process.platform !== 'win32' && fs.existsSync('/data') ? '/data/uploads' : path.join(__dirname, 'uploads'));
 const cadRoot = path.join(uploadRoot, 'cad-conversions');
 const inputRoot = path.join(cadRoot, 'input');
 const outputRoot = path.join(cadRoot, 'output');
