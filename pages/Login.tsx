@@ -389,7 +389,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onCancel, systemName, logoUrl, f
                     <img 
                       src={captchaImageUrl} 
                       alt="CAPTCHA" 
-                      className="w-full h-full object-cover select-none filter contrast-125 brightness-95"
+                      className="h-[44px] w-auto object-contain select-none filter contrast-125 brightness-95 rounded-md"
                     />
                   ) : (
                     <span className="text-gray-500 text-xs animate-pulse">Đang tải mã CAPTCHA...</span>
