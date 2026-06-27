@@ -29,7 +29,7 @@ if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 const { Pool } = pg;
 const pool = new Pool({ ...dbConfig, connectionTimeoutMillis: 10000 });
-const port = 3004;
+const port = process.env.PORT || (process.env.SPACE_ID ? 7860 : 3004);
 
 // Khởi tạo Express App
 const app = express();

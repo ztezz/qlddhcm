@@ -11,6 +11,6 @@ COPY backend_guide ./backend_guide
 
 WORKDIR /app/backend_guide
 
-EXPOSE 3004
+EXPOSE 7860
 
 CMD ["node", "server.js"]
