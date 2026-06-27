@@ -381,45 +381,50 @@ const Login: React.FC<LoginProps> = ({ onLogin, onCancel, systemName, logoUrl, f
               <label className={`block text-sm mb-2 uppercase font-black tracking-widest text-[11px] ${
                 theme === 'dark' ? 'text-gray-400' : 'text-gray-700'
               }`}>Xác thực Bảo Mật (CAPTCHA)</label>
-              <div className="flex gap-2 items-center mb-2">
-                <div className={`flex-1 flex items-center justify-center h-[52px] rounded-lg border overflow-hidden relative ${
+              <div className="flex gap-2 items-center">
+                {/* CAPTCHA Image Area */}
+                <div className={`flex-[1.2] flex items-center justify-center h-[50px] rounded-lg border overflow-hidden relative ${
                   theme === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-gray-100 border-gray-300'
                 }`}>
                   {captchaImageUrl ? (
                     <img 
                       src={captchaImageUrl} 
                       alt="CAPTCHA" 
-                      className="h-[44px] w-auto object-contain select-none filter contrast-125 brightness-95 rounded-md"
+                      className="h-[40px] w-auto object-contain select-none filter contrast-125 brightness-95 rounded-md"
                     />
                   ) : (
-                    <span className="text-gray-500 text-xs animate-pulse">Đang tải mã CAPTCHA...</span>
+                    <span className="text-gray-500 text-[10px] animate-pulse">Đang tải...</span>
                   )}
                 </div>
+                
+                {/* Refresh Button */}
                 <button
                   type="button"
                   onClick={() => loadCaptchaChallenge(true)}
-                  className={`p-3 rounded-lg border transition-all active:scale-95 flex items-center justify-center h-[52px] w-[52px] ${
+                  className={`p-2 rounded-lg border transition-all active:scale-95 flex items-center justify-center h-[50px] w-[50px] flex-shrink-0 ${
                     theme === 'dark' 
                       ? 'bg-gray-800 border-gray-700 hover:bg-gray-700 text-gray-300 hover:text-white' 
                       : 'bg-gray-100 border-gray-300 hover:bg-gray-200 text-gray-700 hover:text-black'
                   }`}
                   title="Tải lại mã CAPTCHA"
                 >
-                  <RefreshCw size={20} />
+                  <RefreshCw size={18} />
                 </button>
+
+                {/* Input Area */}
+                <input
+                  type="text"
+                  value={captchaInput}
+                  onChange={(e) => setCaptchaInput(e.target.value)}
+                  placeholder="Mã xác thực"
+                  maxLength={captchaCodeLength}
+                  className={`flex-1 min-w-[100px] px-3 h-[50px] rounded-lg border text-sm font-bold tracking-widest text-center transition-all uppercase ${
+                    theme === 'dark'
+                      ? 'bg-gray-800/80 border-gray-700 text-white placeholder-gray-500 focus:border-blue-500 focus:bg-gray-800'
+                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:bg-white'
+                  } focus:outline-none focus:ring-1 focus:ring-blue-500`}
+                />
               </div>
-              <input
-                type="text"
-                value={captchaInput}
-                onChange={(e) => setCaptchaInput(e.target.value)}
-                placeholder="Nhập mã xác nhận phía trên"
-                maxLength={captchaCodeLength}
-                className={`w-full px-4 py-3 rounded-lg border text-sm font-bold tracking-widest text-center transition-all uppercase ${
-                  theme === 'dark'
-                    ? 'bg-gray-800/80 border-gray-700 text-white placeholder-gray-500 focus:border-blue-500 focus:bg-gray-800'
-                    : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:bg-white'
-                } focus:outline-none focus:ring-1 focus:ring-blue-500`}
-              />
             </div>
             
             <button
