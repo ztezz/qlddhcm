@@ -156,6 +156,15 @@ app.use('/api', spatialRouter(pool, logSystemAction));
 app.use('/api', conversionRouter(pool, logSystemAction));
 app.use('/api/proxy', proxyRouter);
 
+app.get('/', (req, res) => {
+    res.json({
+        message: "Hệ thống GeoMaster Enterprise API đang hoạt động bình thường.",
+        status: "OK",
+        version: "1.0.0",
+        timestamp: new Date().toISOString()
+    });
+});
+
 app.get('/health', (req, res) => res.json({ status: 'OK', db: 'Connected' }));
 
 const server = app.listen(port, '0.0.0.0', () => { 

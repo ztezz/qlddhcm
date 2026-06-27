@@ -6,6 +6,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { FileText, Download, RefreshCw, DollarSign, Scaling, Building, ChevronRight, Activity, Loader2, AlertTriangle, ListFilter, Wifi, Image, ArrowUpRight, ArrowDownRight, Minus, PieChart as PieChartIcon, Table2, CalendarDays, RotateCcw, Braces } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { toBlob } from 'html-to-image';
+import * as XLSX from 'xlsx';
 
 const COLORS = ['#6366f1', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#8b5cf6', '#3b82f6', '#475569'];
 
@@ -114,6 +115,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         movingAverage: true
     });
   const dashboardRef = useRef<HTMLDivElement>(null);
+  const printReportRef = useRef<HTMLDivElement>(null);
 
   const exportFileBase = () => `ThongKe_${new Date().toISOString().replace(/[:.]/g, '-')}`;
 
@@ -248,67 +250,91 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     return () => clearInterval(interval);
         }, [user, autoRefresh, timePreset]);
 
-  // EXPORT TO EXCEL/CSV (an toàn và bám theo dữ liệu đang lọc)
+  // EXPORT TO EXCEL (Sử dụng thư viện XLSX với định dạng cột rộng và số liệu chuẩn)
   const handleExportExcel = async () => {
     setIsExporting('EXCEL');
     try {
-        const exportedAt = new Date().toLocaleString('vi-VN');
-        const selectedPeriod = timePreset === 'custom' ? `Tùy chọn (${dateFrom || '...'} -> ${dateTo || '...'})` : timePreset;
-        const sourceStats = stats || MOCK_FALLBACK;
+      const exportedAt = new Date().toLocaleString('vi-VN');
+      const selectedPeriod = timePreset === 'custom' ? `Tùy chọn (${dateFrom || '...'} -> ${dateTo || '...'})` : timePreset;
+      const sourceStats = stats || MOCK_FALLBACK;
 
-        const rows = [
-            ['B?O C?O TH?NG K? QU?N L? ??T ?AI - GEOMASTER'],
-            ['Chi nh?nh', user.branchId || 'Tr? s? ch?nh'],
-            ['Th?i ?i?m xu?t', exportedAt],
-            ['B? l?c th?i gian', selectedPeriod],
-            ['Ch? ?? lo?i ??t', typeView === 'chart' ? 'Bi?u ??' : 'B?ng'],
-            ['T? kh?a l?c lo?i ??t', typeQuery || '(kh?ng)'],
-            ['B? l?c khu v?c', branchLimit === 0 ? 'T?t c?' : `Top ${branchLimit}`],
-            ['S?p x?p khu v?c', branchSort],
-            [''],
-            ['--- CH? S? T?NG QUAN ---'],
-            ['Ch? ti?u', 'Gi? tr?', '??n v?'],
-            ['T?ng s? th?a ??t', sourceStats.totalParcels, 'Th?a'],
-            ['T?ng di?n t?ch', sourceStats.totalArea.toFixed(2), 'm2'],
-            ['Gi? tr? t?ch l?y (t?m t?nh)', sourceStats.totalValue, 'VND'],
-            [''],
-            ['--- C? C?U LO?I ??T (D? LI?U ?ANG L?C) ---'],
-            ['Lo?i ??t', 'S? l??ng th?a', 'T? tr?ng (%)'],
-            ...filteredTypeData.map(item => [
-                item.name,
-                item.value,
-                totalTypeParcels > 0 ? ((item.value / totalTypeParcels) * 100).toFixed(2) : '0.00'
-            ]),
-            [''],
-            ['--- M?T ?? THEO KHU V?C (D? LI?U ?ANG L?C) ---'],
-            ['T?n khu v?c/ph?n khu', 'S? l??ng th?a'],
-            ...filteredBranchData.map(item => [item.name, item.value])
-        ];
+      // 1. Khởi tạo Workbook mới
+      const wb = XLSX.utils.book_new();
 
-        let csvContent = '\uFEFF';
-        rows.forEach((rowArray) => {
-            csvContent += rowArray.map(safeExcelCell).join(',') + '\r\n';
-        });
+      // 2. Định dạng mảng dữ liệu báo cáo
+      const data = [
+        ["HỆ THỐNG THÔNG TIN ĐẤT ĐAI - GEOMASTER"],
+        ["BÁO CÁO THỐNG KÊ SỐ LIỆU QUẢN LÝ ĐẤT ĐAI"],
+        [""],
+        ["Thông tin chung:"],
+        ["Chi nhánh thực hiện", user?.branchId || 'Trụ sở chính'],
+        ["Thời điểm xuất báo cáo", exportedAt],
+        ["Bộ lọc thời gian", selectedPeriod],
+        [""],
+        ["I. CHỈ SỐ TỔNG QUAN"],
+        ["Chỉ tiêu", "Giá trị", "Đơn vị"],
+        ["Tổng số thửa đất", sourceStats.totalParcels, "Thửa"],
+        ["Tổng diện tích", Number(sourceStats.totalArea.toFixed(2)), "m²"],
+        ["Giá trị tích lũy (tạm tính)", Number(sourceStats.totalValue) || sourceStats.totalValue, "VND"],
+        [""],
+        ["II. CƠ CẤU LOẠI ĐẤT (THEO BỘ LỌC)"],
+        ["Loại đất", "Số lượng thửa", "Tỷ trọng (%)"],
+        ...filteredTypeData.map(item => [
+          item.name,
+          item.value,
+          Number(totalTypeParcels > 0 ? ((item.value / totalTypeParcels) * 100).toFixed(2) : '0.00')
+        ]),
+        [""],
+        ["III. MẬT ĐỘ THEO KHU VỰC (THEO BỘ LỌC)"],
+        ["Tên khu vực / Phân khu", "Số lượng thửa", "Tỷ trọng (%)"],
+        ...filteredBranchData.map(item => {
+          const totalBranchParcels = filteredBranchData.reduce((sum, i) => sum + i.value, 0);
+          return [
+            item.name,
+            item.value,
+            Number(totalBranchParcels > 0 ? ((item.value / totalBranchParcels) * 100).toFixed(2) : '0.00')
+          ];
+        })
+      ];
 
-        downloadBlob(
-            new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }),
-            `${exportFileBase()}.csv`
-        );
+      // 3. Chuyển mảng dữ liệu thành Worksheet
+      const ws = XLSX.utils.aoa_to_sheet(data);
+
+      // 4. Định nghĩa chiều rộng các cột Excel
+      const wsCols = [
+        { wch: 35 }, // Cột A (Tên chỉ số / Loại đất / Khu vực)
+        { wch: 25 }, // Cột B (Số liệu)
+        { wch: 15 }  // Cột C (Đơn vị / Tỷ trọng)
+      ];
+      ws['!cols'] = wsCols;
+
+      // 5. Gắn worksheet vào workbook
+      XLSX.utils.book_append_sheet(wb, ws, "Thống Kê Tổng Quan");
+
+      // 6. Tải xuống tệp tin Excel thực tế (.xlsx)
+      XLSX.writeFile(wb, `${exportFileBase()}.xlsx`);
     } catch (error) {
-        console.error('CSV Export Error:', error);
-        alert('Kh?ng th? xu?t file CSV. Vui l?ng th? l?i.');
+      console.error('Excel Export Error:', error);
+      alert('Không thể xuất file Excel. Vui lòng thử lại.');
     } finally {
-        setIsExporting(null);
+      setIsExporting(null);
     }
   };
 
-  // EXPORT TO PDF - Fixed Blur & Ghosting Issues
+  // EXPORT TO PDF - High Quality Document Report (In trên nền trắng A4, không mờ nhòe, không tốn mực in)
   const handleExportPDF = async () => {
-    if (!dashboardRef.current) return;
+    if (!printReportRef.current) return;
     setIsExporting('PDF');
 
     try {
-        const imageBlob = await captureDashboardBlob(2);
+        const imageBlob = await toBlob(printReportRef.current, {
+            pixelRatio: 2.5,
+            cacheBust: true,
+            skipFonts: true,
+            backgroundColor: '#ffffff'
+        });
+        if (!imageBlob) throw new Error('Cannot capture print report');
+        
         const imgData = await blobToDataUrl(imageBlob);
 
         // Decode once to compute dimensions reliably.
@@ -949,6 +975,180 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                     </BarChart>
                 </ResponsiveContainer>
             </div>
+        </div>
+      </div>
+
+      {/* Hidden Print Report for PDF/Image Export */}
+      <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
+        <div 
+          ref={printReportRef} 
+          className="w-[800px] bg-white text-slate-900 p-10 font-sans space-y-8"
+        >
+          {/* Header */}
+          <div className="flex justify-between items-start text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            <div>
+              <p className="text-slate-800 font-bold">Sở Tài nguyên và Môi trường</p>
+              <p>Cổng thông tin đất đai GeoMaster</p>
+            </div>
+            <div className="text-right">
+              <p className="text-slate-800 font-bold">Cộng hòa Xã hội Chủ nghĩa Việt Nam</p>
+              <p className="normal-case font-normal text-[11px] text-slate-500 mt-0.5">Độc lập - Tự do - Hạnh phúc</p>
+            </div>
+          </div>
+
+          <div className="border-b border-slate-200 my-4" />
+
+          {/* Report Title */}
+          <div className="text-center space-y-2">
+            <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">
+              Báo Cáo Thống Kê Số Liệu Đất Đai
+            </h1>
+            <p className="text-sm text-slate-500 italic">
+              Thời điểm xuất báo cáo: {new Date().toLocaleString('vi-VN')}
+            </p>
+          </div>
+
+          {/* Meta Information Grid */}
+          <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg text-sm border border-slate-100">
+            <div>
+              <p className="text-slate-500 font-medium">Chi nhánh thực hiện:</p>
+              <p className="text-slate-900 font-bold">{user?.branchId || 'Trụ sở chính'}</p>
+            </div>
+            <div>
+              <p className="text-slate-500 font-medium">Người lập báo cáo:</p>
+              <p className="text-slate-900 font-bold">{user?.name || 'Hệ thống WebGIS'}</p>
+            </div>
+            <div>
+              <p className="text-slate-500 font-medium">Bộ lọc thời gian:</p>
+              <p className="text-slate-900 font-bold uppercase text-xs">
+                {timePreset === 'custom' ? `${dateFrom || '...'} -> ${dateTo || '...'}` : timePreset}
+              </p>
+            </div>
+            <div>
+              <p className="text-slate-500 font-medium">Trạng thái hệ thống:</p>
+              <p className="text-emerald-600 font-bold">Hoạt động bình thường</p>
+            </div>
+          </div>
+
+          {/* Section 1: Chỉ số tổng quan */}
+          <div className="space-y-3">
+            <h2 className="text-lg font-bold text-slate-800 uppercase tracking-wide border-l-4 border-blue-600 pl-2">
+              I. Chỉ Số Tổng Quan
+            </h2>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-100/50 text-center">
+                <p className="text-xs font-bold text-blue-600 uppercase tracking-wider">Tổng số thửa đất</p>
+                <p className="text-2xl font-black text-slate-800 mt-1">{displayStats.totalParcels.toLocaleString('vi-VN')}</p>
+                <p className="text-[10px] text-slate-400 mt-1">Thửa đất đã số hóa</p>
+              </div>
+              <div className="bg-emerald-50/50 p-4 rounded-lg border border-emerald-100/50 text-center">
+                <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Tổng diện tích</p>
+                <p className="text-2xl font-black text-slate-800 mt-1">
+                  {displayStats.totalArea.toLocaleString('vi-VN')} m²
+                </p>
+                <p className="text-[10px] text-slate-400 mt-1">Diện tích thửa đất</p>
+              </div>
+              <div className="bg-purple-50/50 p-4 rounded-lg border border-purple-100/50 text-center">
+                <p className="text-xs font-bold text-purple-600 uppercase tracking-wider">Giá trị tích lũy</p>
+                <p className="text-2xl font-black text-slate-800 mt-1">
+                  {displayStats.totalValue.toLocaleString('vi-VN')}
+                </p>
+                <p className="text-[10px] text-slate-400 mt-1">VND (Tạm tính)</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: Cơ cấu loại đất */}
+          <div className="space-y-3">
+            <h2 className="text-lg font-bold text-slate-800 uppercase tracking-wide border-l-4 border-blue-600 pl-2">
+              II. Cơ Cấu Loại Đất
+            </h2>
+            <table className="w-full text-sm border-collapse border border-slate-200">
+              <thead>
+                <tr className="bg-slate-100 text-slate-700 font-bold">
+                  <th className="border border-slate-200 p-2.5 text-left">Mã loại đất</th>
+                  <th className="border border-slate-200 p-2.5 text-right">Số lượng thửa</th>
+                  <th className="border border-slate-200 p-2.5 text-right">Tỷ trọng (%)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredTypeData.map((item, idx) => {
+                  const percent = totalTypeParcels > 0 ? Number(((item.value / totalTypeParcels) * 100).toFixed(2)) : 0;
+                  return (
+                    <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
+                      <td className="border border-slate-200 p-2.5 font-bold text-blue-600">{item.name}</td>
+                      <td className="border border-slate-200 p-2.5 text-right font-medium">
+                        {item.value.toLocaleString('vi-VN')}
+                      </td>
+                      <td className="border border-slate-200 p-2.5 text-right text-slate-500 font-medium">
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="w-12 text-right">{percent.toFixed(2)}%</span>
+                          <div className="w-16 h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+                            <div 
+                              className="h-full bg-blue-600 rounded-full" 
+                              style={{ width: `${percent}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Section 3: Mật độ theo khu vực */}
+          <div className="space-y-3">
+            <h2 className="text-lg font-bold text-slate-800 uppercase tracking-wide border-l-4 border-blue-600 pl-2">
+              III. Mật Độ Theo Khu Vực
+            </h2>
+            <table className="w-full text-sm border-collapse border border-slate-200">
+              <thead>
+                <tr className="bg-slate-100 text-slate-700 font-bold">
+                  <th className="border border-slate-200 p-2.5 text-left">Tên khu vực / Phân khu</th>
+                  <th className="border border-slate-200 p-2.5 text-right">Số lượng thửa</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredBranchData.map((item, idx) => {
+                  const maxBranchVal = Math.max(...filteredBranchData.map(i => i.value), 1);
+                  const percent = (item.value / maxBranchVal) * 100;
+                  return (
+                    <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
+                      <td className="border border-slate-200 p-2.5 font-medium">{item.name}</td>
+                      <td className="border border-slate-200 p-2.5 text-right font-bold text-slate-700">
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="w-16 text-right">{item.value.toLocaleString('vi-VN')}</span>
+                          <div className="w-20 h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+                            <div 
+                              className="h-full bg-emerald-600 rounded-full" 
+                              style={{ width: `${percent}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Footer & Signatures */}
+          <div className="pt-8 flex justify-between items-start text-sm">
+            <div className="text-center w-[200px] space-y-1">
+              <p className="font-bold text-slate-700">Người kiểm duyệt</p>
+              <p className="text-xs text-slate-400 italic">(Ký và ghi rõ họ tên)</p>
+            </div>
+            <div className="text-center w-[250px] space-y-1">
+              <p className="text-xs text-slate-400 italic">TP. Hồ Chí Minh, ngày ... tháng ... năm ...</p>
+              <p className="font-bold text-slate-700">Người lập báo cáo</p>
+              <p className="text-xs text-slate-400 italic">(Ký và ghi rõ họ tên)</p>
+              <div className="h-16" />
+              <p className="font-bold text-slate-800">{user?.name || 'Hệ thống WebGIS'}</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
