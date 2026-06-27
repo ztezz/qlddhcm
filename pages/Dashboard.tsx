@@ -261,22 +261,22 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
       // 1. Khởi tạo Workbook mới
       const wb = XLSX.utils.book_new();
 
-      // 2. Định dạng mảng dữ liệu báo cáo
+      // 2. Định dạng mảng dữ liệu báo cáo có kẻ bảng phân tách
       const data = [
         ["HỆ THỐNG THÔNG TIN ĐẤT ĐAI - GEOMASTER"],
         ["BÁO CÁO THỐNG KÊ SỐ LIỆU QUẢN LÝ ĐẤT ĐAI"],
-        [""],
+        ["============================================================="],
         ["Thông tin chung:"],
         ["Chi nhánh thực hiện", user?.branchId || 'Trụ sở chính'],
         ["Thời điểm xuất báo cáo", exportedAt],
         ["Bộ lọc thời gian", selectedPeriod],
-        [""],
+        ["-------------------------------------------------------------"],
         ["I. CHỈ SỐ TỔNG QUAN"],
         ["Chỉ tiêu", "Giá trị", "Đơn vị"],
         ["Tổng số thửa đất", sourceStats.totalParcels, "Thửa"],
         ["Tổng diện tích", Number(sourceStats.totalArea.toFixed(2)), "m²"],
         ["Giá trị tích lũy (tạm tính)", Number(sourceStats.totalValue) || sourceStats.totalValue, "VND"],
-        [""],
+        ["-------------------------------------------------------------"],
         ["II. CƠ CẤU LOẠI ĐẤT (THEO BỘ LỌC)"],
         ["Loại đất", "Số lượng thửa", "Tỷ trọng (%)"],
         ...filteredTypeData.map(item => [
@@ -284,7 +284,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
           item.value,
           Number(totalTypeParcels > 0 ? ((item.value / totalTypeParcels) * 100).toFixed(2) : '0.00')
         ]),
-        [""],
+        ["-------------------------------------------------------------"],
         ["III. MẬT ĐỘ THEO KHU VỰC (THEO BỘ LỌC)"],
         ["Tên khu vực / Phân khu", "Số lượng thửa", "Tỷ trọng (%)"],
         ...filteredBranchData.map(item => {
@@ -294,24 +294,49 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
             item.value,
             Number(totalBranchParcels > 0 ? ((item.value / totalBranchParcels) * 100).toFixed(2) : '0.00')
           ];
-        })
+        }),
+        ["============================================================="]
       ];
 
       // 3. Chuyển mảng dữ liệu thành Worksheet
       const ws = XLSX.utils.aoa_to_sheet(data);
 
-      // 4. Định nghĩa chiều rộng các cột Excel
+      // 4. Thiết lập hiển thị lưới (Gridlines) trong Excel
+      ws['!views'] = [{ showGridLines: true }];
+
+      // 5. Định nghĩa chiều rộng các cột Excel
       const wsCols = [
         { wch: 35 }, // Cột A (Tên chỉ số / Loại đất / Khu vực)
         { wch: 25 }, // Cột B (Số liệu)
-        { wch: 15 }  // Cột C (Đơn vị / Tỷ trọng)
+        { wch: 20 }  // Cột C (Đơn vị / Tỷ trọng)
       ];
       ws['!cols'] = wsCols;
 
-      // 5. Gắn worksheet vào workbook
+      // 6. Định dạng số hiển thị cho các ô (Format Cells)
+      for (const cellRef in ws) {
+          if (cellRef[0] === '!') continue;
+          const cell = ws[cellRef];
+          if (cell.t === 'n') {
+              const col = cellRef.replace(/[0-9]/g, '');
+              const row = parseInt(cellRef.replace(/[^0-9]/g, ''), 10);
+              
+              if (col === 'B') {
+                  if (row === 12) { // Hàng Tổng diện tích
+                      cell.z = '#,##0.00';
+                  } else { // Các số lượng thửa đất hoặc tổng giá trị tiền tệ
+                      cell.z = '#,##0';
+                  }
+              } else if (col === 'C') {
+                  // Định dạng phần trăm
+                  cell.z = '0.00"%"';
+              }
+          }
+      }
+
+      // 7. Gắn worksheet vào workbook
       XLSX.utils.book_append_sheet(wb, ws, "Thống Kê Tổng Quan");
 
-      // 6. Tải xuống tệp tin Excel thực tế (.xlsx)
+      // 8. Tải xuống tệp tin Excel thực tế (.xlsx)
       XLSX.writeFile(wb, `${exportFileBase()}.xlsx`);
     } catch (error) {
       console.error('Excel Export Error:', error);
