@@ -1487,7 +1487,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         }
     };
 
-    const executeSplit = (cutGeom: LineString, featureToSplit?: Feature, config?: { soTo: string; soThuaStart: number }) => {
+    const executeSplit = (cutGeom: LineString | Polygon, featureToSplit?: Feature, config?: { soTo: string; soThuaStart: number }) => {
         const feature = featureToSplit || featureToSplitRef.current || selectedFeature;
         const splitConfig = config || splitConfigRef.current;
 
@@ -1527,7 +1527,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
 
             {
                 const ring = originalPolygon.getCoordinates()[0] as [number, number][];
-                const lineCoords = cutGeom.getCoordinates() as [number, number][];
+                const lineCoords = (cutGeom instanceof Polygon ? cutGeom.getCoordinates()[0] : cutGeom.getCoordinates()) as [number, number][];
 
                 type SplitIntersection = {
                     point: [number, number];
