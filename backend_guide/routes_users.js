@@ -8,8 +8,8 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Thư mục upload tuyệt đối trên VPS
-const uploadPath = path.join(__dirname, 'uploads');
+// Thư mục upload tuyệt đối trên VPS hoặc Hugging Face /data
+const uploadPath = process.env.UPLOAD_DIR || (process.platform !== 'win32' && fs.existsSync('/data') ? '/data' : path.join(__dirname, 'uploads'));
 if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath, { recursive: true });
 
 // Cấu hình lưu trữ Avatar

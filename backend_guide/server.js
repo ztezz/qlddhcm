@@ -24,7 +24,7 @@ import conversionRouter from './routes_conversion.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const uploadDir = path.resolve(__dirname, 'uploads');
+const uploadDir = process.env.UPLOAD_DIR || (process.platform !== 'win32' && fs.existsSync('/data') ? '/data' : path.join(__dirname, 'uploads'));
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 const { Pool } = pg;
