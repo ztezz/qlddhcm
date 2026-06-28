@@ -75,7 +75,7 @@ export interface DxfImportSummary {
     projection: 'EPSG:9210' | 'EPSG:4326';
 }
 
-export const importDxfAsPolygonFeatures = (text: string) => {
+export const importDxfAsPolygonFeatures = (text: string, customProjection?: string) => {
     const parser = new DxfParser();
     const dxf = parser.parseSync(text);
     const entities = Array.isArray((dxf as any).entities) ? (dxf as any).entities : [];
@@ -97,7 +97,8 @@ export const importDxfAsPolygonFeatures = (text: string) => {
         }
     });
 
-    const projection = detectProjectionFromCoords(candidateCoords);
+    const detected = detectProjectionFromCoords(candidateCoords);
+    const projection = detected === 'EPSG:9210' && customProjection ? customProjection : detected;
     const skippedByType: Record<string, number> = {};
     const features: Feature[] = [];
 

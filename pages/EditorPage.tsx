@@ -48,13 +48,30 @@ import { Polygon, Point, MultiPolygon, LineString } from 'ol/geom';
 import GeoJSON from 'ol/format/GeoJSON';
 import Feature from 'ol/Feature';
 import { Draw, Modify, Snap, Select, DragBox } from 'ol/interaction';
-import { getArea } from 'ol/sphere';
+import { createBox } from 'ol/interaction/Draw';
+import { getArea, getLength } from 'ol/sphere';
 import { isEmpty as isExtentEmpty } from 'ol/extent';
 import { click } from 'ol/events/condition';
 
 // Register VN-2000 (EPSG:9210 - Kinh tuyến trục 105.75 cho khu vực miền Nam)
 proj4.defs("EPSG:9210", "+proj=tmerc +lat_0=0 +lon_0=105.75 +k=0.9999 +x_0=500000 +y_0=0 +ellps=WGS84 +towgs84=-191.904,-39.303,-111.450,0,0,0,0 +units=m +no_defs");
 register(proj4);
+
+// Helper functions for dynamic VN-2000 projections by province
+const getVn2000ProjName = (centralMeridian: number, zone: '3' | '6') => {
+    return `VN2000_DYNAMIC_${centralMeridian.toString().replace('.', '_')}_${zone}`;
+};
+
+const registerDynamicVn2000 = (centralMeridian: number, zone: '3' | '6') => {
+    const name = getVn2000ProjName(centralMeridian, zone);
+    if (!proj.get(name)) {
+        const scaleFactor = zone === '3' ? 0.9999 : 0.9996;
+        const def = `+proj=tmerc +lat_0=0 +lon_0=${centralMeridian} +k=${scaleFactor} +x_0=500000 +y_0=0 +ellps=WGS84 +towgs84=-191.904,-39.303,-111.450,0,0,0,0 +units=m +no_defs`;
+        proj4.defs(name, def);
+        register(proj4);
+    }
+    return name;
+};
 
 const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     const mapElement = useRef<HTMLDivElement>(null);
@@ -67,6 +84,8 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     const dragBoxInteraction = useRef<DragBox | null>(null);
     const modifyInteraction = useRef<Modify | null>(null);
     const snapInteraction = useRef<Snap | null>(null);
+    const measureSource = useRef<VectorSource>(new VectorSource());
+    const measureDrawInteraction = useRef<Draw | null>(null);
     
     // States
     const [activeInteraction, setActiveInteraction] = useState<'SELECT' | 'AREA_SELECT' | 'DRAW' | 'MODIFY'>('SELECT');
@@ -76,6 +95,16 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
     const [selectedFeatureUids, setSelectedFeatureUids] = useState<string[]>([]);
     const [featuresList, setFeaturesList] = useState<any[]>([]);
+
+    // Advanced GIS features states
+    const [centralMeridian, setCentralMeridian] = useState<number>(105.75);
+    const [projectionZone, setProjectionZone] = useState<'3' | '6'>('3');
+    const [drawShape, setDrawShape] = useState<'Polygon' | 'Rectangle' | 'Circle'>('Polygon');
+    const [showVertexNumbers, setShowVertexNumbers] = useState<boolean>(true);
+    const [showSegmentLengths, setShowSegmentLengths] = useState<boolean>(false);
+    const [showParcelInfo, setShowParcelInfo] = useState<boolean>(false);
+    const [measureType, setMeasureType] = useState<'length' | 'area' | null>(null);
+    const [measureValue, setMeasureValue] = useState<string | null>(null);
     const [isSidebarVisible, setIsSidebarVisible] = useState(true);
     
     // Attributes
@@ -335,6 +364,19 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                     source: editSource.current, 
                     style: (feature) => getEditStyle(feature as Feature), 
                     zIndex: 100 
+                }),
+                new VectorLayer({
+                    source: measureSource.current,
+                    style: new style.Style({
+                        fill: new style.Fill({ color: 'rgba(244, 63, 94, 0.15)' }),
+                        stroke: new style.Stroke({ color: '#f43f5e', width: 2, lineDash: [4, 4] }),
+                        image: new style.Circle({ 
+                            radius: 5, 
+                            stroke: new style.Stroke({ color: '#f43f5e', width: 2 }), 
+                            fill: new style.Fill({ color: '#fff' }) 
+                        })
+                    }),
+                    zIndex: 90
                 })
             ],
             view: new View({ center: proj.fromLonLat([centerLng, centerLat]), zoom: zoom }),
@@ -380,35 +422,8 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         map.addInteraction(dragBox);
         dragBoxInteraction.current = dragBox;
 
-        const draw = new Draw({ source: editSource.current, type: 'Polygon' });
-        draw.setActive(activeInteraction === 'DRAW');
-        draw.on('drawend', (e) => {
-            if (isSplitMode && splitConfigRef.current) {
-                // In split mode with polygon - process the drawn polygon as cutter
-                const cutGeom = e.feature.getGeometry();
-                if (cutGeom && featureToSplitRef.current) {
-                    // Use featureToSplitRef instead of selectedFeature to avoid React state issues
-                    const featureToSplit = featureToSplitRef.current;
-                    const config = splitConfigRef.current;
-                    executeSplit(cutGeom as Polygon, featureToSplit, config);
-                    // Remove the temporary cutter feature
-                    editSource.current.removeFeature(e.feature);
-                    // Clear refs
-                    featureToSplitRef.current = null;
-                    splitConfigRef.current = null;
-                    setIsSplitMode(false);
-                    setActiveInteraction('SELECT');
-                }
-            } else {
-                setSelectedFeature(e.feature);
-                updateSelectionState(e.feature);
-                updateVerticesFromFeature(e.feature);
-                updateFeatureListState();
-                setTimeout(() => setActiveInteraction('SELECT'), 50);
-            }
-        });
-        map.addInteraction(draw);
-        drawInteraction.current = draw;
+        // Draw interaction is handled dynamically by useEffect to support shapes (Polygon, Rectangle, Circle)
+        drawInteraction.current = null;
 
         // Line draw interaction for split by line mode
         const drawLine = new Draw({ source: editSource.current, type: 'LineString' });
@@ -520,9 +535,10 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         let finalY = vertices[index].y;
 
         if (coordSystem === 'VN2000') {
-            const currentVn = proj.transform([vertices[index].x, vertices[index].y], 'EPSG:3857', 'EPSG:9210');
+            const vnProj = registerDynamicVn2000(centralMeridian, projectionZone);
+            const currentVn = proj.transform([vertices[index].x, vertices[index].y], 'EPSG:3857', vnProj);
             const newVn = axis === 'x' ? [num, currentVn[1]] : [currentVn[0], num];
-            const backToMap = proj.transform(newVn, 'EPSG:9210', 'EPSG:3857');
+            const backToMap = proj.transform(newVn, vnProj, 'EPSG:3857');
             finalX = backToMap[0];
             finalY = backToMap[1];
         } else {
@@ -544,10 +560,11 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         let content = `DANH SÁCH TỌA ĐỘ THỬA ĐẤT - HỆ: ${coordSystem}\n`;
         content += `STT\tX (m)\tY (m)\n`;
         content += `------------------------------------\n`;
+        const vnProj = registerDynamicVn2000(centralMeridian, projectionZone);
         vertices.forEach((v, i) => {
             let displayX, displayY;
             if (coordSystem === 'VN2000') {
-                const p = proj.transform([v.x, v.y], 'EPSG:3857', 'EPSG:9210');
+                const p = proj.transform([v.x, v.y], 'EPSG:3857', vnProj);
                 displayX = p[0].toFixed(3); displayY = p[1].toFixed(3);
             } else {
                 const p = proj.transform([v.x, v.y], 'EPSG:3857', 'EPSG:4326');
@@ -560,7 +577,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
             const vFirst = vertices[0];
             let fx, fy;
             if (coordSystem === 'VN2000') {
-                const p = proj.transform([vFirst.x, vFirst.y], 'EPSG:3857', 'EPSG:9210');
+                const p = proj.transform([vFirst.x, vFirst.y], 'EPSG:3857', vnProj);
                 fx = p[0].toFixed(3); fy = p[1].toFixed(3);
             } else {
                 const p = proj.transform([vFirst.x, vFirst.y], 'EPSG:3857', 'EPSG:4326');
@@ -592,7 +609,10 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         }
         if (mapInstance.current) {
             let center;
-            if (Math.abs(x) > 100000) center = proj.transform([x, y], 'EPSG:9210', 'EPSG:3857');
+            if (Math.abs(x) > 100000) {
+                const vnProj = registerDynamicVn2000(centralMeridian, projectionZone);
+                center = proj.transform([x, y], vnProj, 'EPSG:3857');
+            }
             else center = proj.fromLonLat([x, y]);
             mapInstance.current.getView().animate({ center: center, zoom: 19, duration: 1000 });
             setSearchModal({ ...searchModal, isOpen: false });
@@ -612,6 +632,219 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         };
         loadPermissions();
     }, []);
+
+    // Sync label properties to all features
+    useEffect(() => {
+        const features = editSource.current.getFeatures();
+        features.forEach(f => {
+            f.set('showVertexNumbers', showVertexNumbers);
+            f.set('showSegmentLengths', showSegmentLengths);
+            f.set('showParcelInfo', showParcelInfo);
+        });
+        editSource.current.changed();
+    }, [showVertexNumbers, showSegmentLengths, showParcelInfo, featuresList]);
+
+    // Handle measurement tool interaction
+    useEffect(() => {
+        if (!mapInstance.current) return;
+        
+        if (measureDrawInteraction.current) {
+            mapInstance.current.removeInteraction(measureDrawInteraction.current);
+            measureDrawInteraction.current = null;
+        }
+
+        if (measureType) {
+            // Deactivate other edit interactions
+            setActiveInteraction('SELECT');
+            
+            const drawType = measureType === 'length' ? 'LineString' : 'Polygon';
+            const draw = new Draw({
+                source: measureSource.current,
+                type: drawType,
+                style: new style.Style({
+                    fill: new style.Fill({ color: 'rgba(244, 63, 94, 0.15)' }),
+                    stroke: new style.Stroke({ color: '#f43f5e', width: 2, lineDash: [4, 4] }),
+                    image: new style.Circle({ 
+                        radius: 5, 
+                        stroke: new style.Stroke({ color: '#f43f5e', width: 2 }), 
+                        fill: new style.Fill({ color: '#fff' }) 
+                    })
+                })
+            });
+
+            draw.on('drawstart', (e) => {
+                measureSource.current.clear();
+                const geom = e.feature.getGeometry();
+                setMeasureValue(measureType === 'length' ? '0.00 m' : '0.00 m²');
+                
+                geom?.on('change', (evt) => {
+                    const g = evt.target;
+                    let result = '';
+                    if (g instanceof LineString) {
+                        const length = getLength(g);
+                        result = `${length.toFixed(2)} m`;
+                    } else if (g instanceof Polygon) {
+                        const area = getArea(g);
+                        result = `${area.toFixed(2)} m²`;
+                    }
+                    setMeasureValue(result);
+                });
+            });
+
+            mapInstance.current.addInteraction(draw);
+            measureDrawInteraction.current = draw;
+        } else {
+            measureSource.current.clear();
+            setMeasureValue(null);
+        }
+    }, [measureType]);
+
+    // Handle dynamic draw interaction for shapes (Polygon, Rectangle, Circle)
+    useEffect(() => {
+        if (!mapInstance.current) return;
+
+        if (drawInteraction.current) {
+            mapInstance.current.removeInteraction(drawInteraction.current);
+            drawInteraction.current = null;
+        }
+
+        if (activeInteraction === 'DRAW') {
+            let drawOptions: any = {
+                source: editSource.current
+            };
+
+            if (isSplitMode) {
+                drawOptions.type = 'Polygon';
+            } else {
+                if (drawShape === 'Polygon') {
+                    drawOptions.type = 'Polygon';
+                } else if (drawShape === 'Rectangle') {
+                    drawOptions.type = 'Circle';
+                    drawOptions.geometryFunction = createBox();
+                } else if (drawShape === 'Circle') {
+                    drawOptions.type = 'Circle';
+                }
+            }
+
+            const draw = new Draw(drawOptions);
+            draw.on('drawend', (e) => {
+                if (isSplitMode && splitConfigRef.current) {
+                    const cutGeom = e.feature.getGeometry();
+                    if (cutGeom && featureToSplitRef.current) {
+                        const featureToSplit = featureToSplitRef.current;
+                        const config = splitConfigRef.current;
+                        executeSplit(cutGeom as Polygon, featureToSplit, config);
+                        editSource.current.removeFeature(e.feature);
+                        featureToSplitRef.current = null;
+                        splitConfigRef.current = null;
+                        setIsSplitMode(false);
+                        setActiveInteraction('SELECT');
+                    }
+                } else {
+                    let feature = e.feature;
+                    const geom = feature.getGeometry();
+                    
+                    if (geom && geom.getType() === 'Circle') {
+                        const circleGeom = geom as any;
+                        const center3857 = circleGeom.getCenter();
+                        const radius = circleGeom.getRadius(); 
+                        
+                        const edgePoint3857 = [center3857[0] + radius, center3857[1]];
+                        const centerLonLat = proj.toLonLat(center3857);
+                        const edgeLonLat = proj.toLonLat(edgePoint3857);
+                        const turfCenter = turf.point(centerLonLat);
+                        const turfEdge = turf.point(edgeLonLat);
+                        const radiusMeters = turf.distance(turfCenter, turfEdge, { units: 'kilometers' }) * 1000;
+                        
+                        const turfCircle = turf.circle(centerLonLat, radiusMeters / 1000, { steps: 64, units: 'kilometers' });
+                        const olCoords = turfCircle.geometry.coordinates[0].map(coord => proj.fromLonLat(coord));
+                        const polyGeom = new Polygon([olCoords]);
+                        feature.setGeometry(polyGeom);
+                    }
+
+                    // Apply current label settings
+                    feature.set('showVertexNumbers', showVertexNumbers);
+                    feature.set('showSegmentLengths', showSegmentLengths);
+                    feature.set('showParcelInfo', showParcelInfo);
+
+                    setSelectedFeature(feature);
+                    updateSelectionState(feature);
+                    updateVerticesFromFeature(feature);
+                    updateFeatureListState();
+                    setTimeout(() => setActiveInteraction('SELECT'), 50);
+                }
+            });
+
+            mapInstance.current.addInteraction(draw);
+            drawInteraction.current = draw;
+        }
+    }, [activeInteraction, drawShape, isSplitMode, showVertexNumbers, showSegmentLengths, showParcelInfo]);
+
+    // Handle topology validation check
+    const handleTopologyCheck = () => {
+        const features = editSource.current.getFeatures();
+        if (features.length < 2) {
+            setDialog({
+                isOpen: true,
+                type: 'info',
+                title: 'Kiểm tra hình học',
+                message: 'Cần ít nhất 2 thửa đất trên bản đồ để thực hiện kiểm tra chồng lấn ranh giới.'
+            });
+            return;
+        }
+
+        let overlaps: string[] = [];
+
+        for (let i = 0; i < features.length; i++) {
+            const f1 = features[i];
+            const g1 = f1.getGeometry();
+            if (!(g1 instanceof Polygon)) continue;
+            
+            const p1SoTo = f1.get('sodoto') || '?';
+            const p1SoThua = f1.get('sothua') || '?';
+            
+            const turfPoly1 = turf.polygon(g1.getCoordinates());
+
+            for (let j = i + 1; j < features.length; j++) {
+                const f2 = features[j];
+                const g2 = f2.getGeometry();
+                if (!(g2 instanceof Polygon)) continue;
+
+                const p2SoTo = f2.get('sodoto') || '?';
+                const p2SoThua = f2.get('sothua') || '?';
+
+                const turfPoly2 = turf.polygon(g2.getCoordinates());
+
+                try {
+                    const intersection = turf.intersect(turf.featureCollection([turfPoly1, turfPoly2]));
+                    if (intersection) {
+                        const area = turf.area(intersection);
+                        if (area > 0.05) { // ignore small errors
+                            overlaps.push(`- Thửa ${p1SoThua}/Tờ ${p1SoTo} với Thửa ${p2SoThua}/Tờ ${p2SoTo} (Diện tích chồng lấn: ${area.toFixed(2)} m²)`);
+                        }
+                    }
+                } catch (e) {
+                    console.error("Turf intersection error", e);
+                }
+            }
+        }
+
+        if (overlaps.length > 0) {
+            setDialog({
+                isOpen: true,
+                type: 'error',
+                title: 'Lỗi Chồng Lấn Ranh Giới',
+                message: `Phát hiện ${overlaps.length} lỗi ranh giới chồng đè:\n\n` + overlaps.join('\n')
+            });
+        } else {
+            setDialog({
+                isOpen: true,
+                type: 'success',
+                title: 'Kết Quả Kiểm Tra',
+                message: 'Tuyệt vời! Không phát hiện lỗi chồng lấn ranh giới giữa các thửa đất trên bản đồ.'
+            });
+        }
+    };
 
     // Load danh sách phường/xã từ các bảng thửa đất đã đăng ký
     useEffect(() => {
@@ -899,7 +1132,10 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                 if (parts.length < 2) return null;
                 const x = parseFloat(parts[0]);
                 const y = parseFloat(parts[1]);
-                if (x > 300000 && x < 900000) return proj.transform([x, y], 'EPSG:9210', 'EPSG:3857');
+                if (x > 300000 && x < 900000) {
+                    const vnProj = registerDynamicVn2000(centralMeridian, projectionZone);
+                    return proj.transform([x, y], vnProj, 'EPSG:3857');
+                }
                 return proj.fromLonLat([x, y]);
             }).filter(Boolean) as [number, number][];
 
@@ -1041,7 +1277,8 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                 const content = JSON.parse(text);
                 const format = new GeoJSON();
                 
-                const guessedDataProj = detectProjection(content);
+                const guessed = detectProjection(content);
+                const guessedDataProj = guessed === 'EPSG:9210' ? registerDynamicVn2000(centralMeridian, projectionZone) : guessed;
                 console.log("Detected Projection:", guessedDataProj);
 
                 let features: Feature[] = [];
@@ -1061,10 +1298,10 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                          featureProjection: 'EPSG:3857'
                      });
                      features = [new Feature({ geometry: geom })];
-                }
+                 }
 
                 if (features.length > 0) {
-                    applyImportedFeatures(features, guessedDataProj === 'EPSG:9210' ? 'VN-2000' : 'WGS84', 'GeoJSON');
+                    applyImportedFeatures(features, guessed === 'EPSG:9210' ? 'VN-2000' : 'WGS84', 'GeoJSON');
                 } else {
                     throw new Error("Không tìm thấy đối tượng không gian hợp lệ.");
                 }
@@ -1088,14 +1325,15 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                 const text = String(event.target?.result || '').trim();
                 if (!text) throw new Error('File rỗng');
 
-                const { features, summary } = importDxfAsPolygonFeatures(text);
+                const vnProj = registerDynamicVn2000(centralMeridian, projectionZone);
+                const { features, summary } = importDxfAsPolygonFeatures(text, vnProj);
                 const skippedParts = Object.entries(summary.skippedByType)
                     .map(([type, count]) => `${type} (${count})`)
                     .join(', ');
 
                 applyImportedFeatures(
                     features,
-                    summary.projection === 'EPSG:9210' ? 'VN-2000' : 'WGS84',
+                    summary.projection.includes('VN2000') ? 'VN-2000' : 'WGS84',
                     'DXF',
                     summary.skipped > 0 ? `Đã bỏ qua ${summary.skipped} entity không phù hợp: ${skippedParts}.` : undefined
                 );
@@ -1740,6 +1978,11 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                 onMergeFeatures={handleMergeFeatures}
                 canSplit={canSplit}
                 canMerge={canMerge}
+                drawShape={drawShape}
+                setDrawShape={setDrawShape}
+                measureType={measureType}
+                setMeasureType={setMeasureType}
+                measureValue={measureValue}
             />
 
             <EditorLayoutShell
@@ -1782,7 +2025,18 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                     onSaveFeature: handleSaveFeatureFromList,
                     onBatchSave: handleBatchSaveAll,
                     batchProgress: batchSaveProgress,
-                    batchResult: batchSaveResult
+                    batchResult: batchSaveResult,
+                    centralMeridian,
+                    setCentralMeridian,
+                    projectionZone,
+                    setProjectionZone,
+                    showVertexNumbers,
+                    setShowVertexNumbers,
+                    showSegmentLengths,
+                    setShowSegmentLengths,
+                    showParcelInfo,
+                    setShowParcelInfo,
+                    onTopologyCheck: handleTopologyCheck
                 }}
             />
 

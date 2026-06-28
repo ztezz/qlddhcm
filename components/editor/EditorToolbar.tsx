@@ -1,5 +1,5 @@
 import React from 'react';
-import { MousePointer2, Plus, Move, Maximize, Search, Map as MapIcon, Grid, Keyboard, Magnet, Trash2, Undo2, Redo2, ChevronDown, Scissors, Combine, X, SquareDashedMousePointer } from 'lucide-react';
+import { MousePointer2, Plus, Move, Maximize, Search, Map as MapIcon, Grid, Keyboard, Magnet, Trash2, Undo2, Redo2, ChevronDown, Scissors, Combine, X, SquareDashedMousePointer, Ruler, Square, Circle } from 'lucide-react';
 
 interface EditorToolbarProps {
     activeInteraction: 'SELECT' | 'AREA_SELECT' | 'DRAW' | 'MODIFY';
@@ -26,6 +26,12 @@ interface EditorToolbarProps {
     onMergeFeatures: () => void;
     canSplit: boolean;
     canMerge: boolean;
+    // Dynamic Draw Shape and Measurement props
+    drawShape: 'Polygon' | 'Rectangle' | 'Circle';
+    setDrawShape: (val: 'Polygon' | 'Rectangle' | 'Circle') => void;
+    measureType: 'length' | 'area' | null;
+    setMeasureType: (val: 'length' | 'area' | null) => void;
+    measureValue: string | null;
 }
 
 const EditorToolbar: React.FC<EditorToolbarProps> = ({
@@ -36,9 +42,11 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
     onFitView, onUndo, onRedo, canUndo, canRedo, onOpenSearch, onOpenManual, onClearSelection, onClearAll,
     currentBasemap = 'google-satellite',
     onChangeBasemap,
-    onSplitFeature, onMergeFeatures, canSplit, canMerge
+    onSplitFeature, onMergeFeatures, canSplit, canMerge,
+    drawShape, setDrawShape,
+    measureType, setMeasureType, measureValue
 }) => {
-    const [openGroup, setOpenGroup] = React.useState<'edit' | 'parcel' | 'view' | 'tools' | null>('edit');
+    const [openGroup, setOpenGroup] = React.useState<'edit' | 'parcel' | 'view' | 'tools' | 'measure' | null>('edit');
 
     const basemaps = [
         { key: 'google-satellite', name: 'Google Satellite' },
@@ -77,7 +85,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
         children,
         accentClass = 'text-slate-400'
     }: {
-        id: 'edit' | 'parcel' | 'view' | 'tools';
+        id: 'edit' | 'parcel' | 'view' | 'tools' | 'measure';
         icon: React.ReactNode;
         title: string;
         children: React.ReactNode;
@@ -105,18 +113,33 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
 
     return (
         <div className="w-16 shrink-0 bg-slate-900 border-r border-slate-800 flex flex-col items-center py-4 gap-3 z-50 shadow-2xl overflow-visible">
+            {/* Draw & Edit */}
             <ToolbarGroup id="edit" icon={<MousePointer2 size={20}/>} title="Vẽ / chỉnh sửa" accentClass="text-blue-400">
-                <ToolbarButton onClick={() => setActiveInteraction('SELECT')} className={activeInteraction === 'SELECT' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'} title="Chọn đối tượng (V)"><MousePointer2 size={20}/></ToolbarButton>
-                <ToolbarButton onClick={() => setActiveInteraction('AREA_SELECT')} className={activeInteraction === 'AREA_SELECT' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'} title="Chọn theo vùng (kéo chuột)"><SquareDashedMousePointer size={20}/></ToolbarButton>
-                <ToolbarButton onClick={() => setActiveInteraction('DRAW')} className={activeInteraction === 'DRAW' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'} title="Vẽ vùng mới (P)"><Plus size={20}/></ToolbarButton>
-                <ToolbarButton onClick={() => setActiveInteraction('MODIFY')} className={activeInteraction === 'MODIFY' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'} title="Chỉnh sửa đỉnh (M)"><Move size={20}/></ToolbarButton>
+                <ToolbarButton onClick={() => { setActiveInteraction('SELECT'); setMeasureType(null); }} className={activeInteraction === 'SELECT' && !measureType ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'} title="Chọn đối tượng (V)"><MousePointer2 size={20}/></ToolbarButton>
+                <ToolbarButton onClick={() => { setActiveInteraction('AREA_SELECT'); setMeasureType(null); }} className={activeInteraction === 'AREA_SELECT' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'} title="Chọn theo vùng (kéo chuột)"><SquareDashedMousePointer size={20}/></ToolbarButton>
+                
+                {/* Draw Tool wrapper */}
+                <div className="flex flex-col gap-1 border border-slate-800 rounded-xl p-1 bg-slate-950/40">
+                    <ToolbarButton onClick={() => { setActiveInteraction('DRAW'); setMeasureType(null); }} className={activeInteraction === 'DRAW' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'} title="Vẽ vùng mới (P)"><Plus size={20}/></ToolbarButton>
+                    {activeInteraction === 'DRAW' && (
+                        <div className="flex flex-col gap-1 mt-1 p-1 items-stretch bg-slate-900 rounded-lg">
+                            <button onClick={() => setDrawShape('Polygon')} className={`px-2 py-1 rounded text-[8px] font-black uppercase text-center transition-all ${drawShape === 'Polygon' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`} title="Vẽ đa giác tự do">Đa giác</button>
+                            <button onClick={() => setDrawShape('Rectangle')} className={`px-2 py-1 rounded text-[8px] font-black uppercase text-center transition-all ${drawShape === 'Rectangle' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`} title="Vẽ hình chữ nhật">H.Chữ Nhật</button>
+                            <button onClick={() => setDrawShape('Circle')} className={`px-2 py-1 rounded text-[8px] font-black uppercase text-center transition-all ${drawShape === 'Circle' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`} title="Vẽ hình tròn">H.Tròn</button>
+                        </div>
+                    )}
+                </div>
+
+                <ToolbarButton onClick={() => { setActiveInteraction('MODIFY'); setMeasureType(null); }} className={activeInteraction === 'MODIFY' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'} title="Chỉnh sửa đỉnh (M)"><Move size={20}/></ToolbarButton>
             </ToolbarGroup>
 
+            {/* Split & Merge */}
             <ToolbarGroup id="parcel" icon={<Scissors size={20}/>} title="Tách / gộp thửa" accentClass="text-orange-400">
                 <ToolbarButton onClick={onSplitFeature} disabled={!canSplit} className={canSplit ? 'text-orange-400 hover:bg-orange-600/20' : 'text-slate-700 cursor-not-allowed'} title="Tách thửa - Cắt thửa đất thành nhiều phần"><Scissors size={20}/></ToolbarButton>
                 <ToolbarButton onClick={onMergeFeatures} disabled={!canMerge} className={canMerge ? 'text-violet-400 hover:bg-violet-600/20' : 'text-slate-700 cursor-not-allowed'} title="Gộp thửa - Ghép nhiều thửa thành một"><Combine size={20}/></ToolbarButton>
             </ToolbarGroup>
 
+            {/* Basemap & Grid */}
             <ToolbarGroup id="view" icon={<MapIcon size={20}/>} title="Bản đồ / hiển thị" accentClass="text-indigo-400">
                 <ToolbarButton onClick={onFitView} className="text-slate-500 hover:bg-slate-800 hover:text-emerald-400" title="Xem toàn bộ hình vẽ (Fit View)"><Maximize size={20}/></ToolbarButton>
                 <ToolbarButton onClick={() => setShowBasemap(!showBasemap)} className={showBasemap ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'} title="Bật/Tắt bản đồ nền vệ tinh"><MapIcon size={20}/></ToolbarButton>
@@ -136,6 +159,19 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                 <ToolbarButton onClick={() => setShowGrid(!showGrid)} className={showGrid ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30' : 'text-slate-500 hover:bg-slate-800'} title="Bật/Tắt Lưới tọa độ"><Grid size={20}/></ToolbarButton>
             </ToolbarGroup>
 
+            {/* Measurement Tools */}
+            <ToolbarGroup id="measure" icon={<Ruler size={20}/>} title="Đo đạc bản đồ" accentClass="text-rose-400">
+                <ToolbarButton onClick={() => setMeasureType('length')} className={measureType === 'length' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'} title="Đo khoảng cách (Ruler)"><Ruler size={20}/></ToolbarButton>
+                <ToolbarButton onClick={() => setMeasureType('area')} className={measureType === 'area' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'} title="Đo diện tích (Area)"><Square size={20}/></ToolbarButton>
+                <ToolbarButton onClick={() => setMeasureType(null)} className="text-slate-500 hover:bg-slate-800 hover:text-red-400" title="Xóa kết quả đo"><X size={20}/></ToolbarButton>
+                {measureValue && (
+                    <div className="px-2 py-1 text-[9px] bg-slate-800 text-slate-300 font-bold rounded-lg border border-slate-700 whitespace-nowrap">
+                        {measureValue}
+                    </div>
+                )}
+            </ToolbarGroup>
+
+            {/* Extra Tools */}
             <ToolbarGroup id="tools" icon={<Keyboard size={20}/>} title="Công cụ khác" accentClass="text-emerald-400">
                 <ToolbarButton onClick={onOpenSearch} className="text-slate-500 hover:bg-slate-800 hover:text-blue-400" title="Tìm tọa độ (Go to)"><Search size={20}/></ToolbarButton>
                 <ToolbarButton onClick={onOpenManual} className="text-slate-500 hover:bg-slate-800 hover:text-blue-400" title="Nhập tọa độ tay"><Keyboard size={20}/></ToolbarButton>

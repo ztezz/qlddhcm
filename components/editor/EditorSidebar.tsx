@@ -1,7 +1,7 @@
-
 import React, { useState } from 'react';
 import { ClipboardList, Download, Plus, FileDigit, Tag, Save, RefreshCw, Hash, Trash2, FileUp, FileDown, CloudUpload, List, Edit3, AlertCircle, FileJson, Search } from 'lucide-react';
 import * as proj from 'ol/proj';
+import proj4 from 'proj4';
 
 interface EditorSidebarProps {
     coordSystem: 'WGS84' | 'VN2000';
@@ -32,7 +32,7 @@ interface EditorSidebarProps {
     area: number;
     hasSelected: boolean;
 
-    // New props
+    // New props for dynamic list
     featuresList: { uid: string, soTo: string, soThua: string, area: number, isValid: boolean }[];
     onDeleteFeature: (uid: string) => void;
     onSelectFeature: (uid: string) => void;
@@ -44,6 +44,19 @@ interface EditorSidebarProps {
     onBatchSave: () => void;
     batchProgress: { current: number; total: number; isActive: boolean };
     batchResult: { success: number; failed: number; errors: string[] };
+
+    // Advanced GIS features
+    centralMeridian: number;
+    setCentralMeridian: (val: number) => void;
+    projectionZone: '3' | '6';
+    setProjectionZone: (val: '3' | '6') => void;
+    showVertexNumbers: boolean;
+    setShowVertexNumbers: (val: boolean) => void;
+    showSegmentLengths: boolean;
+    setShowSegmentLengths: (val: boolean) => void;
+    showParcelInfo: boolean;
+    setShowParcelInfo: (val: boolean) => void;
+    onTopologyCheck: () => void;
 }
 
 const EditorSidebar: React.FC<EditorSidebarProps> = (props) => {
@@ -141,6 +154,69 @@ const EditorSidebar: React.FC<EditorSidebarProps> = (props) => {
                         )}
                     </div>
 
+                    {/* VN-2000 Config & Topology & Label Options */}
+                    <div className="space-y-4 bg-slate-900/40 p-4 rounded-2xl border border-slate-800/80">
+                        {props.coordSystem === 'VN2000' && (
+                            <div className="space-y-3">
+                                <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-2">🌐 Cấu hình địa phương (VN-2000)</h4>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                        <label className="text-[8px] font-black text-gray-500 uppercase ml-1">Kinh tuyến trục</label>
+                                        <select 
+                                            className="w-full bg-slate-950 border border-slate-700 rounded-xl px-2 py-1.5 text-[10px] font-bold text-white outline-none"
+                                            value={props.centralMeridian}
+                                            onChange={e => props.setCentralMeridian(parseFloat(e.target.value))}
+                                        >
+                                            <option value={105.75}>TP.HCM (105.75)</option>
+                                            <option value={105.00}>Hà Nội / Cần Thơ (105.00)</option>
+                                            <option value={108.00}>Đà Nẵng / Quảng Nam (108.00)</option>
+                                            <option value={107.00}>Đồng Nai / Huế (107.00)</option>
+                                            <option value={107.75}>Lâm Đồng / Vũng Tàu (107.75)</option>
+                                            <option value={105.50}>Hải Dương / Tây Ninh (105.50)</option>
+                                            <option value={106.00}>Bắc Giang / Quảng Bình (106.00)</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[8px] font-black text-gray-500 uppercase ml-1">Múi chiếu</label>
+                                        <select 
+                                            className="w-full bg-slate-950 border border-slate-700 rounded-xl px-2 py-1.5 text-[10px] font-bold text-white outline-none"
+                                            value={props.projectionZone}
+                                            onChange={e => props.setProjectionZone(e.target.value as '3' | '6')}
+                                        >
+                                            <option value="3">Múi 3° (k=0.9999)</option>
+                                            <option value="6">Múi 6° (k=0.9996)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="space-y-2">
+                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">🏷️ Hiển thị nhãn bản đồ</h4>
+                            <div className="grid grid-cols-3 gap-2">
+                                <label className="flex items-center gap-1.5 cursor-pointer text-[9px] font-bold text-slate-300 hover:text-white">
+                                    <input type="checkbox" checked={props.showVertexNumbers} onChange={e => props.setShowVertexNumbers(e.target.checked)} className="rounded border-slate-700 bg-slate-950 text-blue-600 focus:ring-0 focus:ring-offset-0"/>
+                                    Đỉnh
+                                </label>
+                                <label className="flex items-center gap-1.5 cursor-pointer text-[9px] font-bold text-slate-300 hover:text-white">
+                                    <input type="checkbox" checked={props.showSegmentLengths} onChange={e => props.setShowSegmentLengths(e.target.checked)} className="rounded border-slate-700 bg-slate-950 text-blue-600 focus:ring-0 focus:ring-offset-0"/>
+                                    Cạnh
+                                </label>
+                                <label className="flex items-center gap-1.5 cursor-pointer text-[9px] font-bold text-slate-300 hover:text-white">
+                                    <input type="checkbox" checked={props.showParcelInfo} onChange={e => props.setShowParcelInfo(e.target.checked)} className="rounded border-slate-700 bg-slate-950 text-blue-600 focus:ring-0 focus:ring-offset-0"/>
+                                    Thông tin
+                                </label>
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={props.onTopologyCheck}
+                            className="w-full bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 border border-indigo-500/20 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2"
+                        >
+                            🔍 Kiểm tra chồng lấn ranh giới
+                        </button>
+                    </div>
+
                     <div className="space-y-4">
                         <div className="flex justify-between items-center">
                             <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2"><Hash size={12}/> Danh sách tọa độ ({props.vertices.length})</h4>
@@ -165,7 +241,11 @@ const EditorSidebar: React.FC<EditorSidebarProps> = (props) => {
                                     ) : props.vertices.map((v, i) => {
                                         let dx, dy;
                                         if (props.coordSystem === 'VN2000') {
-                                            const p = proj.transform([v.x, v.y], 'EPSG:3857', 'EPSG:9210'); dx = p[0]; dy = p[1];
+                                            const scaleFactor = props.projectionZone === '3' ? 0.9999 : 0.9996;
+                                            const vnDef = `+proj=tmerc +lat_0=0 +lon_0=${props.centralMeridian} +k=${scaleFactor} +x_0=500000 +y_0=0 +ellps=WGS84 +towgs84=-191.904,-39.303,-111.450,0,0,0,0 +units=m +no_defs`;
+                                            const wgs84 = proj.transform([v.x, v.y], 'EPSG:3857', 'EPSG:4326');
+                                            const p = proj4('EPSG:4326', vnDef, wgs84);
+                                            dx = p[0]; dy = p[1];
                                         } else {
                                             const p = proj.transform([v.x, v.y], 'EPSG:3857', 'EPSG:4326'); dx = p[0]; dy = p[1];
                                         }
