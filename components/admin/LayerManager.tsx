@@ -66,8 +66,8 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus, permissions = [] 
         { key: 'google-terrain', name: 'Google Terrain', type: 'XYZ', url: 'https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', useProxy: true, description: 'Địa hình Google.' },
         { key: 'carto-light', name: 'Carto Light', type: 'XYZ', url: 'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', useProxy: false, description: 'Nền sáng, sạch cho lớp chuyên đề.' },
         { key: 'carto-dark', name: 'Carto Dark', type: 'XYZ', url: 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', useProxy: false, description: 'Nền tối phù hợp dashboard.' },
-        { key: 'esri-imagery', name: 'Esri World Imagery', type: 'XYZ', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', useProxy: false, description: 'Ảnh vệ tinh Esri.' },
-        { key: 'esri-topo', name: 'Esri Topographic', type: 'XYZ', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', useProxy: false, description: 'Bản đồ địa hình Esri.' }
+        { key: 'esri-imagery', name: 'Esri World Imagery', type: 'XYZ', url: 'https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', useProxy: false, description: 'Ảnh vệ tinh Esri.' },
+        { key: 'esri-topo', name: 'Esri Topographic', type: 'XYZ', url: 'https://services.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', useProxy: false, description: 'Bản đồ địa hình Esri.' }
     ] as const;
 
     const [wmsLayers, setWmsLayers] = useState<WMSLayerConfig[]>([]);

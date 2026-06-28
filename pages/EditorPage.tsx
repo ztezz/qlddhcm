@@ -217,7 +217,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         },
         'esri-satellite': {
             name: 'ESRI Satellite',
-            url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+            url: 'https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
         }
     };
 

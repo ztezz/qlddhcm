@@ -69,7 +69,7 @@ const EditorSidebar: React.FC<EditorSidebarProps> = (props) => {
     const soThuaText = String(props.soThua ?? '');
 
     return (
-        <div className="w-[400px] bg-[#0d1117] border-l border-slate-800 flex flex-col z-20 shadow-2xl">
+        <div className="w-[400px] h-full bg-[#0d1117] border-l border-slate-800 flex flex-col z-20 shadow-2xl">
             {/* Batch Save Progress */}
             {props.batchProgress.isActive && (
                 <div className="bg-slate-900 border-b border-amber-500/30 p-4">

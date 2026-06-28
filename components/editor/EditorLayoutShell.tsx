@@ -32,7 +32,7 @@ const EditorLayoutShell: React.FC<EditorLayoutShellProps> = ({
                 </button>
             </div>
 
-            <div className={`shrink-0 overflow-hidden transition-[width,opacity,transform] duration-300 ease-out ${isSidebarVisible ? 'w-[400px] opacity-100 translate-x-0' : 'w-0 opacity-0 translate-x-6 pointer-events-none'}`}>
+            <div className={`shrink-0 h-full overflow-hidden transition-[width,opacity,transform] duration-300 ease-out ${isSidebarVisible ? 'w-[400px] opacity-100 translate-x-0' : 'w-0 opacity-0 translate-x-6 pointer-events-none'}`}>
                 <EditorSidebar {...sidebarProps} />
             </div>
         </>
