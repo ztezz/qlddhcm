@@ -1600,18 +1600,32 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         }
     };
 
-    const handleSelectFeatureFromList = (uid: string) => {
+    const handleSelectFeatureFromList = (uid: string, isMultiSelect?: boolean) => {
         const feature = editSource.current.getFeatures().find(f => getUid(f) === uid);
         if (feature) {
-            // Select logic
-            selectInteraction.current?.getFeatures().clear();
-            selectInteraction.current?.getFeatures().push(feature);
-            updateSelectionState(feature);
+            const selectedFeatures = selectInteraction.current?.getFeatures();
+            if (selectedFeatures) {
+                if (isMultiSelect) {
+                    if (selectedFeatures.getArray().includes(feature)) {
+                        selectedFeatures.remove(feature);
+                    } else {
+                        selectedFeatures.push(feature);
+                    }
+                } else {
+                    selectedFeatures.clear();
+                    selectedFeatures.push(feature);
+                }
+                const array = selectedFeatures.getArray();
+                const primary = array.includes(feature) ? feature : (array[0] || null);
+                updateSelectionState(primary);
 
-            // Zoom to feature
-            const extent = feature.getGeometry()?.getExtent();
-            if (extent) {
-                mapInstance.current?.getView().fit(extent, { padding: [100, 100, 100, 100], duration: 500 });
+                // Zoom to primary feature if we just selected it single-select
+                if (primary && !isMultiSelect) {
+                    const extent = primary.getGeometry()?.getExtent();
+                    if (extent) {
+                        mapInstance.current?.getView().fit(extent, { padding: [100, 100, 100, 100], duration: 500 });
+                    }
+                }
             }
         }
     };
@@ -1654,16 +1668,20 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     };
 
     const handleMergeFeatures = () => {
-        const features = editSource.current.getFeatures();
-        const featuresArray = Array.from(features);
-        if (featuresArray.length < 2) {
-            setDialog({ isOpen: true, type: 'error', title: 'Lỗi', message: 'Cần chọn ít nhất 2 thửa để gộp.' });
+        const selectedFeatures = selectInteraction.current?.getFeatures().getArray() || [];
+        if (selectedFeatures.length < 2) {
+            setDialog({
+                isOpen: true,
+                type: 'info',
+                title: 'Hướng dẫn gộp thửa',
+                message: 'Vui lòng chọn ít nhất 2 thửa đất trên bản đồ để gộp.\n\nMẹo: Nhấn giữ phím SHIFT hoặc CTRL và click chuột vào các thửa đất (hoặc click trên danh sách thửa bên phải) để chọn nhiều thửa.'
+            });
             return;
         }
-        // Check all features have sodoto and sothua
-        const featuresWithAttr = featuresArray.filter((f: any) => f.get('sodoto') && f.get('sothua'));
-        if (featuresWithAttr.length < 2) {
-            setDialog({ isOpen: true, type: 'error', title: 'Lỗi', message: 'Tất cả thửa cần có số tờ và số thửa trước khi gộp.' });
+        // Check all selected features have sodoto and sothua
+        const featuresWithAttr = selectedFeatures.filter((f: any) => f.get('sodoto') && f.get('sothua'));
+        if (featuresWithAttr.length < selectedFeatures.length) {
+            setDialog({ isOpen: true, type: 'error', title: 'Lỗi', message: 'Tất cả các thửa đất được chọn cần có số tờ và số thửa trước khi gộp.' });
             return;
         }
         const selectedFeats = featuresWithAttr.map((f: any) => ({
@@ -1953,7 +1971,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     };
 
     const canSplit = !!selectedFeature && featuresList.length === 1 && !!selectedFeature.get('sodoto') && !!selectedFeature.get('sothua');
-    const canMerge = featuresList.length >= 2 && featuresList.filter(f => f.isValid).length >= 2;
+    const canMerge = selectedFeatureUids.length >= 2;
 
     return (
         <div className="flex h-full w-full bg-[#05070a] overflow-hidden font-sans text-white">
