@@ -1,5 +1,5 @@
-import React from 'react';
-import { Search, X, RefreshCw } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Search, X, RefreshCw, ChevronDown, Sparkles } from 'lucide-react';
 
 interface ParcelModalState {
     isOpen: boolean;
@@ -16,7 +16,7 @@ interface ParcelSearchDialogProps {
     setParcelModal: (next: ParcelModalState) => void;
     spatialTables: any[];
     loadingParcel: boolean;
-    onSearchParcel: () => void;
+    onSearchParcel: (overrideSoTo?: string, overrideSoThua?: string) => void;
     onClose: () => void;
 }
 
@@ -28,7 +28,63 @@ export const ParcelSearchDialog: React.FC<ParcelSearchDialogProps> = ({
     onSearchParcel,
     onClose
 }) => {
+    const [searchMode, setSearchMode] = useState<'standard' | 'quick'>('quick');
+    const [quickSearchText, setQuickSearchText] = useState('');
+    const [isTableDropdownOpen, setIsTableDropdownOpen] = useState(false);
+    const [tableSearchText, setTableSearchText] = useState('');
+    const tableDropdownRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (tableDropdownRef.current && !tableDropdownRef.current.contains(e.target as Node)) {
+                setIsTableDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
     if (!parcelModal.isOpen) return null;
+
+    const parseQuickSearch = (text: string) => {
+        const trimmed = text.trim();
+        const match = trimmed.match(/^(\d+)[\/\-\s\:]+(\d+)$/);
+        if (match) {
+            return { soTo: match[1], soThua: match[2] };
+        }
+        const matchSingle = trimmed.match(/^(\d+)$/);
+        if (matchSingle) {
+            return { soTo: '', soThua: matchSingle[1] };
+        }
+        return { soTo: '', soThua: '' };
+    };
+
+    const triggerSearch = () => {
+        if (searchMode === 'quick') {
+            const { soTo, soThua } = parseQuickSearch(quickSearchText);
+            setParcelModal({
+                ...parcelModal,
+                soTo,
+                soThua
+            });
+            onSearchParcel(soTo, soThua);
+        } else {
+            onSearchParcel();
+        }
+    };
+
+    const filteredTables = spatialTables
+        .filter(t => !t.table_name.toLowerCase().includes('donvihanhchinh') && !t.table_name.toLowerCase().includes('hanh_chinh'))
+        .filter(t => {
+            if (!tableSearchText.trim()) return true;
+            return (t.display_name || t.table_name).toLowerCase().includes(tableSearchText.toLowerCase());
+        });
+
+    const selectedTableDisplayName = spatialTables.find(t => t.table_name === parcelModal.searchTable)?.display_name || parcelModal.searchTable;
+
+    const isSearchDisabled = loadingParcel || !parcelModal.searchTable || (
+        searchMode === 'quick' ? !quickSearchText.trim() : (!parcelModal.soTo.trim() && !parcelModal.soThua.trim())
+    );
 
     return (
         <div className="fixed inset-0 z-[1000] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
@@ -40,60 +96,119 @@ export const ParcelSearchDialog: React.FC<ParcelSearchDialogProps> = ({
                         </div>
                         <div>
                             <h3 className="text-xl font-black uppercase tracking-tight text-white">Tra cứu thửa đất</h3>
-                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Nhập số tờ, số thửa và phường/xã để tìm kiếm</p>
+                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Tìm kiếm nhanh chóng theo tờ/thửa và khu vực</p>
                         </div>
                     </div>
                     <button onClick={onClose} className="text-gray-500 hover:text-white p-2 hover:bg-gray-800 rounded-full transition-all">
                         <X size={28} />
                     </button>
                 </div>
+
+                {/* Search Mode Selector */}
+                <div className="px-8 pt-6">
+                    <div className="flex p-1 bg-gray-950 rounded-2xl border border-gray-800">
+                        <button
+                            onClick={() => setSearchMode('quick')}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-[10px] font-black uppercase rounded-xl transition-all ${searchMode === 'quick' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/25' : 'text-gray-400 hover:text-white'}`}
+                        >
+                            <Sparkles size={14} /> Tìm nhanh tờ/thửa
+                        </button>
+                        <button
+                            onClick={() => setSearchMode('standard')}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-[10px] font-black uppercase rounded-xl transition-all ${searchMode === 'standard' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/25' : 'text-gray-400 hover:text-white'}`}
+                        >
+                            <Search size={14} /> Ô nhập chi tiết
+                        </button>
+                    </div>
+                </div>
+
                 <div className="p-8 space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    {/* Ward/Table Selector (Quick Searchable Select Dropdown) */}
+                    <div className="space-y-2 relative" ref={tableDropdownRef}>
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-1">Khu vực (Phường/Xã) *</label>
+                        <div
+                            onClick={() => setIsTableDropdownOpen(!isTableDropdownOpen)}
+                            className="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:border-emerald-500 outline-none font-bold text-white transition-all shadow-inner flex items-center justify-between cursor-pointer group hover:border-emerald-500"
+                        >
+                            <span className={parcelModal.searchTable ? 'text-white' : 'text-gray-500'}>
+                                {selectedTableDisplayName || '-- Chọn phường / xã / khu vực --'}
+                            </span>
+                            <ChevronDown size={16} className={`text-gray-500 group-hover:text-emerald-500 transition-transform ${isTableDropdownOpen ? 'rotate-180' : ''}`} />
+                        </div>
+
+                        {isTableDropdownOpen && (
+                            <div className="absolute z-[1050] left-0 right-0 top-full mt-2 bg-gray-950 border border-gray-800 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                                <div className="p-3 border-b border-gray-800 bg-gray-900">
+                                    <div className="relative">
+                                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                                        <input
+                                            autoFocus
+                                            className="w-full bg-gray-950 border border-gray-700 rounded-xl py-2 pl-9 pr-3 text-xs outline-none focus:border-emerald-500 text-white"
+                                            placeholder="Tìm nhanh tên phường/xã..."
+                                            value={tableSearchText}
+                                            onChange={e => setTableSearchText(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="max-h-48 overflow-y-auto custom-scrollbar">
+                                    {filteredTables.length === 0 ? (
+                                        <div className="p-4 text-center text-xs text-gray-500 italic">Không tìm thấy khu vực</div>
+                                    ) : filteredTables.map(t => (
+                                        <div
+                                            key={t.table_name}
+                                            onClick={() => {
+                                                setParcelModal({ ...parcelModal, searchTable: t.table_name });
+                                                setIsTableDropdownOpen(false);
+                                                setTableSearchText('');
+                                            }}
+                                            className={`p-3 text-xs font-bold transition-colors cursor-pointer border-b border-gray-900 last:border-0 ${parcelModal.searchTable === t.table_name ? 'bg-emerald-600 text-white font-black' : 'text-gray-300 hover:bg-gray-900'}`}
+                                        >
+                                            {t.display_name || t.table_name}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Conditional Input Rendering based on Search Mode */}
+                    {searchMode === 'quick' ? (
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-1">Số tờ *</label>
+                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-1">Nhập Tờ/Thửa nhanh *</label>
                             <input
                                 autoFocus
                                 className="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:border-emerald-500 outline-none font-black text-white transition-all shadow-inner"
-                                placeholder="VD: 12"
-                                value={parcelModal.soTo}
-                                onChange={e => setParcelModal({ ...parcelModal, soTo: e.target.value })}
-                                onKeyDown={e => e.key === 'Enter' && onSearchParcel()}
+                                placeholder="VD: 12/450 hoặc 12-450 hoặc chỉ nhập 450"
+                                value={quickSearchText}
+                                onChange={e => setQuickSearchText(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && !isSearchDisabled && triggerSearch()}
                             />
+                            <p className="text-[9px] text-gray-500 ml-1">Cách nhập: [Số tờ]/[Số thửa], [Số tờ]-[Số thửa] hoặc chỉ nhập [Số thửa].</p>
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-1">Số thửa *</label>
-                            <input
-                                className="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:border-emerald-500 outline-none font-black text-white transition-all shadow-inner"
-                                placeholder="VD: 450"
-                                value={parcelModal.soThua}
-                                onChange={e => setParcelModal({ ...parcelModal, soThua: e.target.value })}
-                                onKeyDown={e => e.key === 'Enter' && onSearchParcel()}
-                            />
-                        </div>
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-1">Bảng dữ liệu *</label>
-                        <div className="relative">
-                            <select
-                                className="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:border-emerald-500 outline-none font-bold text-white transition-all shadow-inner appearance-none"
-                                value={parcelModal.searchTable}
-                                onChange={e => setParcelModal({ ...parcelModal, searchTable: e.target.value })}
-                                onKeyDown={e => e.key === 'Enter' && onSearchParcel()}
-                            >
-                                <option value="">-- Chọn bảng dữ liệu --</option>
-                                {spatialTables
-                                    .filter(t => !t.table_name.toLowerCase().includes('donvihanhchinh') && !t.table_name.toLowerCase().includes('hanh_chinh'))
-                                    .map((table, idx) => (
-                                        <option key={idx} value={table.table_name}>{table.display_name || table.table_name}</option>
-                                    ))}
-                            </select>
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
-                                <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                                    <path d="M6 9l6 6 6-6"/>
-                                </svg>
+                    ) : (
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-1">Số tờ *</label>
+                                <input
+                                    className="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:border-emerald-500 outline-none font-black text-white transition-all shadow-inner"
+                                    placeholder="VD: 12"
+                                    value={parcelModal.soTo}
+                                    onChange={e => setParcelModal({ ...parcelModal, soTo: e.target.value })}
+                                    onKeyDown={e => e.key === 'Enter' && !isSearchDisabled && triggerSearch()}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-1">Số thửa *</label>
+                                <input
+                                    className="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:border-emerald-500 outline-none font-black text-white transition-all shadow-inner"
+                                    placeholder="VD: 450"
+                                    value={parcelModal.soThua}
+                                    onChange={e => setParcelModal({ ...parcelModal, soThua: e.target.value })}
+                                    onKeyDown={e => e.key === 'Enter' && !isSearchDisabled && triggerSearch()}
+                                />
                             </div>
                         </div>
-                    </div>
+                    )}
 
                     <div className="bg-slate-950/60 border border-slate-700 rounded-xl p-3 space-y-3">
                         <label className="flex items-center gap-2 text-[11px] font-bold text-slate-300 cursor-pointer">
@@ -116,16 +231,8 @@ export const ParcelSearchDialog: React.FC<ParcelSearchDialogProps> = ({
                             </div>
                         )}
                     </div>
-                    <div className="bg-emerald-900/10 border border-emerald-500/20 rounded-xl p-4 space-y-2">
-                        <p className="text-[9px] text-emerald-400 font-bold uppercase tracking-widest">Hướng dẫn</p>
-                        <ul className="text-[10px] text-gray-400 space-y-1 list-disc pl-4">
-                            <li>Nhập số tờ (VD: 12)</li>
-                            <li>Nhập số thửa (VD: 450)</li>
-                            <li>Chọn bảng dữ liệu để tra cứu</li>
-                            <li>Hệ thống sẽ tìm kiếm trên bảng được chọn</li>
-                        </ul>
-                    </div>
                 </div>
+                
                 <div className="p-6 bg-gray-950 border-t border-gray-800 flex gap-3">
                     <button
                         onClick={onClose}
@@ -134,8 +241,8 @@ export const ParcelSearchDialog: React.FC<ParcelSearchDialogProps> = ({
                         Hủy bỏ
                     </button>
                     <button
-                        onClick={onSearchParcel}
-                        disabled={loadingParcel || (!parcelModal.soTo.trim() && !parcelModal.soThua.trim()) || !parcelModal.searchTable}
+                        onClick={triggerSearch}
+                        disabled={isSearchDisabled}
                         className="flex-[2] bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-black uppercase text-xs tracking-[0.2em] flex justify-center items-center gap-2 shadow-xl shadow-emerald-900/30 active:scale-95 disabled:opacity-50 transition-all"
                     >
                         {loadingParcel ? <RefreshCw className="animate-spin" size={18}/> : <Search size={18}/>} TÌM KIẾM
@@ -200,7 +307,7 @@ export const ParcelResultDialog: React.FC<ParcelResultDialogProps> = ({
                                     <div className="text-[10px] text-slate-400 flex items-center gap-3">
                                         <span>Diện tích: <span className="text-emerald-500 font-bold">{area.toLocaleString()} m²</span></span>
                                         <span className="text-slate-600">|</span>
-                                        <span>Table: {tableName}</span>
+                                        <span>Khu vực: {tableName}</span>
                                     </div>
                                 </div>
                                 <div className="w-8 h-8 rounded-lg bg-emerald-600/10 text-emerald-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">

@@ -137,6 +137,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     const [parcelList, setParcelList] = useState<any[]>([]);
     const [wardList, setWardList] = useState<string[]>([]);
     const [loadingWards, setLoadingWards] = useState(false);
+    const [isMapLoading, setIsMapLoading] = useState(false);
 
     // Split/Merge States
     const [splitModal, setSplitModal] = useState({ isOpen: false });
@@ -959,9 +960,9 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     }, [activeInteraction, isSnapping, isSplitMode, updateVerticesFromFeature, updateFeatureListState]);
 
     // Xử lý tra cứu thông tin thửa đất
-    const handleSearchParcel = async () => {
-        const soTo = parcelModal.soTo.trim();
-        const soThua = parcelModal.soThua.trim();
+    const handleSearchParcel = async (overrideSoTo?: string, overrideSoThua?: string) => {
+        const soTo = (overrideSoTo !== undefined ? overrideSoTo : parcelModal.soTo).trim();
+        const soThua = (overrideSoThua !== undefined ? overrideSoThua : parcelModal.soThua).trim();
         const targetTable = parcelModal.searchTable.trim();
 
         if (!targetTable) {
@@ -1002,6 +1003,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
 
     // Chọn thửa từ danh sách kết quả
     const handleSelectParcel = async (parcel: any) => {
+        setIsMapLoading(true);
         try {
             const props = parcel.properties || {};
             const soTo = props.so_to || props.sodoto || '';
@@ -1121,6 +1123,8 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         } catch (e: any) {
             console.error('Lỗi khi chọn thửa đất:', e);
             setDialog({ isOpen: true, type: 'error', title: 'Lỗi', message: e.message || 'Không thể chọn thửa đất. Vui lòng thử lại.' });
+        } finally {
+            setIsMapLoading(false);
         }
     };
 
@@ -1268,6 +1272,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+        setIsMapLoading(true);
         const reader = new FileReader();
         reader.onload = (event) => {
             try {
@@ -1309,8 +1314,13 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                 console.error(err);
                 setDialog({ isOpen: true, type: 'error', title: 'Lỗi', message: `Lỗi đọc nội dung: ${err.message}` }); 
             } finally { 
+                setIsMapLoading(false);
                 e.target.value = ''; 
             }
+        };
+        reader.onerror = () => {
+            setIsMapLoading(false);
+            setDialog({ isOpen: true, type: 'error', title: 'Lỗi đọc file', message: 'Không thể đọc file dữ liệu.' });
         };
         reader.readAsText(file);
     };
@@ -1318,7 +1328,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     const handleDxfImport = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-
+        setIsMapLoading(true);
         const reader = new FileReader();
         reader.onload = (event) => {
             try {
@@ -1341,8 +1351,13 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                 console.error(err);
                 setDialog({ isOpen: true, type: 'error', title: 'Lỗi import DXF', message: err.message || 'Không thể đọc file DXF.' });
             } finally {
+                setIsMapLoading(false);
                 e.target.value = '';
             }
+        };
+        reader.onerror = () => {
+            setIsMapLoading(false);
+            setDialog({ isOpen: true, type: 'error', title: 'Lỗi đọc file', message: 'Không thể đọc file DXF.' });
         };
 
         reader.readAsText(file);
@@ -2007,6 +2022,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                 mapElementRef={mapElement}
                 isSidebarVisible={isSidebarVisible}
                 onToggleSidebar={() => setIsSidebarVisible((prev) => !prev)}
+                isMapLoading={isMapLoading}
                 sidebarProps={{
                     coordSystem,
                     setCoordSystem,
