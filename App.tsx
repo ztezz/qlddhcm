@@ -17,7 +17,6 @@ const Messaging = lazy(() => import('./pages/Messaging'));
 const Notifications = lazy(() => import('./pages/Notifications'));
 const QRGenerator = lazy(() => import('./components/tools/QRGenerator'));
 const CoordinateConverter = lazy(() => import('./components/tools/CoordinateConverter'));
-const CADConverter = lazy(() => import('./components/tools/CADConverter'));
 const EditorPage = lazy(() => import('./pages/EditorPage'));
 const LandPriceLookup = lazy(() => import('./pages/LandPriceLookup'));
 const About = lazy(() => import('./pages/About'));
@@ -48,7 +47,6 @@ const PATH_MAPPING: Record<string, string> = {
     'notifications': '/thongbao',
     'qr-generator': '/taomaqr',
     'coordinate-converter': '/chuyendoihetoado',
-    'cad-converter': '/chuyendoidxf',
     'land-price': '/giadata',
     'admin': '/quantri',
     'about': '/gioithieu'
@@ -311,7 +309,6 @@ const App: React.FC = () => {
                 <Route path="/giadata" element={<LandPriceLookup user={user} systemSettings={systemSettings} />} />
                 <Route path="/taomaqr" element={<QRGenerator />} />
                 <Route path="/chuyendoihetoado" element={<CoordinateConverter />} />
-                <Route path="/chuyendoidxf" element={<CADConverter />} />
                 <Route path="/gioithieu" element={<About />} />
                 
                 {/* Protected Routes */}

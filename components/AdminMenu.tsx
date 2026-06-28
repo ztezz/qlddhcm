@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Users, Building2, Map, FileText, Settings, Database, Layers, ShieldCheck, LayoutList, BellRing, Coins, Menu, X, ArrowLeft, FileJson } from 'lucide-react';
+import { Users, Building2, Map, FileText, Settings, Database, Layers, ShieldCheck, LayoutList, BellRing, Coins, Menu, X, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface AdminMenuProps {
@@ -37,7 +37,6 @@ const AdminMenu: React.FC<AdminMenuProps> = ({ activeTab, onSelect, systemName, 
         
         { header: 'Cấu hình Dữ liệu' },
         { id: 'DATA_LAYERS', icon: Layers, label: 'Lớp bản đồ & DB' },
-        { id: 'CAD_CONVERTER', icon: FileJson, label: 'Chuyển đổi DXF' },
     ];
 
     const visibleMenuItems = menuItems.filter((item: any) => {

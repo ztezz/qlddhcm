@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { User, MenuItem, getRoleLabel } from '../types';
-import { LogOut, LogIn, ChevronLeft, ChevronRight, ChevronDown, User as UserIcon, Database, HelpCircle, ExternalLink, Bell, X, Menu, FolderCog, QrCode, ArrowRightLeft, FileJson } from 'lucide-react';
+import { LogOut, LogIn, ChevronLeft, ChevronRight, ChevronDown, User as UserIcon, Database, HelpCircle, ExternalLink, Bell, X, Menu, FolderCog, QrCode, ArrowRightLeft } from 'lucide-react';
 import * as Icons from 'lucide-react';
 import { adminService, notificationService, API_URL } from '../services/mockBackend';
 
@@ -35,8 +35,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [imgError, setImgError] = useState(false);
   const DEFAULT_TOOL_ITEMS = [
     { id: 'qr-generator', label: 'Tạo mã QR', icon: QrCode as React.ElementType, path: '/taomaqr' },
-    { id: 'coordinate-converter', label: 'Chuyển hệ tọa độ', icon: ArrowRightLeft as React.ElementType, path: '/chuyendoihetoado' },
-    { id: 'cad-converter', label: 'Chuyển đổi DXF', icon: FileJson as React.ElementType, path: '/chuyendoidxf' }
+    { id: 'coordinate-converter', label: 'Chuyển hệ tọa độ', icon: ArrowRightLeft as React.ElementType, path: '/chuyendoihetoado' }
   ];
 
   const toolItems = useMemo(() => {

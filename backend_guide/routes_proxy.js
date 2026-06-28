@@ -9,7 +9,7 @@ const ALLOWED_PROXY_DOMAINS = [
     'localhost',
     '10.12.32.11',
     'thuonghongthai97-qlddhcm.hf.space',
-    'datdaihcm.pro',
+    'thuonghongthai97-geoserver.hf.space',
     'openstreetmap.org',
     'tile.openstreetmap.org',
     'google.com',
