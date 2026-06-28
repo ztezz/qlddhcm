@@ -1,22 +1,19 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
-import { adminService, DEFAULT_ROLE_PERMISSIONS, PERMISSIONS_LIST } from '../../services/mockBackend';
-import { RoleConfig, UserRole } from '../../types';
+import { adminService, gisService, DEFAULT_ROLE_PERMISSIONS, PERMISSIONS_LIST } from '../../services/mockBackend';
+import { RoleConfig, UserRole, Branch } from '../../types';
 import {
     ShieldCheck, Loader2, Info, CheckSquare, Square,
     Lock, Map, Database, BarChart2, Settings,
     Users, Eye, Edit, Crown, Search, CheckCircle2,
-    XCircle, RefreshCw
+    XCircle, RefreshCw, Building2, Save, Sparkles, Filter
 } from 'lucide-react';
 
-// ─── Role metadata ─────────────────────────────────────────────────────────────
 const ROLE_META: Record<UserRole, { label: string; desc: string; color: string; bg: string; border: string; Icon: React.FC<any> }> = {
     [UserRole.ADMIN]:  { label: 'Quản trị viên', desc: 'Toàn quyền hệ thống',       color: 'text-red-300',    bg: 'bg-red-900/30',    border: 'border-red-700',    Icon: Crown },
     [UserRole.EDITOR]: { label: 'Biên tập viên', desc: 'Chỉnh sửa bản đồ & dữ liệu', color: 'text-blue-300',   bg: 'bg-blue-900/30',   border: 'border-blue-700',   Icon: Edit },
     [UserRole.VIEWER]: { label: 'Người xem',     desc: 'Chỉ xem, không thay đổi',    color: 'text-green-300',  bg: 'bg-green-900/30',  border: 'border-green-700',  Icon: Eye },
 };
 
-// ─── Group metadata ────────────────────────────────────────────────────────────
 const GROUP_META: Record<string, { label: string; Icon: React.FC<any>; color: string }> = {
     MAP:     { label: 'Bản đồ & Thửa đất', Icon: Map,       color: 'text-blue-400' },
     DATA:    { label: 'Dữ liệu & Lớp bản đồ', Icon: Database,  color: 'text-purple-400' },
@@ -28,17 +25,28 @@ const GROUP_META: Record<string, { label: string; Icon: React.FC<any>; color: st
 
 const ROLES = [UserRole.ADMIN, UserRole.EDITOR, UserRole.VIEWER];
 
-// ─── Toast ────────────────────────────────────────────────────────────────────
 interface Toast { id: number; message: string; type: 'success' | 'error'; }
-
 let toastId = 0;
 
+// Shape of branch spatial permissions: { [branchId]: { [tableName]: { read: boolean, write: boolean } } }
+type BranchSpatialConfig = Record<string, Record<string, { read: boolean; write: boolean }>>;
+
 const PermissionManager: React.FC = () => {
+    const [managerMode, setManagerMode] = useState<'ROLE' | 'BRANCH'>('ROLE');
     const [rolePermissions, setRolePermissions] = useState<RoleConfig[]>([]);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState<string | null>(null);
     const [toasts, setToasts] = useState<Toast[]>([]);
     const [search, setSearch] = useState('');
+
+    // Branch Permissions States
+    const [branches, setBranches] = useState<Branch[]>([]);
+    const [spatialTables, setSpatialTables] = useState<any[]>([]);
+    const [branchConfig, setBranchConfig] = useState<BranchSpatialConfig>({});
+    const [selectedBranchId, setSelectedBranchId] = useState<string>('');
+    const [branchSearch, setBranchSearch] = useState('');
+    const [tableSearch, setTableSearch] = useState('');
+    const [isSavingBranch, setIsSavingBranch] = useState(false);
 
     const addToast = useCallback((message: string, type: 'success' | 'error') => {
         const id = ++toastId;
@@ -46,13 +54,46 @@ const PermissionManager: React.FC = () => {
         setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3000);
     }, []);
 
-    useEffect(() => { loadData(); }, []);
+    useEffect(() => {
+        loadData();
+    }, []);
 
     const loadData = async () => {
         setLoading(true);
-        try { setRolePermissions(await adminService.getRolePermissions()); }
-        catch (e: any) { addToast('Không thể tải phân quyền: ' + e.message, 'error'); }
-        finally { setLoading(false); }
+        try {
+            const [rolePerms, branchesData, tablesData, settingsData] = await Promise.all([
+                adminService.getRolePermissions(),
+                adminService.getBranches().catch(() => []),
+                gisService.getSpatialTables().catch(() => []),
+                adminService.getSettings().catch(() => [])
+            ]);
+
+            setRolePermissions(rolePerms);
+            setBranches(branchesData);
+            setSpatialTables(tablesData);
+
+            if (branchesData.length > 0) {
+                setSelectedBranchId(branchesData[0].id);
+            }
+
+            // Parse branch spatial config
+            const branchPermsSetting = settingsData.find(s => s.key === 'branch_spatial_permissions');
+            if (branchPermsSetting && branchPermsSetting.value) {
+                try {
+                    setBranchConfig(JSON.parse(branchPermsSetting.value));
+                } catch {
+                    setBranchConfig({});
+                }
+            } else {
+                setBranchConfig({});
+            }
+        }
+        catch (e: any) {
+            addToast('Không thể tải dữ liệu phân quyền: ' + e.message, 'error');
+        }
+        finally {
+            setLoading(false);
+        }
     };
 
     const getPerms = (role: UserRole) => {
@@ -102,10 +143,90 @@ const PermissionManager: React.FC = () => {
         } finally { setSaving(null); }
     };
 
+    // ─── Branch Permissions Handlers ─────────────────────────────────────────────
+    const handleBranchTablePermToggle = (branchId: string, tableName: string, type: 'read' | 'write', checked: boolean) => {
+        setBranchConfig(prev => {
+            const branchPerms = prev[branchId] || {};
+            const tablePerms = branchPerms[tableName] || { read: false, write: false };
+            const nextTablePerms = { ...tablePerms, [type]: checked };
+            
+            // If write is enabled, read must be enabled too
+            if (type === 'write' && checked) {
+                nextTablePerms.read = true;
+            }
+            // If read is disabled, write must be disabled too
+            if (type === 'read' && !checked) {
+                nextTablePerms.write = false;
+            }
+
+            return {
+                ...prev,
+                [branchId]: {
+                    ...branchPerms,
+                    [tableName]: nextTablePerms
+                }
+            };
+        });
+    };
+
+    const handleBranchBulkToggle = (branchId: string, type: 'read' | 'write', selectAll: boolean) => {
+        setBranchConfig(prev => {
+            const branchPerms = { ...(prev[branchId] || {}) };
+            spatialTables.forEach(t => {
+                const tablePerms = branchPerms[t.table_name] || { read: false, write: false };
+                const nextPerms = { ...tablePerms };
+                if (type === 'read') {
+                    nextPerms.read = selectAll;
+                    if (!selectAll) nextPerms.write = false; // reset write if read is false
+                } else {
+                    nextPerms.write = selectAll;
+                    if (selectAll) nextPerms.read = true; // set read to true if write is true
+                }
+                branchPerms[t.table_name] = nextPerms;
+            });
+            return {
+                ...prev,
+                [branchId]: branchPerms
+            };
+        });
+    };
+
+    const handleSaveBranchConfig = async () => {
+        setIsSavingBranch(true);
+        try {
+            await adminService.saveSettings([
+                {
+                    key: 'branch_spatial_permissions',
+                    value: JSON.stringify(branchConfig),
+                    type: 'text',
+                    label: 'Phân quyền chi nhánh cho lớp bản đồ',
+                    description: 'Quy định các lớp bản đồ/bảng không gian được phép truy cập theo từng chi nhánh.'
+                }
+            ]);
+            addToast('Đã lưu cấu hình phân quyền chi nhánh thành công!', 'success');
+        } catch (e: any) {
+            addToast('Lỗi lưu cấu hình: ' + e.message, 'error');
+        } finally {
+            setIsSavingBranch(false);
+        }
+    };
+
+    const activeBranch = branches.find(b => b.id === selectedBranchId);
+
     const groups = Array.from(new Set(PERMISSIONS_LIST.map(p => p.group)));
     const filtered = search
         ? PERMISSIONS_LIST.filter(p => p.name.toLowerCase().includes(search.toLowerCase()) || p.code.toLowerCase().includes(search.toLowerCase()))
         : PERMISSIONS_LIST;
+
+    const filteredBranches = branches.filter(b => 
+        b.name.toLowerCase().includes(branchSearch.toLowerCase()) || 
+        b.code.toLowerCase().includes(branchSearch.toLowerCase())
+    );
+
+    const filteredTables = spatialTables.filter(t => 
+        (t.display_name || t.table_name).toLowerCase().includes(tableSearch.toLowerCase()) ||
+        t.table_name.toLowerCase().includes(tableSearch.toLowerCase())
+    );
 
     if (loading) {
         return (
@@ -116,7 +237,7 @@ const PermissionManager: React.FC = () => {
     }
 
     return (
-        <div className="p-4 md:p-6 space-y-5 bg-gray-900 min-h-full">
+        <div className="p-4 md:p-6 space-y-5 bg-gray-900 min-h-full font-sans">
             {/* Toasts */}
             <div className="fixed top-5 right-5 z-50 space-y-2 pointer-events-none">
                 {toasts.map(t => (
@@ -129,165 +250,356 @@ const PermissionManager: React.FC = () => {
             </div>
 
             {/* Header */}
-            <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-gray-800 pb-5">
                 <div>
                     <h1 className="text-base md:text-lg font-bold text-white flex items-center gap-2">
-                        <ShieldCheck size={20} className="text-green-400" /> Ma trận Phân quyền & Vai trò
+                        <ShieldCheck size={20} className="text-green-400" /> Quản trị Quyền & Bảo mật
                     </h1>
-                    <p className="text-xs text-gray-500 mt-0.5">Cấp quyền truy cập các tính năng cho từng nhóm người dùng. Thay đổi có hiệu lực ngay lập tức.</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Thiết lập các quyền hoạt động cho vai trò hệ thống và các chi nhánh địa phương.</p>
                 </div>
-                <button onClick={loadData} className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium bg-gray-700/60 border border-gray-600 text-gray-300 hover:bg-gray-600 transition-colors">
-                    <RefreshCw size={12} /> Tải lại
-                </button>
+                <div className="flex items-center gap-2">
+                    <div className="flex p-0.5 bg-gray-950 rounded-xl border border-gray-800">
+                        <button
+                            onClick={() => setManagerMode('ROLE')}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all ${managerMode === 'ROLE' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+                        >
+                            <Crown size={13} /> Vai trò & Chức năng
+                        </button>
+                        <button
+                            onClick={() => setManagerMode('BRANCH')}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all ${managerMode === 'BRANCH' ? 'bg-emerald-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+                        >
+                            <Building2 size={13} /> Phân quyền Chi nhánh
+                        </button>
+                    </div>
+                    <button onClick={loadData} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold uppercase bg-gray-850 border border-gray-800 text-gray-300 hover:bg-gray-800 transition-colors">
+                        <RefreshCw size={12} /> Tải lại
+                    </button>
+                </div>
             </div>
 
-            {/* Role summary cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {ROLES.map(role => {
-                    const m = ROLE_META[role];
-                    const perms = getPerms(role);
-                    const RoleIcon = m.Icon;
-                    return (
-                        <div key={role} className={`rounded-lg border p-4 ${m.bg} ${m.border}`}>
-                            <div className="flex items-center gap-2 mb-2">
-                                <RoleIcon size={16} className={m.color} />
-                                <span className={`font-bold text-sm ${m.color}`}>{m.label}</span>
-                                {role === UserRole.ADMIN && <Lock size={12} className="text-gray-500 ml-auto" />}
-                            </div>
-                            <p className="text-[11px] text-gray-500 mb-3">{m.desc}</p>
-                            <div className="flex items-center justify-between text-xs">
-                                <span className="text-gray-400">Quyền được cấp</span>
-                                <span className={`font-bold tabular-nums ${m.color}`}>{perms.length} / {PERMISSIONS_LIST.length}</span>
-                            </div>
-                            <div className="mt-2 h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                                <div className={`h-full rounded-full transition-all ${role === UserRole.ADMIN ? 'bg-red-500' : role === UserRole.EDITOR ? 'bg-blue-500' : 'bg-green-500'}`}
-                                    style={{ width: `${(perms.length / PERMISSIONS_LIST.length) * 100}%` }} />
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
+            {/* MODE 1: ROLE PERMISSIONS MATRIX */}
+            {managerMode === 'ROLE' && (
+                <div className="space-y-5">
+                    {/* Role summary cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        {ROLES.map(role => {
+                            const m = ROLE_META[role];
+                            const perms = getPerms(role);
+                            const RoleIcon = m.Icon;
+                            return (
+                                <div key={role} className={`rounded-lg border p-4 ${m.bg} ${m.border}`}>
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <RoleIcon size={16} className={m.color} />
+                                        <span className={`font-bold text-sm ${m.color}`}>{m.label}</span>
+                                        {role === UserRole.ADMIN && <Lock size={12} className="text-gray-500 ml-auto" />}
+                                    </div>
+                                    <p className="text-[11px] text-gray-500 mb-3">{m.desc}</p>
+                                    <div className="flex items-center justify-between text-xs">
+                                        <span className="text-gray-400">Quyền được cấp</span>
+                                        <span className={`font-bold tabular-nums ${m.color}`}>{perms.length} / {PERMISSIONS_LIST.length}</span>
+                                    </div>
+                                    <div className="mt-2 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                                        <div className={`h-full rounded-full transition-all ${role === UserRole.ADMIN ? 'bg-red-500' : role === UserRole.EDITOR ? 'bg-blue-500' : 'bg-green-500'}`}
+                                            style={{ width: `${(perms.length / PERMISSIONS_LIST.length) * 100}%` }} />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
 
-            {/* Search */}
-            <div className="relative max-w-xs">
-                <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
-                <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-                    placeholder="Tìm quyền..."
-                    className="w-full bg-gray-800 border border-gray-600 rounded pl-7 pr-3 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-colors" />
-            </div>
+                    {/* Search */}
+                    <div className="relative max-w-xs">
+                        <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                        <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+                            placeholder="Tìm quyền..."
+                            className="w-full bg-gray-800 border border-gray-600 rounded pl-7 pr-3 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-colors" />
+                    </div>
 
-            {/* Permission matrix */}
-            <div className="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                        <thead className="bg-gray-900/80 text-gray-400 text-[11px] uppercase tracking-wider">
-                            <tr>
-                                <th className="px-4 py-3 w-2/5 font-medium">Chức năng</th>
-                                {ROLES.map(role => {
-                                    const m = ROLE_META[role];
-                                    const RoleIcon = m.Icon;
-                                    return (
-                                        <th key={role} className="px-4 py-3 text-center font-medium">
-                                            <div className={`flex items-center justify-center gap-1.5 ${m.color}`}>
-                                                <RoleIcon size={13} /> {m.label}
-                                            </div>
-                                        </th>
-                                    );
-                                })}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {(search ? [{ group: 'SEARCH', perms: filtered }] : groups.map(g => ({ group: g, perms: PERMISSIONS_LIST.filter(p => p.group === g) }))).map(({ group, perms: groupPerms }) => {
-                                const gm = GROUP_META[group] ?? { label: 'Tìm kiếm', Icon: Search, color: 'text-gray-400' };
-                                const GIcon = gm.Icon;
-                                return (
-                                    <React.Fragment key={group}>
-                                        {/* Group header */}
-                                        <tr className="bg-gray-900/60 border-y border-gray-700/60">
-                                            <td className="px-4 py-2">
-                                                <span className={`flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide ${gm.color}`}>
-                                                    <GIcon size={12} /> {gm.label}
-                                                </span>
-                                            </td>
-                                            {!search && ROLES.map(role => {
-                                                const perms = getPerms(role);
-                                                const groupCodes = groupPerms.map(p => p.code);
-                                                const allChecked = groupCodes.every(c => perms.includes(c));
-                                                const isSavingGroup = saving === `${role}-group-${group}`;
-                                                if (role === UserRole.ADMIN) return <td key={role} className="px-4 py-2 text-center"><Lock size={12} className="inline text-gray-600" /></td>;
-                                                return (
-                                                    <td key={role} className="px-4 py-2 text-center">
-                                                        <button
-                                                            disabled={!!saving}
-                                                            onClick={() => handleGroupToggle(role, group, !allChecked)}
-                                                            className="flex items-center justify-center gap-1 mx-auto text-[10px] text-gray-500 hover:text-white transition-colors disabled:opacity-40"
-                                                            title={allChecked ? 'Bỏ chọn tất cả nhóm này' : 'Chọn tất cả nhóm này'}
-                                                        >
-                                                            {isSavingGroup ? <Loader2 size={12} className="animate-spin" /> : allChecked ? <CheckSquare size={12} className="text-blue-400" /> : <Square size={12} />}
-                                                            <span>{allChecked ? 'Bỏ tất cả' : 'Chọn tất cả'}</span>
-                                                        </button>
+                    {/* Permission matrix */}
+                    <div className="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-gray-900/80 text-gray-400 text-[11px] uppercase tracking-wider">
+                                    <tr>
+                                        <th className="px-4 py-3 w-2/5 font-medium">Chức năng</th>
+                                        {ROLES.map(role => {
+                                            const m = ROLE_META[role];
+                                            const RoleIcon = m.Icon;
+                                            return (
+                                                <th key={role} className="px-4 py-3 text-center font-medium">
+                                                    <div className={`flex items-center justify-center gap-1.5 ${m.color}`}>
+                                                        <RoleIcon size={13} /> {m.label}
+                                                    </div>
+                                                </th>
+                                            );
+                                        })}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {(search ? [{ group: 'SEARCH', perms: filtered }] : groups.map(g => ({ group: g, perms: PERMISSIONS_LIST.filter(p => p.group === g) }))).map(({ group, perms: groupPerms }) => {
+                                        const gm = GROUP_META[group] ?? { label: 'Tìm kiếm', Icon: Search, color: 'text-gray-400' };
+                                        const GIcon = gm.Icon;
+                                        return (
+                                            <React.Fragment key={group}>
+                                                {/* Group header */}
+                                                <tr className="bg-gray-900/60 border-y border-gray-700/60">
+                                                    <td className="px-4 py-2">
+                                                        <span className={`flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide ${gm.color}`}>
+                                                            <GIcon size={12} /> {gm.label}
+                                                        </span>
                                                     </td>
-                                                );
-                                            })}
-                                            {search && <td colSpan={3} />}
-                                        </tr>
-                                        {/* Permission rows */}
-                                        {groupPerms.map(perm => (
-                                            <tr key={perm.code} className="hover:bg-gray-700/20 transition-colors border-b border-gray-700/30 last:border-0">
-                                                <td className="px-4 py-3">
-                                                    <div className="font-medium text-gray-200 text-xs">{perm.name}</div>
-                                                    {perm.description && <div className="text-[10px] text-gray-500 mt-0.5">{perm.description}</div>}
-                                                    <div className="text-[10px] text-gray-600 font-mono mt-0.5">{perm.code}</div>
-                                                </td>
-                                                {ROLES.map(role => {
-                                                    const perms = getPerms(role);
-                                                    const checked = perms.includes(perm.code);
-                                                    const isLocked = role === UserRole.ADMIN;
-                                                    const key = `${role}-${perm.code}`;
-                                                    const isSavingThis = saving === key;
-                                                    return (
-                                                        <td key={role} className="px-4 py-3 text-center">
-                                                            {isLocked ? (
-                                                                <div className="flex items-center justify-center">
-                                                                    <div className="w-5 h-5 rounded flex items-center justify-center bg-green-900/50 border border-green-700/50" title="Luôn được cấp">
-                                                                        <CheckSquare size={13} className="text-green-400" />
-                                                                    </div>
-                                                                </div>
-                                                            ) : isSavingThis ? (
-                                                                <Loader2 size={16} className="inline animate-spin text-blue-400" />
-                                                            ) : (
+                                                    {!search && ROLES.map(role => {
+                                                        const perms = getPerms(role);
+                                                        const groupCodes = groupPerms.map(p => p.code);
+                                                        const allChecked = groupCodes.every(c => perms.includes(c));
+                                                        const isSavingGroup = saving === `${role}-group-${group}`;
+                                                        if (role === UserRole.ADMIN) return <td key={role} className="px-4 py-2 text-center"><Lock size={12} className="inline text-gray-600" /></td>;
+                                                        return (
+                                                            <td key={role} className="px-4 py-2 text-center">
                                                                 <button
                                                                     disabled={!!saving}
-                                                                    onClick={() => handleToggle(role, perm.code, !checked)}
-                                                                    className={`w-6 h-6 rounded flex items-center justify-center mx-auto transition-all border
-                                                                        ${checked
-                                                                            ? 'bg-blue-600/80 border-blue-500 hover:bg-blue-500'
-                                                                            : 'bg-gray-700 border-gray-600 hover:border-gray-400'
-                                                                        } disabled:opacity-40 disabled:cursor-not-allowed`}
-                                                                    title={checked ? 'Thu hồi quyền' : 'Cấp quyền'}
+                                                                    onClick={() => handleGroupToggle(role, group, !allChecked)}
+                                                                    className="flex items-center justify-center gap-1 mx-auto text-[10px] text-gray-500 hover:text-white transition-colors disabled:opacity-40"
+                                                                    title={allChecked ? 'Bỏ chọn tất cả nhóm này' : 'Chọn tất cả nhóm này'}
                                                                 >
-                                                                    {checked
-                                                                        ? <CheckSquare size={13} className="text-white" />
-                                                                        : <Square size={13} className="text-gray-500" />
-                                                                    }
+                                                                    {isSavingGroup ? <Loader2 size={12} className="animate-spin" /> : allChecked ? <CheckSquare size={12} className="text-blue-400" /> : <Square size={12} />}
+                                                                    <span>{allChecked ? 'Bỏ tất cả' : 'Chọn tất cả'}</span>
                                                                 </button>
-                                                            )}
+                                                            </td>
+                                                        );
+                                                    })}
+                                                    {search && <td colSpan={3} />}
+                                                </tr>
+                                                {/* Permission rows */}
+                                                {groupPerms.map(perm => (
+                                                    <tr key={perm.code} className="hover:bg-gray-700/20 transition-colors border-b border-gray-700/30 last:border-0">
+                                                        <td className="px-4 py-3">
+                                                            <div className="font-medium text-gray-200 text-xs">{perm.name}</div>
+                                                            {perm.description && <div className="text-[10px] text-gray-500 mt-0.5">{perm.description}</div>}
+                                                            <div className="text-[10px] text-gray-600 font-mono mt-0.5">{perm.code}</div>
                                                         </td>
-                                                    );
-                                                })}
+                                                        {ROLES.map(role => {
+                                                            const perms = getPerms(role);
+                                                            const checked = perms.includes(perm.code);
+                                                            const isLocked = role === UserRole.ADMIN;
+                                                            const key = `${role}-${perm.code}`;
+                                                            const isSavingThis = saving === key;
+                                                            return (
+                                                                <td key={role} className="px-4 py-3 text-center">
+                                                                    {isLocked ? (
+                                                                        <div className="flex items-center justify-center">
+                                                                            <div className="w-5 h-5 rounded flex items-center justify-center bg-green-900/50 border border-green-700/50" title="Luôn được cấp">
+                                                                                <CheckSquare size={13} className="text-green-400" />
+                                                                            </div>
+                                                                        </div>
+                                                                    ) : isSavingThis ? (
+                                                                        <Loader2 size={16} className="inline animate-spin text-blue-400" />
+                                                                    ) : (
+                                                                        <button
+                                                                            disabled={!!saving}
+                                                                            onClick={() => handleToggle(role, perm.code, !checked)}
+                                                                            className={`w-6 h-6 rounded flex items-center justify-center mx-auto transition-all border
+                                                                                ${checked
+                                                                                    ? 'bg-blue-600/80 border-blue-500 hover:bg-blue-500'
+                                                                                    : 'bg-gray-700 border-gray-600 hover:border-gray-400'
+                                                                                } disabled:opacity-40 disabled:cursor-not-allowed`}
+                                                                            title={checked ? 'Thu hồi quyền' : 'Cấp quyền'}
+                                                                        >
+                                                                            {checked
+                                                                                ? <CheckSquare size={13} className="text-white" />
+                                                                                : <Square size={13} className="text-gray-500" />
+                                                                            }
+                                                                        </button>
+                                                                    )}
+                                                                </td>
+                                                            );
+                                                        })}
+                                                    </tr>
+                                                ))}
+                                            </React.Fragment>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div className="px-4 py-3 bg-gray-900/50 border-t border-gray-700 flex items-center gap-2 text-[11px] text-gray-500">
+                            <Info size={13} />
+                            Vai trò <span className="text-red-400 font-medium">Quản trị viên</span> luôn có toàn quyền và không thể thay đổi. Mọi thay đổi tự động lưu ngay lập tức.
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODE 2: BRANCH PERMISSIONS */}
+            {managerMode === 'BRANCH' && (
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+                    {/* Left side: Branches list selection */}
+                    <div className="bg-gray-800 border border-gray-700 rounded-2xl p-4 space-y-4 lg:col-span-1">
+                        <div>
+                            <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 mb-1 flex items-center gap-1.5"><Building2 size={14} /> Danh sách Chi nhánh</h3>
+                            <p className="text-[10px] text-gray-500">Chọn chi nhánh để thiết lập giới hạn dữ liệu.</p>
+                        </div>
+
+                        {/* Search input for branches */}
+                        <div className="relative">
+                            <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500" />
+                            <input
+                                type="text"
+                                value={branchSearch}
+                                onChange={e => setBranchSearch(e.target.value)}
+                                placeholder="Tìm kiếm chi nhánh..."
+                                className="w-full bg-gray-900 border border-gray-700 rounded-xl pl-8 pr-3 py-2 text-xs text-white placeholder-gray-600 outline-none focus:border-emerald-500 transition-colors"
+                            />
+                        </div>
+
+                        {/* Branches List */}
+                        <div className="space-y-1.5 max-h-[50vh] overflow-y-auto custom-scrollbar">
+                            {filteredBranches.length === 0 ? (
+                                <div className="text-center p-4 text-xs text-gray-500 italic">Không tìm thấy chi nhánh</div>
+                            ) : filteredBranches.map(b => (
+                                <div
+                                    key={b.id}
+                                    onClick={() => setSelectedBranchId(b.id)}
+                                    className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${selectedBranchId === b.id ? 'bg-emerald-600/10 border-emerald-500 shadow-md' : 'bg-gray-900/50 border-gray-800 hover:border-gray-700'}`}
+                                >
+                                    <div className="min-w-0">
+                                        <div className={`text-xs font-black truncate ${selectedBranchId === b.id ? 'text-emerald-400' : 'text-white'}`}>
+                                            {b.name}
+                                        </div>
+                                        <div className="text-[10px] text-gray-500 font-mono mt-0.5">Mã: {b.code}</div>
+                                    </div>
+                                    <div className={`w-1.5 h-1.5 rounded-full ${selectedBranchId === b.id ? 'bg-emerald-500' : 'bg-gray-700'}`} />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Right side: Spatial permissions for selected branch */}
+                    <div className="bg-gray-800 border border-gray-700 rounded-2xl p-5 lg:col-span-3 space-y-5">
+                        {activeBranch ? (
+                            <>
+                                <div className="flex flex-wrap justify-between items-center gap-3 border-b border-gray-700 pb-4">
+                                    <div>
+                                        <h3 className="text-sm font-black text-white flex items-center gap-2">
+                                            <Sparkles size={16} className="text-emerald-400 animate-pulse" /> Giới hạn quyền truy cập: <span className="text-emerald-400">{activeBranch.name}</span>
+                                        </h3>
+                                        <p className="text-[10px] text-gray-500 mt-0.5">Giới hạn quyền Xem và Sửa của nhân viên thuộc chi nhánh này trên từng lớp bản đồ địa chính.</p>
+                                    </div>
+                                    <button
+                                        onClick={handleSaveBranchConfig}
+                                        disabled={isSavingBranch}
+                                        className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-lg shadow-emerald-950/20 active:scale-95 disabled:opacity-50"
+                                    >
+                                        {isSavingBranch ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                                        LƯU CẤU HÌNH
+                                    </button>
+                                </div>
+
+                                {/* Table actions: Select all / Deselect all */}
+                                <div className="flex gap-2 text-[10px] font-bold">
+                                    <button
+                                        onClick={() => handleBranchBulkToggle(selectedBranchId, 'read', true)}
+                                        className="px-2.5 py-1 bg-gray-900 border border-gray-700 rounded-lg text-gray-300 hover:text-white"
+                                    >
+                                        Cho xem tất cả
+                                    </button>
+                                    <button
+                                        onClick={() => handleBranchBulkToggle(selectedBranchId, 'write', true)}
+                                        className="px-2.5 py-1 bg-gray-900 border border-gray-700 rounded-lg text-emerald-400 hover:text-emerald-300"
+                                    >
+                                        Cho sửa tất cả
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            handleBranchBulkToggle(selectedBranchId, 'read', false);
+                                            handleBranchBulkToggle(selectedBranchId, 'write', false);
+                                        }}
+                                        className="px-2.5 py-1 bg-gray-900 border border-gray-700 rounded-lg text-red-400 hover:text-red-300 ml-auto"
+                                    >
+                                        Thu hồi tất cả
+                                    </button>
+                                </div>
+
+                                {/* Table search filter */}
+                                <div className="relative max-w-xs">
+                                    <Filter size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500" />
+                                    <input
+                                        type="text"
+                                        value={tableSearch}
+                                        onChange={e => setTableSearch(e.target.value)}
+                                        placeholder="Lọc lớp bản đồ..."
+                                        className="w-full bg-gray-900 border border-gray-750 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-gray-600 outline-none focus:border-emerald-500 transition-colors"
+                                    />
+                                </div>
+
+                                {/* Table listing spatial tables and checkboxes */}
+                                <div className="border border-gray-700 rounded-xl overflow-hidden">
+                                    <table className="w-full text-xs text-left">
+                                        <thead className="bg-gray-900 text-gray-400 font-bold uppercase text-[10px] tracking-wider border-b border-gray-700">
+                                            <tr>
+                                                <th className="px-4 py-3">Lớp dữ liệu bản đồ (Bảng)</th>
+                                                <th className="px-4 py-3 text-center w-28">Xem dữ liệu</th>
+                                                <th className="px-4 py-3 text-center w-28">Chỉnh sửa/Ghi</th>
                                             </tr>
-                                        ))}
-                                    </React.Fragment>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+                                        </thead>
+                                        <tbody>
+                                            {filteredTables.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={3} className="p-8 text-center text-gray-500 italic">Không tìm thấy lớp bản đồ nào.</td>
+                                                </tr>
+                                            ) : filteredTables.map(t => {
+                                                const branchPerms = branchConfig[selectedBranchId] || {};
+                                                const tablePerms = branchPerms[t.table_name] || { read: false, write: false };
+                                                
+                                                return (
+                                                    <tr key={t.table_name} className="border-b border-gray-700/50 last:border-0 hover:bg-gray-750/10">
+                                                        <td className="px-4 py-3.5">
+                                                            <div className="font-bold text-gray-200 text-xs">
+                                                                {t.display_name || t.table_name}
+                                                            </div>
+                                                            <div className="text-[9px] text-gray-500 font-mono mt-0.5">Bảng: {t.table_name} | SRID: {t.srid}</div>
+                                                        </td>
+                                                        <td className="px-4 py-3.5 text-center">
+                                                            <button
+                                                                onClick={() => handleBranchTablePermToggle(selectedBranchId, t.table_name, 'read', !tablePerms.read)}
+                                                                className={`w-6 h-6 rounded-lg flex items-center justify-center mx-auto border transition-all ${tablePerms.read ? 'bg-blue-600/80 border-blue-500 text-white' : 'bg-gray-900 border-gray-700 text-gray-600 hover:border-gray-500'}`}
+                                                            >
+                                                                {tablePerms.read ? <CheckSquare size={14} /> : <Square size={14} />}
+                                                            </button>
+                                                        </td>
+                                                        <td className="px-4 py-3.5 text-center">
+                                                            <button
+                                                                onClick={() => handleBranchTablePermToggle(selectedBranchId, t.table_name, 'write', !tablePerms.write)}
+                                                                className={`w-6 h-6 rounded-lg flex items-center justify-center mx-auto border transition-all ${tablePerms.write ? 'bg-emerald-600/80 border-emerald-500 text-white' : 'bg-gray-900 border-gray-700 text-gray-600 hover:border-gray-500'}`}
+                                                            >
+                                                                {tablePerms.write ? <CheckSquare size={14} /> : <Square size={14} />}
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div className="p-4 bg-gray-900/40 rounded-xl border border-gray-700 flex items-start gap-2.5 text-[10px] text-gray-400">
+                                    <Info size={14} className="text-blue-400 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="font-bold text-gray-300">Quy tắc phân quyền chi nhánh:</p>
+                                        <ul className="list-disc pl-4 space-y-1 mt-1 font-medium">
+                                            <li>Người dùng thuộc chi nhánh nào sẽ chỉ xem thấy các lớp bản đồ được cấp quyền **Xem dữ liệu** của chi nhánh đó.</li>
+                                            <li>Quyền **Chỉnh sửa/Ghi** cho phép sửa đổi ranh giới thửa đất, thêm thửa, tách thửa, gộp thửa. Cấp quyền chỉnh sửa tự động cấp quyền xem.</li>
+                                            <li>Nhóm người dùng **Quản trị viên (Admin)** luôn có toàn quyền truy cập tất cả các lớp bản đồ của tất cả các chi nhánh mà không bị ảnh hưởng bởi thiết lập này.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="p-8 text-center text-gray-500 italic">Vui lòng chọn chi nhánh để cấu hình.</div>
+                        )}
+                    </div>
                 </div>
-                <div className="px-4 py-3 bg-gray-900/50 border-t border-gray-700 flex items-center gap-2 text-[11px] text-gray-500">
-                    <Info size={13} />
-                    Vai trò <span className="text-red-400 font-medium">Quản trị viên</span> luôn có toàn quyền và không thể thay đổi. Mọi thay đổi tự động lưu ngay lập tức.
-                </div>
-            </div>
+            )}
         </div>
     );
 };

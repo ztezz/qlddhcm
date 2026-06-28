@@ -30,6 +30,36 @@ export const syncRegisteredSpatialTables = async (pool) => {
 
 export default function(pool, logSystemAction) {
     const router = express.Router();
+    
+    const checkBranchWritePermission = async (req, res, next) => {
+        const userRole = req.headers['x-user-role'] || '';
+        const branchId = req.headers['x-branch-id'] || '';
+        const table = req.params.table;
+
+        if (userRole === 'admin') {
+            return next();
+        }
+
+        if (!branchId) {
+            return res.status(403).json({ error: 'Không tìm thấy thông tin chi nhánh.' });
+        }
+
+        try {
+            const settingsRes = await pool.query(`SELECT value FROM system_settings WHERE key = 'branch_spatial_permissions'`);
+            if (settingsRes.rows.length > 0 && settingsRes.rows[0].value) {
+                const branchPerms = JSON.parse(settingsRes.rows[0].value);
+                const perms = branchPerms[branchId];
+                if (perms && perms[table]?.write) {
+                    return next();
+                }
+            }
+            return res.status(403).json({ error: `Chi nhánh của bạn không có quyền ghi/chỉnh sửa trên lớp dữ liệu "${table}".` });
+        } catch (e) {
+            console.error("Error checking branch write permissions:", e);
+            return res.status(500).json({ error: 'Lỗi kiểm tra quyền chi nhánh.' });
+        }
+    };
+
     const TABLE_NAME_REGEX = /^[a-z0-9_]+$/;
     const ADMIN_NAME_COLUMN_CANDIDATES = ['ten_tinh', 'ten_tinh_tp', 'ten_dvhc', 'ten_don_vi', 'ten', 'name', 'province'];
     const ACCENTED_CHARS = 'àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ';
@@ -261,7 +291,25 @@ export default function(pool, logSystemAction) {
     router.get('/spatial-tables', async (req, res) => {
         try {
             const result = await pool.query(`SELECT * FROM spatial_tables_registry ORDER BY created_at DESC`);
-            res.json(result.rows);
+            const userRole = req.headers['x-user-role'] || '';
+            const branchId = req.headers['x-branch-id'] || '';
+            let rows = result.rows;
+
+            if (userRole !== 'admin' && branchId) {
+                const settingsRes = await pool.query(`SELECT value FROM system_settings WHERE key = 'branch_spatial_permissions'`);
+                if (settingsRes.rows.length > 0 && settingsRes.rows[0].value) {
+                    try {
+                        const branchPerms = JSON.parse(settingsRes.rows[0].value);
+                        const perms = branchPerms[branchId];
+                        if (perms) {
+                            rows = rows.filter(r => perms[r.table_name]?.read);
+                        }
+                    } catch (err) {
+                        console.error("Error parsing branch permissions:", err);
+                    }
+                }
+            }
+            res.json(rows);
         } catch (e) {
             // Backward compatibility: some deployments may not have created_at yet.
             if (e?.code === '42703') {
@@ -271,7 +319,25 @@ export default function(pool, logSystemAction) {
                         FROM spatial_tables_registry
                         ORDER BY table_name ASC
                     `);
-                    return res.json(fallback.rows);
+                    const userRole = req.headers['x-user-role'] || '';
+                    const branchId = req.headers['x-branch-id'] || '';
+                    let rows = fallback.rows;
+
+                    if (userRole !== 'admin' && branchId) {
+                        const settingsRes = await pool.query(`SELECT value FROM system_settings WHERE key = 'branch_spatial_permissions'`);
+                        if (settingsRes.rows.length > 0 && settingsRes.rows[0].value) {
+                            try {
+                                const branchPerms = JSON.parse(settingsRes.rows[0].value);
+                                const perms = branchPerms[branchId];
+                                if (perms) {
+                                    rows = rows.filter(r => perms[r.table_name]?.read);
+                                }
+                            } catch (err) {
+                                console.error("Error parsing branch permissions:", err);
+                            }
+                        }
+                    }
+                    return res.json(rows);
                 } catch (fallbackError) {
                     return res.status(500).json({ error: fallbackError.message });
                 }
@@ -892,7 +958,7 @@ export default function(pool, logSystemAction) {
         }
     });
 
-    router.post('/data/:table', authenticateToken, async (req, res) => {
+    router.post('/data/:table', authenticateToken, checkBranchWritePermission, async (req, res) => {
         const data = req.body;
         try {
             const table = await resolveSafeTableName(req.params.table);
@@ -947,7 +1013,7 @@ export default function(pool, logSystemAction) {
         } catch (e) { res.status(500).json({ error: e.message }); }
     });
 
-    router.post('/data/:table/bulk', authenticateToken, async (req, res) => {
+    router.post('/data/:table/bulk', authenticateToken, checkBranchWritePermission, async (req, res) => {
         const { items } = req.body;
         if (!Array.isArray(items) || items.length === 0) return res.status(400).json({ error: "Dữ liệu không hợp lệ." });
         try {
@@ -1008,7 +1074,7 @@ export default function(pool, logSystemAction) {
         } catch (e) { await pool.query('ROLLBACK'); res.status(500).json({ error: e.message }); }
     });
 
-    router.put('/data/:table/:gid', authenticateToken, async (req, res) => {
+    router.put('/data/:table/:gid', authenticateToken, checkBranchWritePermission, async (req, res) => {
         const { gid } = req.params;
         const data = req.body;
         try {
@@ -1060,7 +1126,7 @@ export default function(pool, logSystemAction) {
         } catch (e) { res.status(500).json({ error: e.message }); }
     });
 
-    router.post('/data/:table/upload', authenticateToken, upload.fields([{ name: 'file', maxCount: 1 }, { name: 'imageFile', maxCount: 1 }]), async (req, res) => {
+    router.post('/data/:table/upload', authenticateToken, checkBranchWritePermission, upload.fields([{ name: 'file', maxCount: 1 }, { name: 'imageFile', maxCount: 1 }]), async (req, res) => {
         let table = '';
         const files = req.files;
         const file = files?.file?.[0];
@@ -1228,7 +1294,7 @@ export default function(pool, logSystemAction) {
         } catch (e) { res.status(500).json({ error: e.message }); }
     });
 
-    router.delete('/data/:table/:gid', authenticateToken, async (req, res) => {
+    router.delete('/data/:table/:gid', authenticateToken, checkBranchWritePermission, async (req, res) => {
         const { gid } = req.params;
         try {
             const table = await resolveSafeTableName(req.params.table);

@@ -1,5 +1,5 @@
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { User, UserRole } from '../types';
 import { gisService, adminService, DEFAULT_ROLE_PERMISSIONS, hasAnyPermission } from '../services/mockBackend';
 import { parcelApi } from '../services/parcelApi';
@@ -138,6 +138,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     const [wardList, setWardList] = useState<string[]>([]);
     const [loadingWards, setLoadingWards] = useState(false);
     const [isMapLoading, setIsMapLoading] = useState(false);
+    const [branchPermissions, setBranchPermissions] = useState<any>(null);
 
     // Split/Merge States
     const [splitModal, setSplitModal] = useState({ isOpen: false });
@@ -193,7 +194,16 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     const currentPermissions = user?.role === UserRole.ADMIN
         ? DEFAULT_ROLE_PERMISSIONS[UserRole.ADMIN]
         : rolePermissions.find((rp) => rp.role === user?.role)?.permissions || (user?.role ? DEFAULT_ROLE_PERMISSIONS[user.role] || [] : []);
-    const canSaveToDb = !permissionLoading && hasAnyPermission(currentPermissions, ['SAVE_MAP_TO_DB']);
+
+    const isBranchWriteAllowed = useMemo(() => {
+        if (user?.role === UserRole.ADMIN) return true;
+        if (!user?.branchId || !branchPermissions) return true;
+        const branchPerms = branchPermissions[user.branchId];
+        if (!branchPerms) return true;
+        return !!branchPerms[targetTable]?.write;
+    }, [user, branchPermissions, targetTable]);
+
+    const canSaveToDb = !permissionLoading && hasAnyPermission(currentPermissions, ['SAVE_MAP_TO_DB']) && isBranchWriteAllowed;
 
     const basemapOptions = {
         'google-satellite': {
@@ -623,8 +633,19 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     useEffect(() => {
         const loadPermissions = async () => {
             try {
-                const data = await adminService.getRolePermissions();
+                const [data, settings] = await Promise.all([
+                    adminService.getRolePermissions(),
+                    adminService.getSettings().catch(() => [])
+                ]);
                 setRolePermissions(Array.isArray(data) ? data : []);
+                const item = settings.find(s => s.key === 'branch_spatial_permissions');
+                if (item && item.value) {
+                    try {
+                        setBranchPermissions(JSON.parse(item.value));
+                    } catch {
+                        setBranchPermissions(null);
+                    }
+                }
             } catch {
                 setRolePermissions([]);
             } finally {
