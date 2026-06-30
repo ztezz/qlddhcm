@@ -1,10 +1,9 @@
 
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { User, UserRole } from '../types';
-import { gisService, adminService, DEFAULT_ROLE_PERMISSIONS, hasAnyPermission } from '../services/apiClient';
+import { adminService } from '../services/apiClient';
 import { parcelApi } from '../services/parcelApi';
 import { getUid } from 'ol/util';
-import { exportDxfFile, exportGeoJsonFile, exportShpZipFile } from '../utils/parcelExport';
 import { importDxfAsPolygonFeatures } from '../utils/dxfImport';
 import { registerDynamicVn2000, Vn2000Zone } from '../utils/editorProjection';
 
@@ -21,10 +20,18 @@ import { ParcelSearchDialog, ParcelResultDialog } from '../components/editor/Par
 // Hooks
 import { useEditorHistory } from '../hooks/useEditorHistory';
 import { useEditorDraft } from '../hooks/useEditorDraft';
+import { useEditorSelection } from '../hooks/useEditorSelection';
+import { useEditorBasemapLayers } from '../hooks/useEditorBasemapLayers';
+import { useEditorPermissions } from '../hooks/useEditorPermissions';
+import { useEditorParcelSearch } from '../hooks/useEditorParcelSearch';
+import { useEditorSplitMerge } from '../hooks/useEditorSplitMerge';
+import { useEditorMapInteractions } from '../hooks/useEditorMapInteractions';
+import { useEditorMeasure } from '../hooks/useEditorMeasure';
+import { useEditorMapSetup } from '../hooks/useEditorMapSetup';
 
 // Utils
 import { validateGeometry } from '../utils/editorValidation';
-import { getEditStyle, getSelectedStyle } from '../utils/editorStyles';
+import { detectGeoJsonProjection, exportCoordsTxt, exportFeaturesDxf, exportFeaturesGeoJson, exportFeaturesShpZip, validateEditorGeometry } from '../utils/editorDataUtils';
 import {
     olCoordsToTurfPolygon,
     turfPolygonToOlPolygon,
@@ -38,19 +45,14 @@ import * as turf from '@turf/turf';
 
 // OpenLayers
 import Map from 'ol/Map';
-import View from 'ol/View';
-import { Tile as TileLayer, Vector as VectorLayer, Graticule } from 'ol/layer';
-import { Vector as VectorSource, XYZ } from 'ol/source';
+import { Vector as VectorSource } from 'ol/source';
 import * as proj from 'ol/proj';
-import * as style from 'ol/style';
 import { Polygon, Point, MultiPolygon, LineString } from 'ol/geom';
 import GeoJSON from 'ol/format/GeoJSON';
 import Feature from 'ol/Feature';
 import { Draw, Modify, Snap, Select, DragBox } from 'ol/interaction';
-import { createBox } from 'ol/interaction/Draw';
-import { getArea, getLength } from 'ol/sphere';
+import { getArea } from 'ol/sphere';
 import { isEmpty as isExtentEmpty } from 'ol/extent';
-import { click } from 'ol/events/condition';
 
 const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     const mapElement = useRef<HTMLDivElement>(null);
@@ -63,17 +65,12 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     const dragBoxInteraction = useRef<DragBox | null>(null);
     const modifyInteraction = useRef<Modify | null>(null);
     const snapInteraction = useRef<Snap | null>(null);
-    const measureSource = useRef<VectorSource>(new VectorSource());
-    const measureDrawInteraction = useRef<Draw | null>(null);
     
     // States
     const [activeInteraction, setActiveInteraction] = useState<'SELECT' | 'AREA_SELECT' | 'DRAW' | 'MODIFY'>('SELECT');
     const [isSnapping, setIsSnapping] = useState(true);
     const [showBasemap, setShowBasemap] = useState(false);
     const [showGrid, setShowGrid] = useState(true);
-    const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
-    const [selectedFeatureUids, setSelectedFeatureUids] = useState<string[]>([]);
-    const [featuresList, setFeaturesList] = useState<any[]>([]);
 
     // Advanced GIS features states
     const [centralMeridian, setCentralMeridian] = useState<number>(105.75);
@@ -82,21 +79,12 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     const [showVertexNumbers, setShowVertexNumbers] = useState<boolean>(true);
     const [showSegmentLengths, setShowSegmentLengths] = useState<boolean>(false);
     const [showParcelInfo, setShowParcelInfo] = useState<boolean>(false);
-    const [measureType, setMeasureType] = useState<'length' | 'area' | null>(null);
-    const [measureValue, setMeasureValue] = useState<string | null>(null);
     const [isSidebarVisible, setIsSidebarVisible] = useState(true);
     
-    // Attributes
-    const [soTo, setSoTo] = useState('');
-    const [soThua, setSoThua] = useState('');
-    const [loaiDat, setLoaiDat] = useState(''); 
-    
-    // Vertices luôn lưu ở EPSG:3857 để đồng bộ với Map
-    const [vertices, setVertices] = useState<{x: number, y: number}[]>([]);
+    // Attributes and geometry state are managed by useEditorSelection.
     const [coordSystem, setCoordSystem] = useState<'WGS84' | 'VN2000'>('VN2000');
     
     // Data States
-    const [area, setArea] = useState(0);
     const [targetTable, setTargetTable] = useState('');
     const [spatialTables, setSpatialTables] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -108,44 +96,63 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     // Modal States
     const [searchModal, setSearchModal] = useState({ isOpen: false, coords: { x: '', y: '' } });
     const [manualModal, setManualModal] = useState({ isOpen: false, text: '' });
-    const [parcelModal, setParcelModal] = useState({ isOpen: false, soTo: '', soThua: '', phuongXa: '', searchTable: '', includeNearby: false, nearbyRadiusMeters: '50' });
     const dxfInputRef = useRef<HTMLInputElement | null>(null);
-    const [currentBasemap, setCurrentBasemap] = useState('google-satellite');
     const [dialog, setDialog] = useState<{ isOpen: boolean; type: 'success' | 'error' | 'info'; title: string; message: string; }>({ isOpen: false, type: 'info', title: '', message: '' });
-    const [loadingParcel, setLoadingParcel] = useState(false);
-    const [parcelList, setParcelList] = useState<any[]>([]);
-    const [wardList, setWardList] = useState<string[]>([]);
-    const [loadingWards, setLoadingWards] = useState(false);
     const [isMapLoading, setIsMapLoading] = useState(false);
     const [branchPermissions, setBranchPermissions] = useState<any>(null);
 
-    // Split/Merge States
-    const [splitModal, setSplitModal] = useState({ isOpen: false });
-    const [mergeModal, setMergeModal] = useState({ isOpen: false, selectedFeatures: [] as any[] });
-    const [splitMergeResultModal, setSplitMergeResultModal] = useState({
-        isOpen: false,
-        type: 'split' as 'split' | 'merge',
-        originalFeatures: [] as any[],
-        newFeatures: [] as any[]
-    });
-    // For split mode - store the split config
-    const splitConfigRef = useRef<{ soTo: string; soThuaStart: number } | null>(null);
-    const [isSplitMode, setIsSplitMode] = useState(false);
-    // CRITICAL: Store the feature to split in a ref BEFORE mode switch
-    // This prevents React state batching from clearing it when interaction changes
-    const featureToSplitRef = useRef<Feature | null>(null);
+    // Custom Hooks for Selection, History and Draft Management
+    const {
+        selectedFeature,
+        setSelectedFeature,
+        selectedFeatureUids,
+        setSelectedFeatureUids,
+        featuresList,
+        soTo,
+        setSoTo,
+        soThua,
+        setSoThua,
+        loaiDat,
+        setLoaiDat,
+        vertices,
+        setVertices,
+        area,
+        setArea,
+        updateFeatureListState,
+        updateVerticesFromFeature,
+        updateSelectionState,
+        handleClearSelection,
+        handleSoToChange,
+        handleSoThuaChange,
+        handleLoaiDatChange
+    } = useEditorSelection(editSource, selectInteraction);
 
-    // Custom Hooks for History and Draft Management
-    const updateFeatureListState = useCallback(() => {
-        const feats = editSource.current.getFeatures().map(f => ({
-            uid: getUid(f),
-            soTo: f.get('sodoto') || '',
-            soThua: f.get('sothua') || '',
-            area: getArea(f.getGeometry() as any),
-            isValid: !!(f.get('sodoto') && f.get('sothua'))
-        }));
-        setFeaturesList(feats);
-    }, []);
+
+    const {
+        parcelModal,
+        setParcelModal,
+        loadingParcel,
+        parcelList,
+        setParcelList,
+        wardList,
+        loadingWards,
+        handleSearchParcel,
+        handleSelectParcel
+    } = useEditorParcelSearch({
+        editSource,
+        mapInstance,
+        selectInteraction,
+        targetTable,
+        setTargetTable,
+        setDialog,
+        setIsMapLoading,
+        updateSelectionState,
+        updateVerticesFromFeature,
+        updateFeatureListState,
+        setSoTo,
+        setSoThua,
+        setLoaiDat
+    });
 
     const {
         historyStackRef,
@@ -160,6 +167,79 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         handleRedo
     } = useEditorHistory(editSource, selectedFeature);
 
+
+    const {
+        splitModal,
+        setSplitModal,
+        mergeModal,
+        setMergeModal,
+        splitMergeResultModal,
+        setSplitMergeResultModal,
+        splitConfigRef,
+        featureToSplitRef,
+        isSplitMode,
+        setIsSplitMode,
+        handleSplitFeature,
+        handleOpenSplitModal,
+        handleMergeFeatures,
+        executeMerge,
+        executeSplit,
+        handleConfirmSplitMergeResult,
+        handleCancelSplitMode,
+        canSplit,
+        canMerge
+    } = useEditorSplitMerge({
+        editSource,
+        selectInteraction,
+        selectedFeature,
+        selectedFeatureUids,
+        featuresList,
+        pushHistorySnapshot,
+        updateVerticesFromFeature,
+        updateFeatureListState,
+        setSelectedFeature,
+        setDialog,
+        setActiveInteraction
+    });
+
+
+    const {
+        measureSource,
+        measureDrawInteraction,
+        measureType,
+        setMeasureType,
+        measureValue
+    } = useEditorMeasure(mapInstance, setActiveInteraction);
+
+
+    useEditorMapInteractions({
+        mapInstance,
+        editSource,
+        selectInteraction,
+        drawInteraction,
+        drawLineInteraction,
+        dragBoxInteraction,
+        modifyInteraction,
+        snapInteraction,
+        splitConfigRef,
+        featureToSplitRef,
+        activeInteraction,
+        setActiveInteraction,
+        isSnapping,
+        isSplitMode,
+        setIsSplitMode,
+        drawShape,
+        showVertexNumbers,
+        showSegmentLengths,
+        showParcelInfo,
+        setSelectedFeature,
+        setSelectedFeatureUids,
+        updateSelectionState,
+        updateVerticesFromFeature,
+        updateFeatureListState,
+        executeSplit
+    });
+
     const {
         DRAFT_KEY,
         autoSaveTimerRef,
@@ -170,314 +250,50 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         stopAutoSave
     } = useEditorDraft(editSource, mapInstance, updateFeatureListState);
 
-    const currentPermissions = user?.role === UserRole.ADMIN
-        ? DEFAULT_ROLE_PERMISSIONS[UserRole.ADMIN]
-        : rolePermissions.find((rp) => rp.role === user?.role)?.permissions || (user?.role ? DEFAULT_ROLE_PERMISSIONS[user.role] || [] : []);
+    const {
+        currentPermissions,
+        canSaveToDb
+    } = useEditorPermissions(user, rolePermissions, branchPermissions, targetTable, permissionLoading);
 
-    const isBranchWriteAllowed = useMemo(() => {
-        if (user?.role === UserRole.ADMIN) return true;
-        if (!user?.branchId || !branchPermissions) return true;
-        const branchPerms = branchPermissions[user.branchId];
-        if (!branchPerms) return true;
-        return !!branchPerms[targetTable]?.write;
-    }, [user, branchPermissions, targetTable]);
+    const {
+        baseLayerRef,
+        gridLayerRef,
+        currentBasemap,
+        handleChangeBasemap
+    } = useEditorBasemapLayers(showBasemap, showGrid);
 
-    const canSaveToDb = !permissionLoading && hasAnyPermission(currentPermissions, ['SAVE_MAP_TO_DB']) && isBranchWriteAllowed;
+    const { initMap, cleanupMap } = useEditorMapSetup({
+        mapElement,
+        mapInstance,
+        mapInitVersion,
+        editSource,
+        measureSource,
+        baseLayerRef,
+        gridLayerRef,
+        selectInteraction,
+        drawInteraction,
+        drawLineInteraction,
+        dragBoxInteraction,
+        modifyInteraction,
+        snapInteraction,
+        splitConfigRef,
+        featureToSplitRef,
+        activeInteraction,
+        isSnapping,
+        setActiveInteraction,
+        setIsSplitMode,
+        setSelectedFeature,
+        setSelectedFeatureUids,
+        setSpatialTables,
+        setTargetTable,
+        updateSelectionState,
+        updateVerticesFromFeature,
+        updateFeatureListState,
+        pushHistorySnapshot,
+        executeSplit
+    });
 
-    const basemapOptions = {
-        'google-satellite': {
-            name: 'Google Satellite',
-            url: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'
-        },
-        'google-roadmap': {
-            name: 'Google Roadmap',
-            url: 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}'
-        },
-        'google-terrain': {
-            name: 'Google Terrain',
-            url: 'https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}'
-        },
-        'osm': {
-            name: 'OpenStreetMap',
-            url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
-        },
-        'google-hybrid': {
-            name: 'Google Satellite Hybrid',
-            url: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'
-        },
-        'esri-satellite': {
-            name: 'ESRI Satellite',
-            url: 'https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-        }
-    };
 
-    const handleChangeBasemap = (basemapKey: string) => {
-        const basemap = basemapOptions[basemapKey as keyof typeof basemapOptions];
-        if (basemap && baseLayerRef.current) {
-            baseLayerRef.current.setSource(new XYZ({
-                url: basemap.url,
-                crossOrigin: 'anonymous'
-            }));
-            setCurrentBasemap(basemapKey);
-        }
-    };
-
-    // Layers Refs
-    const baseLayerRef = useRef<TileLayer<any>>(new TileLayer({
-        zIndex: 0,
-        visible: false,
-        source: new XYZ({
-            url: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
-            crossOrigin: 'anonymous'
-        })
-    }));
-
-    const gridLayerRef = useRef<Graticule>(new Graticule({
-        strokeStyle: new style.Stroke({ 
-            color: 'rgba(255, 255, 255, 0.1)', 
-            width: 1,
-            lineDash: [4, 4] 
-        }),
-        showLabels: false, 
-        wrapX: false,
-        zIndex: 5
-    }));
-
-    const getEditStyleCallback = useCallback((feature: Feature) => getEditStyle(feature), []);
-    const getSelectedStyleCallback = useCallback((feature: Feature) => getSelectedStyle(feature), []);
-
-    const updateVerticesFromFeature = useCallback((feature: Feature | null) => {
-        if (!feature) { 
-            setVertices([]); 
-            setArea(0);
-            return; 
-        }
-        const geom = feature.getGeometry();
-        let coords: any[] = [];
-        if (geom instanceof Polygon) {
-            coords = geom.getCoordinates()[0];
-            setArea(getArea(geom));
-        } else if (geom instanceof MultiPolygon) {
-            const polyCoords = geom.getCoordinates();
-            if (polyCoords.length > 0 && polyCoords[0].length > 0) {
-                coords = polyCoords[0][0];
-            }
-            setArea(getArea(geom));
-        }
-        
-        if (coords.length > 0) {
-            const displayCoords = coords.slice(0, -1);
-            setVertices(displayCoords.map(c => ({ x: c[0], y: c[1] })));
-        }
-    }, []);
-
-    // Sync Inputs with Selected Feature
-    useEffect(() => {
-        if (selectedFeature) {
-            setSoTo(String(selectedFeature.get('sodoto') ?? ''));
-            setSoThua(String(selectedFeature.get('sothua') ?? ''));
-            setLoaiDat(String(selectedFeature.get('loaidat') ?? ''));
-            updateVerticesFromFeature(selectedFeature);
-        } else {
-            setSoTo(''); setSoThua(''); setLoaiDat('');
-            updateVerticesFromFeature(null);
-        }
-    }, [selectedFeature, updateVerticesFromFeature]);
-
-    // Handle Input Changes & Sync to Feature
-    const handleSoToChange = (val: string) => {
-        setSoTo(val);
-        if (selectedFeature) {
-            selectedFeature.set('sodoto', val);
-            updateFeatureListState();
-        }
-    };
-    const updateSelectionState = useCallback((primary?: Feature | null) => {
-        const selected = selectInteraction.current?.getFeatures().getArray() || [];
-        const nextUids = selected.map((f) => getUid(f));
-        setSelectedFeatureUids(nextUids);
-        if (primary !== undefined) {
-            setSelectedFeature(primary);
-            return;
-        }
-        if (selectedFeature && nextUids.includes(getUid(selectedFeature))) {
-            return;
-        }
-        setSelectedFeature(selected[0] || null);
-    }, [selectedFeature]);
-
-    const handleClearSelection = useCallback(() => {
-        selectInteraction.current?.getFeatures().clear();
-        setSelectedFeature(null);
-        setSelectedFeatureUids([]);
-    }, []);
-    const handleSoThuaChange = (val: string) => {
-        setSoThua(val);
-        if (selectedFeature) {
-            selectedFeature.set('sothua', val);
-            updateFeatureListState();
-        }
-    };
-    const handleLoaiDatChange = (val: string) => {
-        setLoaiDat(val);
-        if (selectedFeature) {
-            selectedFeature.set('loaidat', val);
-        }
-    };
-
-    const initMap = async () => {
-        if (!mapElement.current) return;
-        const initVersion = ++mapInitVersion.current;
-
-        // Always clean old map instance before creating a new one.
-        if (mapInstance.current) {
-            mapInstance.current.setTarget(undefined);
-            mapInstance.current = null;
-        }
-
-        selectInteraction.current = null;
-        drawInteraction.current = null;
-        modifyInteraction.current = null;
-        snapInteraction.current = null;
-
-        // Editor always uses fixed startup center/zoom.
-        const centerLat = 11.284;
-        const centerLng = 106.619;
-        const zoom = 18;
-
-        const map = new Map({
-            target: mapElement.current,
-            layers: [
-                baseLayerRef.current,
-                gridLayerRef.current,
-                new VectorLayer({ 
-                    source: editSource.current, 
-                    style: (feature) => getEditStyle(feature as Feature), 
-                    zIndex: 100 
-                }),
-                new VectorLayer({
-                    source: measureSource.current,
-                    style: new style.Style({
-                        fill: new style.Fill({ color: 'rgba(244, 63, 94, 0.15)' }),
-                        stroke: new style.Stroke({ color: '#f43f5e', width: 2, lineDash: [4, 4] }),
-                        image: new style.Circle({ 
-                            radius: 5, 
-                            stroke: new style.Stroke({ color: '#f43f5e', width: 2 }), 
-                            fill: new style.Fill({ color: '#fff' }) 
-                        })
-                    }),
-                    zIndex: 90
-                })
-            ],
-            view: new View({ center: proj.fromLonLat([centerLng, centerLat]), zoom: zoom }),
-            controls: []
-        });
-
-        const select = new Select({
-            style: (feature) => getSelectedStyle(feature as Feature),
-            condition: click
-        });
-        map.addInteraction(select);
-        select.on('select', (e) => {
-            const selected = select.getFeatures().getArray();
-            if ((e as any).mapBrowserEvent?.originalEvent?.shiftKey) {
-                setSelectedFeature((prev) => prev || selected[0] || null);
-                setSelectedFeatureUids(selected.map((f) => getUid(f)));
-                return;
-            }
-            const feature = selected[0] || null;
-            updateSelectionState(feature);
-        });
-        selectInteraction.current = select;
-
-        const dragBox = new DragBox();
-        dragBox.setActive(activeInteraction === 'SELECT');
-        dragBox.on('boxend', (e) => {
-            const geometry = dragBox.getGeometry();
-            const extent = geometry.getExtent();
-            const selectedCollection = select.getFeatures();
-            const keepExistingSelection = !!(e as any)?.mapBrowserEvent?.originalEvent?.shiftKey;
-
-            if (!keepExistingSelection) {
-                selectedCollection.clear();
-            }
-
-            editSource.current.forEachFeatureInExtent(extent, (feature) => {
-                if (feature.getGeometry()?.intersectsExtent(extent) && !selectedCollection.getArray().includes(feature)) {
-                    selectedCollection.push(feature);
-                }
-            });
-            updateSelectionState();
-        });
-        map.addInteraction(dragBox);
-        dragBoxInteraction.current = dragBox;
-
-        // Draw interaction is handled dynamically by useEffect to support shapes (Polygon, Rectangle, Circle)
-        drawInteraction.current = null;
-
-        // Line draw interaction for split by line mode
-        const drawLine = new Draw({ source: editSource.current, type: 'LineString' });
-        drawLine.setActive(false); // Only active when splitting with line
-        drawLine.on('drawend', (e) => {
-            if (splitConfigRef.current && featureToSplitRef.current) {
-                const cutGeom = e.feature.getGeometry() as LineString;
-                const featureToSplit = featureToSplitRef.current;
-                const config = splitConfigRef.current;
-
-                editSource.current.removeFeature(e.feature);
-                executeSplit(cutGeom as LineString, featureToSplit, config);
-                setTimeout(() => editSource.current.removeFeature(e.feature), 0);
-
-                featureToSplitRef.current = null;
-                splitConfigRef.current = null;
-                setIsSplitMode(false);
-                setActiveInteraction('SELECT');
-            }
-        });
-        map.addInteraction(drawLine);
-        drawLineInteraction.current = drawLine;
-
-        const modify = new Modify({ source: editSource.current });
-        modify.setActive(activeInteraction === 'MODIFY');
-        modify.on('modifyend', (e) => {
-            const feature = e.features.getArray()[0];
-            if (feature) {
-                updateVerticesFromFeature(feature);
-                updateFeatureListState();
-            }
-        });
-        map.addInteraction(modify);
-        modifyInteraction.current = modify;
-
-        const snap = new Snap({ source: editSource.current });
-        snap.setActive(isSnapping);
-        map.addInteraction(snap);
-        snapInteraction.current = snap;
-
-        // Listen to source changes
-        editSource.current.on(['addfeature', 'removefeature', 'changefeature'], () => {
-            updateFeatureListState();
-            pushHistorySnapshot();
-        });
-
-        mapInstance.current = map;
-
-        // Load optional metadata asynchronously so map interactions are usable immediately.
-        gisService.getSpatialTables()
-            .then((tables) => {
-                if (initVersion !== mapInitVersion.current) return;
-                setSpatialTables(tables || []);
-                if (tables && tables.length > 0) {
-                    setTargetTable((prev) => prev || tables[0].table_name);
-                }
-            })
-            .catch(() => {
-                if (initVersion !== mapInitVersion.current) return;
-                setSpatialTables([]);
-            });
-
-        pushHistorySnapshot();
-    };
 
     // Draft management now handled by useEditorDraft hook
 
@@ -546,38 +362,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     };
 
     const handleExportCoordsTxt = () => {
-        if (vertices.length === 0) return;
-        let content = `DANH SÁCH TỌA ĐỘ THỬA ĐẤT - HỆ: ${coordSystem}\n`;
-        content += `STT\tX (m)\tY (m)\n`;
-        content += `------------------------------------\n`;
-        const vnProj = registerDynamicVn2000(centralMeridian, projectionZone);
-        vertices.forEach((v, i) => {
-            let displayX, displayY;
-            if (coordSystem === 'VN2000') {
-                const p = proj.transform([v.x, v.y], 'EPSG:3857', vnProj);
-                displayX = p[0].toFixed(3); displayY = p[1].toFixed(3);
-            } else {
-                const p = proj.transform([v.x, v.y], 'EPSG:3857', 'EPSG:4326');
-                displayX = p[0].toFixed(8); displayY = p[1].toFixed(8);
-            }
-            content += `${i + 1}\t${displayX}\t${displayY}\n`;
-        });
-        // Add closing point
-        if (vertices.length > 0) {
-            const vFirst = vertices[0];
-            let fx, fy;
-            if (coordSystem === 'VN2000') {
-                const p = proj.transform([vFirst.x, vFirst.y], 'EPSG:3857', vnProj);
-                fx = p[0].toFixed(3); fy = p[1].toFixed(3);
-            } else {
-                const p = proj.transform([vFirst.x, vFirst.y], 'EPSG:3857', 'EPSG:4326');
-                fx = p[0].toFixed(8); fy = p[1].toFixed(8);
-            }
-            content += `${vertices.length + 1}\t${fx}\t${fy}\n`;
-        }
-        
-        const blob = new Blob([content], { type: 'text/plain' });
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `ToaDo_${coordSystem}_${Date.now()}.txt`; a.click();
+        exportCoordsTxt(vertices, coordSystem, centralMeridian, projectionZone);
     };
 
     const handleFitView = () => {
@@ -645,142 +430,6 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         editSource.current.changed();
     }, [showVertexNumbers, showSegmentLengths, showParcelInfo, featuresList]);
 
-    // Handle measurement tool interaction
-    useEffect(() => {
-        if (!mapInstance.current) return;
-        
-        if (measureDrawInteraction.current) {
-            mapInstance.current.removeInteraction(measureDrawInteraction.current);
-            measureDrawInteraction.current = null;
-        }
-
-        if (measureType) {
-            // Deactivate other edit interactions
-            setActiveInteraction('SELECT');
-            
-            const drawType = measureType === 'length' ? 'LineString' : 'Polygon';
-            const draw = new Draw({
-                source: measureSource.current,
-                type: drawType,
-                style: new style.Style({
-                    fill: new style.Fill({ color: 'rgba(244, 63, 94, 0.15)' }),
-                    stroke: new style.Stroke({ color: '#f43f5e', width: 2, lineDash: [4, 4] }),
-                    image: new style.Circle({ 
-                        radius: 5, 
-                        stroke: new style.Stroke({ color: '#f43f5e', width: 2 }), 
-                        fill: new style.Fill({ color: '#fff' }) 
-                    })
-                })
-            });
-
-            draw.on('drawstart', (e) => {
-                measureSource.current.clear();
-                const geom = e.feature.getGeometry();
-                setMeasureValue(measureType === 'length' ? '0.00 m' : '0.00 m²');
-                
-                geom?.on('change', (evt) => {
-                    const g = evt.target;
-                    let result = '';
-                    if (g instanceof LineString) {
-                        const length = getLength(g);
-                        result = `${length.toFixed(2)} m`;
-                    } else if (g instanceof Polygon) {
-                        const area = getArea(g);
-                        result = `${area.toFixed(2)} m²`;
-                    }
-                    setMeasureValue(result);
-                });
-            });
-
-            mapInstance.current.addInteraction(draw);
-            measureDrawInteraction.current = draw;
-        } else {
-            measureSource.current.clear();
-            setMeasureValue(null);
-        }
-    }, [measureType]);
-
-    // Handle dynamic draw interaction for shapes (Polygon, Rectangle, Circle)
-    useEffect(() => {
-        if (!mapInstance.current) return;
-
-        if (drawInteraction.current) {
-            mapInstance.current.removeInteraction(drawInteraction.current);
-            drawInteraction.current = null;
-        }
-
-        if (activeInteraction === 'DRAW') {
-            let drawOptions: any = {
-                source: editSource.current
-            };
-
-            if (isSplitMode) {
-                drawOptions.type = 'Polygon';
-            } else {
-                if (drawShape === 'Polygon') {
-                    drawOptions.type = 'Polygon';
-                } else if (drawShape === 'Rectangle') {
-                    drawOptions.type = 'Circle';
-                    drawOptions.geometryFunction = createBox();
-                } else if (drawShape === 'Circle') {
-                    drawOptions.type = 'Circle';
-                }
-            }
-
-            const draw = new Draw(drawOptions);
-            draw.on('drawend', (e) => {
-                if (isSplitMode && splitConfigRef.current) {
-                    const cutGeom = e.feature.getGeometry();
-                    if (cutGeom && featureToSplitRef.current) {
-                        const featureToSplit = featureToSplitRef.current;
-                        const config = splitConfigRef.current;
-                        executeSplit(cutGeom as Polygon, featureToSplit, config);
-                        editSource.current.removeFeature(e.feature);
-                        featureToSplitRef.current = null;
-                        splitConfigRef.current = null;
-                        setIsSplitMode(false);
-                        setActiveInteraction('SELECT');
-                    }
-                } else {
-                    let feature = e.feature;
-                    const geom = feature.getGeometry();
-                    
-                    if (geom && geom.getType() === 'Circle') {
-                        const circleGeom = geom as any;
-                        const center3857 = circleGeom.getCenter();
-                        const radius = circleGeom.getRadius(); 
-                        
-                        const edgePoint3857 = [center3857[0] + radius, center3857[1]];
-                        const centerLonLat = proj.toLonLat(center3857);
-                        const edgeLonLat = proj.toLonLat(edgePoint3857);
-                        const turfCenter = turf.point(centerLonLat);
-                        const turfEdge = turf.point(edgeLonLat);
-                        const radiusMeters = turf.distance(turfCenter, turfEdge, { units: 'kilometers' }) * 1000;
-                        
-                        const turfCircle = turf.circle(centerLonLat, radiusMeters / 1000, { steps: 64, units: 'kilometers' });
-                        const olCoords = turfCircle.geometry.coordinates[0].map(coord => proj.fromLonLat(coord));
-                        const polyGeom = new Polygon([olCoords]);
-                        feature.setGeometry(polyGeom);
-                    }
-
-                    // Apply current label settings
-                    feature.set('showVertexNumbers', showVertexNumbers);
-                    feature.set('showSegmentLengths', showSegmentLengths);
-                    feature.set('showParcelInfo', showParcelInfo);
-
-                    setSelectedFeature(feature);
-                    updateSelectionState(feature);
-                    updateVerticesFromFeature(feature);
-                    updateFeatureListState();
-                    setTimeout(() => setActiveInteraction('SELECT'), 50);
-                }
-            });
-
-            mapInstance.current.addInteraction(draw);
-            drawInteraction.current = draw;
-        }
-    }, [activeInteraction, drawShape, isSplitMode, showVertexNumbers, showSegmentLengths, showParcelInfo]);
-
     // Handle topology validation check
     const handleTopologyCheck = () => {
         const features = editSource.current.getFeatures();
@@ -847,31 +496,9 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         }
     };
 
-    // Load danh sách phường/xã từ các bảng thửa đất đã đăng ký
-    useEffect(() => {
-        const loadWards = async () => {
-            try {
-                setLoadingWards(true);
-                const wards = await gisService.getWardsFromParcels();
-                setWardList(wards || []);
-            } catch {
-                setWardList([]);
-            } finally {
-                setLoadingWards(false);
-            }
-        };
-        loadWards();
-    }, []);
-
     useEffect(() => {
         initMap();
-        return () => {
-            mapInitVersion.current += 1;
-            if (mapInstance.current) {
-                mapInstance.current.setTarget(undefined);
-                mapInstance.current = null;
-            }
-        };
+        return cleanupMap;
     }, []);
 
     // Auto-save draft every 5 seconds
@@ -898,11 +525,6 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     }, [loadDraft]);
 
     useEffect(() => {
-        if (baseLayerRef.current) baseLayerRef.current.setVisible(showBasemap);
-        if (gridLayerRef.current) gridLayerRef.current.setVisible(showGrid);
-    }, [showBasemap, showGrid]);
-
-    useEffect(() => {
         const onKeyDown = (e: KeyboardEvent) => {
             const key = e.key.toLowerCase();
             if ((e.ctrlKey || e.metaKey) && key === 'z' && !e.shiftKey) {
@@ -920,215 +542,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         return () => window.removeEventListener('keydown', onKeyDown);
     }, [handleUndo, handleRedo]);
 
-    useEffect(() => {
-        if (!mapInstance.current) return;
-        if (selectInteraction.current) {
-            const selectMode = activeInteraction === 'SELECT';
-            selectInteraction.current.setActive(selectMode);
-            if (!selectMode) {
-                selectInteraction.current.getFeatures().clear();
-                setSelectedFeature(null);
-                setSelectedFeatureUids([]);
-            }
-        }
-        if (dragBoxInteraction.current) {
-            const areaSelectMode = activeInteraction === 'AREA_SELECT';
-            dragBoxInteraction.current.setActive(areaSelectMode);
-            if (!areaSelectMode) {
-                selectInteraction.current?.getFeatures().clear();
-                setSelectedFeature(null);
-                setSelectedFeatureUids([]);
-            }
-        }
-        if (drawInteraction.current) {
-            // Only activate polygon draw when NOT in split mode
-            // OR when in split mode but using polygon cut (not line)
-            const usePolygonDraw = activeInteraction === 'DRAW' && !isSplitMode;
-            drawInteraction.current.setActive(usePolygonDraw);
-        }
-        if (drawLineInteraction.current) {
-            // Activate line draw only when in split mode with line cut
-            const useLineDraw = activeInteraction === 'DRAW' && isSplitMode;
-            drawLineInteraction.current.setActive(useLineDraw);
-        }
-        if (modifyInteraction.current) {
-            modifyInteraction.current.setActive(activeInteraction === 'MODIFY');
-        }
-        if (snapInteraction.current) {
-            snapInteraction.current.setActive(isSnapping);
-        }
-    }, [activeInteraction, isSnapping, isSplitMode, updateVerticesFromFeature, updateFeatureListState]);
-
-    // Xử lý tra cứu thông tin thửa đất
-    const handleSearchParcel = async (overrideSoTo?: string, overrideSoThua?: string) => {
-        const soTo = (overrideSoTo !== undefined ? overrideSoTo : parcelModal.soTo).trim();
-        const soThua = (overrideSoThua !== undefined ? overrideSoThua : parcelModal.soThua).trim();
-        const targetTable = parcelModal.searchTable.trim();
-
-        if (!targetTable) {
-            setDialog({ isOpen: true, type: 'error', title: 'Lỗi', message: 'Vui lòng chọn bảng dữ liệu để tra cứu.' });
-            return;
-        }
-
-        if (!soTo && !soThua) {
-            setDialog({ isOpen: true, type: 'error', title: 'Lỗi', message: 'Vui lòng nhập số tờ hoặc số thửa.' });
-            return;
-        }
-
-        setLoadingParcel(true);
-        setParcelList([]);
-        try {
-            const filters: any = {};
-            if (soTo) filters.sodoto = soTo;
-            if (soThua) filters.sothua = soThua;
-
-            const parcels = await gisService.searchParcels(targetTable, filters);
-
-            if (!parcels || parcels.length === 0) {
-                let msg = 'Không tìm thấy thửa đất với điều kiện:';
-                if (soTo) msg += ` Tờ ${soTo}`;
-                if (soThua) msg += ` Thửa ${soThua}`;
-                throw new Error(msg);
-            }
-
-            setParcelList(parcels);
-            setParcelModal({ ...parcelModal, isOpen: true });
-
-        } catch (e: any) {
-            setDialog({ isOpen: true, type: 'error', title: 'Lỗi', message: e.message || 'Không thể tra cứu thông tin thửa.' });
-        } finally {
-            setLoadingParcel(false);
-        }
-    };
-
-    // Chọn thửa từ danh sách kết quả
-    const handleSelectParcel = async (parcel: any) => {
-        setIsMapLoading(true);
-        try {
-            const props = parcel.properties || {};
-            const soTo = props.so_to || props.sodoto || '';
-            const soThua = props.so_thua || props.sothua || '';
-            const loaiDat = props.loai_dat || props.loaidat || '';
-            const sourceGid = Number(props.gid ?? props.id);
-            const sourceTableName = String(props.tableName || props.table_name || '').trim();
-            const geometry = parcel.geometry;
-
-            if (!geometry) {
-                throw new Error('Không có dữ liệu hình học cho thửa đất này.');
-            }
-
-            const format = new GeoJSON();
-            const olFeature = format.readFeature(geometry, {
-                dataProjection: 'EPSG:9210',
-                featureProjection: 'EPSG:3857'
-            }) as Feature;
-
-            if (!olFeature) {
-                throw new Error('Không thể đọc hình học từ dữ liệu thửa đất.');
-            }
-
-            olFeature.set('sodoto', soTo);
-            olFeature.set('sothua', soThua);
-            olFeature.set('loaidat', loaiDat);
-            if (Number.isFinite(sourceGid) && sourceGid > 0) {
-                olFeature.set('gid', sourceGid);
-            }
-            if (sourceTableName) {
-                olFeature.set('source_table', sourceTableName);
-            }
-            olFeature.set('is_primary', true);
-            olFeature.set('is_nearby', false);
-
-            editSource.current.clear();
-            editSource.current.addFeature(olFeature);
-            selectInteraction.current?.getFeatures().clear();
-            selectInteraction.current?.getFeatures().push(olFeature);
-            updateSelectionState(olFeature);
-            updateVerticesFromFeature(olFeature);
-            updateFeatureListState();
-
-            setSoTo(soTo);
-            setSoThua(soThua);
-            setLoaiDat(loaiDat);
-            if (sourceTableName) {
-                setTargetTable(sourceTableName);
-            }
-
-            if (parcelModal.includeNearby && Number.isFinite(sourceGid) && sourceGid > 0) {
-                const radius = Number(parcelModal.nearbyRadiusMeters || '50');
-                if (!Number.isFinite(radius) || radius <= 0) {
-                    throw new Error('Bán kính lân cận không hợp lệ.');
-                }
-                const nearbyParcels = await gisService.searchNearbyParcels(sourceTableName || targetTable || parcelModal.searchTable, {
-                    gid: sourceGid,
-                    radius,
-                    includeSelf: true
-                });
-                if (nearbyParcels.length > 0) {
-                    const nearbyFeatures = nearbyParcels
-                        .map((p: any) => {
-                            const pProps = p.properties || {};
-                            const pSoTo = pProps.so_to || pProps.sodoto || '';
-                            const pSoThua = pProps.so_thua || pProps.sothua || '';
-                            const pLoaiDat = pProps.loai_dat || pProps.loaidat || pProps.landType || '';
-                            const pSourceGid = Number(pProps.gid ?? pProps.id);
-                            const pGeometry = p.geometry;
-                            const pSourceTableName = String(pProps.tableName || pProps.table_name || sourceTableName || targetTable || parcelModal.searchTable || '').trim();
-
-                            if (!pGeometry) return null;
-                            const f = format.readFeature(pGeometry, {
-                                dataProjection: 'EPSG:9210',
-                                featureProjection: 'EPSG:3857'
-                            }) as Feature;
-                            if (!f) return null;
-
-                            f.set('sodoto', pSoTo);
-                            f.set('sothua', pSoThua);
-                            f.set('loaidat', pLoaiDat);
-                            if (Number.isFinite(pSourceGid) && pSourceGid > 0) {
-                                f.set('gid', pSourceGid);
-                            }
-                            if (pSourceTableName) {
-                                f.set('source_table', pSourceTableName);
-                            }
-                            const isPrimary = Number.isFinite(pSourceGid) && pSourceGid > 0 && pSourceGid === sourceGid;
-                            f.set('is_primary', isPrimary);
-                            f.set('is_nearby', !isPrimary);
-                            return f;
-                        })
-                        .filter(Boolean) as Feature[];
-
-                    if (nearbyFeatures.length > 0) {
-                        editSource.current.clear();
-                        editSource.current.addFeatures(nearbyFeatures);
-                        const selectedByGid = nearbyFeatures.find((f) => Number(f.get('gid')) === sourceGid) || nearbyFeatures[0];
-                        if (selectedByGid) {
-                            selectInteraction.current?.getFeatures().clear();
-                            selectInteraction.current?.getFeatures().push(selectedByGid);
-                            updateSelectionState(selectedByGid);
-                            updateVerticesFromFeature(selectedByGid);
-                        }
-                        updateFeatureListState();
-                    }
-                }
-            }
-
-            const extent = editSource.current.getExtent();
-            if (!isExtentEmpty(extent)) {
-                mapInstance.current?.getView().fit(extent, { padding: [100, 100, 100, 100], duration: 800, maxZoom: 20 });
-            }
-
-            setParcelModal({ ...parcelModal, isOpen: false, soTo: '', soThua: '', searchTable: '' });
-            setParcelList([]);
-        } catch (e: any) {
-            console.error('Lỗi khi chọn thửa đất:', e);
-            setDialog({ isOpen: true, type: 'error', title: 'Lỗi', message: e.message || 'Không thể chọn thửa đất. Vui lòng thử lại.' });
-        } finally {
-            setIsMapLoading(false);
-        }
-    };
-
-    const handleProcessManualInput = (inputText: string) => {
+   const handleProcessManualInput = (inputText: string) => {
         try {
             const lines = inputText.trim().split(/[\n;]+/);
             const coords = lines.map(line => {
@@ -1159,81 +573,9 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         } catch (e: any) { setDialog({ isOpen: true, type: 'error', title: 'Lỗi', message: e.message }); }
     };
 
-    const detectProjection = (geoJson: any): string => {
-        let coord: number[] | null = null;
-        const findCoord = (arr: any[]): number[] | null => {
-            if (arr.length >= 2 && typeof arr[0] === 'number' && typeof arr[1] === 'number') return arr as number[];
-            if (Array.isArray(arr[0])) return findCoord(arr[0]);
-            return null;
-        };
 
-        if (geoJson.type === 'FeatureCollection' && geoJson.features?.length > 0) {
-            const geom = geoJson.features[0].geometry;
-            if (geom && geom.coordinates) coord = findCoord(geom.coordinates);
-        } else if (geoJson.type === 'Feature' && geoJson.geometry) {
-             const geom = geoJson.geometry;
-             if (geom && geom.coordinates) coord = findCoord(geom.coordinates);
-        } else if (geoJson.coordinates) {
-            coord = findCoord(geoJson.coordinates);
-        }
 
-        if (coord) {
-            const [x, y] = coord;
-            if (Math.abs(x) > 180 || Math.abs(y) > 90) return 'EPSG:9210';
-        }
-        return 'EPSG:4326';
-    };
 
-    const validateGeometry = (geometry: any): string | null => {
-        if (!geometry) return 'Hình vẽ không hợp lệ';
-        
-        let coords: any[] = [];
-        let coordsArray = []
-        
-        if (geometry instanceof Polygon) {
-            coords = geometry.getCoordinates()[0];
-        } else if (geometry instanceof MultiPolygon) {
-            const polyCoords = geometry.getCoordinates();
-            if (polyCoords.length > 0 && polyCoords[0].length > 0) {
-                coords = polyCoords[0][0];
-            }
-        } else {
-            return 'Loại hình học không hỗ trợ';
-        }
-        
-        if (coords.length < 4) return 'Polygon cần tối thiểu 3 đỉnh (≥4 khi tính điểm khóp)';
-        
-        const area = getArea(geometry);
-        if (area === 0) return 'Polygon có diện tích bằng 0';
-        if (area < 1) return `Diện tích quá nhỏ (${area.toFixed(2)}m²). Kiểm tra lại tọa độ.`;
-        
-        for (let i = 0; i < coords.length - 2; i++) {
-            for (let j = i + 2; j < coords.length - 1; j++) {
-                const [x1, y1] = coords[i];
-                const [x2, y2] = coords[i + 1];
-                const [x3, y3] = coords[j];
-                const [x4, y4] = coords[j + 1];
-                
-                const denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
-                if (Math.abs(denom) < 0.0001) continue;
-                
-                const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
-                const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / denom;
-                
-                if (t > 0.0001 && t < 0.9999 && u > 0.0001 && u < 0.9999) {
-                    return 'Polygon tự giao nhau (self-intersection). Kiểm tra lại đỉnh.';
-                }
-            }
-        }
-        
-        const first = coords[0];
-        const last = coords[coords.length - 1];
-        if (Math.abs(first[0] - last[0]) > 0.01 || Math.abs(first[1] - last[1]) > 0.01) {
-            return 'Polygon chưa khép lại (đỉnh đầu≠đỉnh cuối).';
-        }
-        
-        return null;
-    };
 
     const applyImportedFeatures = (features: Feature[], projectionLabel: string, sourceLabel: string, skippedMessage?: string) => {
         if (features.length === 0) {
@@ -1282,7 +624,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                 const content = JSON.parse(text);
                 const format = new GeoJSON();
                 
-                const guessed = detectProjection(content);
+                const guessed = detectGeoJsonProjection(content);
                 const guessedDataProj = guessed === 'EPSG:9210' ? registerDynamicVn2000(centralMeridian, projectionZone) : guessed;
                 console.log("Detected Projection:", guessedDataProj);
 
@@ -1386,7 +728,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
             return;
         }
 
-        const validationError = validateGeometry(geom);
+        const validationError = validateEditorGeometry(geom);
         if (validationError) {
             setDialog({ isOpen: true, type: 'error', title: 'Lỗi hình học', message: validationError });
             return;
@@ -1466,7 +808,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
             return;
         }
 
-        const invalidGeoms = features.filter(f => validateGeometry(f.getGeometry()));
+        const invalidGeoms = features.filter(f => validateEditorGeometry(f.getGeometry()));
         if (invalidGeoms.length > 0) {
             setDialog({ isOpen: true, type: 'error', title: 'Lỗi hình học', message: `${invalidGeoms.length} đối tượng có lỗi topology.` });
             return;
@@ -1552,50 +894,27 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     };
 
     const handleExportGeoJSON = () => {
-        const features = editSource.current.getFeatures();
-        if (features.length === 0) return;
-
-        const geojson = new GeoJSON().writeFeaturesObject(features, {
-            dataProjection: 'EPSG:4326',
-            featureProjection: 'EPSG:3857'
-        }) as any;
-
-        exportGeoJsonFile(geojson, `GeoMaster_${Date.now()}.geojson`);
+        exportFeaturesGeoJson(editSource.current.getFeatures());
     };
 
     const handleExportShpZip = async () => {
-        const features = editSource.current.getFeatures();
-        if (features.length === 0) return;
-
         try {
-            const geojson = new GeoJSON().writeFeaturesObject(features, {
-                dataProjection: 'EPSG:4326',
-                featureProjection: 'EPSG:3857'
-            }) as any;
-
-            await exportShpZipFile(geojson, `GeoMaster_${Date.now()}.zip`);
+            await exportFeaturesShpZip(editSource.current.getFeatures());
         } catch (e: any) {
-            setDialog({ isOpen: true, type: 'error', title: 'Lỗi export', message: e?.message || 'Không thể xuất SHP vào lúc này.' });
+            setDialog({ isOpen: true, type: 'error', title: 'L?i export', message: e?.message || 'Kh?ng th? xu?t SHP v?o l?c n?y.' });
         }
     };
 
     const handleExportDXF = () => {
-        const features = editSource.current.getFeatures();
-        if (features.length === 0) {
-            setDialog({ isOpen: true, type: 'error', title: 'Lỗi export', message: 'Không có dữ liệu để xuất DXF.' });
-            return;
-        }
-
         try {
-            const geojson = new GeoJSON().writeFeaturesObject(features, {
-                dataProjection: 'EPSG:4326',
-                featureProjection: 'EPSG:3857'
-            }) as any;
-
-            exportDxfFile(geojson, `GeoMaster_${coordSystem}_${Date.now()}.dxf`, coordSystem);
-            setDialog({ isOpen: true, type: 'success', title: 'Xuất thành công', message: `File DXF (${coordSystem}) đã được tải xuống. Mở bằng AutoCAD hoặc MicroStation.` });
+            const exported = exportFeaturesDxf(editSource.current.getFeatures(), coordSystem);
+            if (!exported) {
+                setDialog({ isOpen: true, type: 'error', title: 'L?i export', message: 'Kh?ng c? d? li?u ?? xu?t DXF.' });
+                return;
+            }
+            setDialog({ isOpen: true, type: 'success', title: 'Xu?t th?nh c?ng', message: `File DXF (${coordSystem}) ?? ???c t?i xu?ng. M? b?ng AutoCAD ho?c MicroStation.` });
         } catch (e: any) {
-            setDialog({ isOpen: true, type: 'error', title: 'Lỗi export', message: e?.message || 'Không thể xuất DXF vào lúc này.' });
+            setDialog({ isOpen: true, type: 'error', title: 'L?i export', message: e?.message || 'Kh?ng th? xu?t DXF v?o l?c n?y.' });
         }
     };
 
@@ -1657,336 +976,6 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         const feature = editSource.current.getFeatures().find(f => getUid(f) === uid);
         if (feature) handleSaveFeature(feature);
     };
-
-    // ==================== SPLIT / MERGE HANDLERS ====================
-
-    const handleSplitFeature = () => {
-        if (!selectedFeature) {
-            setDialog({ isOpen: true, type: 'error', title: 'Lỗi', message: 'Vui lòng chọn một thửa đất để tách.' });
-            return;
-        }
-        const soToVal = selectedFeature.get('sodoto') || '';
-        const soThuaVal = selectedFeature.get('sothua') || '';
-        if (!soToVal || !soThuaVal) {
-            setDialog({ isOpen: true, type: 'error', title: 'Lỗi', message: 'Thửa đất cần có số tờ và số thửa trước khi tách.' });
-            return;
-        }
-        setSplitModal({ isOpen: true });
-    };
-
-    const handleOpenSplitModal = (soTo: string, soThuaStart: number) => {
-        setSplitModal({ isOpen: false });
-        splitConfigRef.current = { soTo, soThuaStart };
-        featureToSplitRef.current = selectedFeature;
-        setIsSplitMode(true);
-        setActiveInteraction('DRAW');
-    };
-
-    const handleMergeFeatures = () => {
-        const selectedFeatures = selectInteraction.current?.getFeatures().getArray() || [];
-        if (selectedFeatures.length < 2) {
-            setDialog({
-                isOpen: true,
-                type: 'info',
-                title: 'Hướng dẫn gộp thửa',
-                message: 'Vui lòng chọn ít nhất 2 thửa đất trên bản đồ để gộp.\n\nMẹo: Nhấn giữ phím SHIFT hoặc CTRL và click chuột vào các thửa đất (hoặc click trên danh sách thửa bên phải) để chọn nhiều thửa.'
-            });
-            return;
-        }
-        // Check all selected features have sodoto and sothua
-        const featuresWithAttr = selectedFeatures.filter((f: any) => f.get('sodoto') && f.get('sothua'));
-        if (featuresWithAttr.length < selectedFeatures.length) {
-            setDialog({ isOpen: true, type: 'error', title: 'Lỗi', message: 'Tất cả các thửa đất được chọn cần có số tờ và số thửa trước khi gộp.' });
-            return;
-        }
-        const selectedFeats = featuresWithAttr.map((f: any) => ({
-            sodoto: f.get('sodoto'),
-            sothua: f.get('sothua'),
-            area: getArea(f.getGeometry() as any),
-            feature: f
-        }));
-        setMergeModal({ isOpen: true, selectedFeatures: selectedFeats });
-    };
-
-    const executeMerge = (soTo: string, soThua: string) => {
-        setMergeModal({ isOpen: false, selectedFeatures: [] });
-        const originalFeatures = mergeModal.selectedFeatures;
-        if (originalFeatures.length < 2) return;
-
-        try {
-            const polygons = originalFeatures.map(f => f.feature.getGeometry()).filter(g => g instanceof Polygon) as Polygon[];
-            if (polygons.length < 2) {
-                setDialog({ isOpen: true, type: 'error', title: 'Lỗi', message: 'Không đủ polygon hợp lệ để gộp.' });
-                return;
-            }
-
-            pushHistorySnapshot();
-
-            const mergedPolygon = mergePolygons(polygons);
-            if (!mergedPolygon) {
-                setDialog({ isOpen: true, type: 'error', title: 'Lỗi', message: 'Không thể gộp các thửa đất.' });
-                return;
-            }
-
-            // Create new feature
-            const newFeature = new Feature({ geometry: mergedPolygon });
-            newFeature.set('sodoto', soTo);
-            newFeature.set('sothua', soThua);
-            newFeature.set('loaidat', originalFeatures[0].feature.get('loaidat') || '');
-            newFeature.set('is_primary', true);
-
-            // Remove original features
-            originalFeatures.forEach(f => editSource.current.removeFeature(f.feature));
-
-            // Add merged feature
-            editSource.current.addFeature(newFeature);
-            setSelectedFeature(newFeature);
-            updateVerticesFromFeature(newFeature);
-            updateFeatureListState();
-
-            const originalInfo = originalFeatures.map(f => ({ sodoto: f.sodoto, sothua: f.sothua, area: f.area }));
-            const mergedInfo = [{ sodoto: soTo, sothua: soThua, area: getArea(mergedPolygon) }];
-
-            setSplitMergeResultModal({
-                isOpen: true,
-                type: 'merge',
-                originalFeatures: originalInfo,
-                newFeatures: mergedInfo
-            });
-        } catch (err: any) {
-            setDialog({ isOpen: true, type: 'error', title: 'Lỗi', message: err.message || 'Không thể gộp thửa đất.' });
-        }
-    };
-
-    const executeSplit = (cutGeom: LineString | Polygon, featureToSplit?: Feature, config?: { soTo: string; soThuaStart: number }) => {
-        const feature = featureToSplit || featureToSplitRef.current || selectedFeature;
-        const splitConfig = config || splitConfigRef.current;
-
-        if (!feature || !splitConfig) {
-            return;
-        }
-
-        const { soTo, soThuaStart } = splitConfig;
-
-        try {
-            pushHistorySnapshot();
-
-            const featureGeometry = feature.getGeometry();
-            let originalPolygon: Polygon | null = null;
-            if (featureGeometry instanceof Polygon) {
-                originalPolygon = featureGeometry;
-            } else if (featureGeometry instanceof MultiPolygon) {
-                const polygons = featureGeometry.getPolygons();
-                originalPolygon = polygons[0] || null;
-            }
-
-            if (!originalPolygon) {
-                setDialog({ isOpen: true, type: 'error', title: 'Lỗi', message: 'Thửa đất cần tách phải là vùng polygon hợp lệ.' });
-                setIsSplitMode(false);
-                setActiveInteraction('SELECT');
-                return;
-            }
-
-            const originalArea = getArea(originalPolygon);
-            const originalInfo = {
-                sodoto: feature.get('sodoto'),
-                sothua: feature.get('sothua'),
-                area: originalArea
-            };
-
-            let newPolygons: Polygon[] = [];
-
-            {
-                const ring = originalPolygon.getCoordinates()[0] as [number, number][];
-                const lineCoords = (cutGeom instanceof Polygon ? cutGeom.getCoordinates()[0] : cutGeom.getCoordinates()) as [number, number][];
-
-                type SplitIntersection = {
-                    point: [number, number];
-                    lineIndex: number;
-                    lineT: number;
-                    lineDistance: number;
-                    ringIndex: number;
-                    ringT: number;
-                    ringPosition: number;
-                };
-
-                const segmentIntersections = (a: [number, number], b: [number, number], c: [number, number], d: [number, number]) => {
-                    const r = [b[0] - a[0], b[1] - a[1]];
-                    const s = [d[0] - c[0], d[1] - c[1]];
-                    const denom = r[0] * s[1] - r[1] * s[0];
-                    const cross = (p: [number, number], q: [number, number], origin: [number, number]) => (p[0] - origin[0]) * (q[1] - origin[1]) - (p[1] - origin[1]) * (q[0] - origin[0]);
-                    const lineLengthSq = r[0] * r[0] + r[1] * r[1];
-                    const ringLengthSq = s[0] * s[0] + s[1] * s[1];
-                    if (lineLengthSq === 0 || ringLengthSq === 0) return [];
-
-                    if (Math.abs(denom) < 1e-9) {
-                        if (Math.abs(cross(c, b, a)) > 0.001 || Math.abs(cross(d, b, a)) > 0.001) return [];
-
-                        const projected = [
-                            { point: c, lineT: ((c[0] - a[0]) * r[0] + (c[1] - a[1]) * r[1]) / lineLengthSq, ringT: 0 },
-                            { point: d, lineT: ((d[0] - a[0]) * r[0] + (d[1] - a[1]) * r[1]) / lineLengthSq, ringT: 1 },
-                        ].filter(({ lineT }) => lineT >= -1e-9 && lineT <= 1 + 1e-9);
-
-                        return projected.map(({ point, lineT, ringT }) => ({
-                            point: [...point] as [number, number],
-                            lineIndex: 0,
-                            lineT,
-                            lineDistance: 0,
-                            ringIndex: 0,
-                            ringT,
-                            ringPosition: 0
-                        }));
-                    }
-
-                    const u = ((c[0] - a[0]) * r[1] - (c[1] - a[1]) * r[0]) / denom;
-                    const t = ((c[0] - a[0]) * s[1] - (c[1] - a[1]) * s[0]) / denom;
-                    if (t < -1e-9 || t > 1 + 1e-9 || u < -1e-9 || u > 1 + 1e-9) return [];
-                    return [{
-                        point: [a[0] + t * r[0], a[1] + t * r[1]] as [number, number],
-                        lineIndex: 0,
-                        lineT: t,
-                        lineDistance: 0,
-                        ringIndex: 0,
-                        ringT: u,
-                        ringPosition: 0
-                    }];
-                };
-
-                const lineLengths: number[] = [0];
-                for (let i = 0; i < lineCoords.length - 1; i++) {
-                    const a = lineCoords[i];
-                    const b = lineCoords[i + 1];
-                    lineLengths.push(lineLengths[i] + Math.hypot(b[0] - a[0], b[1] - a[1]));
-                }
-
-                const intersections: SplitIntersection[] = [];
-                for (let li = 0; li < lineCoords.length - 1; li++) {
-                    for (let ri = 0; ri < ring.length - 1; ri++) {
-                        const hits = segmentIntersections(lineCoords[li], lineCoords[li + 1], ring[ri], ring[ri + 1]);
-                        hits.forEach((hit) => {
-                            hit.lineIndex = li;
-                            hit.ringIndex = ri;
-                            hit.lineDistance = lineLengths[li] + hit.lineT * Math.hypot(lineCoords[li + 1][0] - lineCoords[li][0], lineCoords[li + 1][1] - lineCoords[li][1]);
-                            hit.ringPosition = ri + hit.ringT;
-                            if (!intersections.some(existing => Math.hypot(existing.point[0] - hit.point[0], existing.point[1] - hit.point[1]) < 0.001)) {
-                                intersections.push(hit);
-                            }
-                        });
-                    }
-                }
-
-                intersections.sort((a, b) => a.lineDistance - b.lineDistance);
-                if (intersections.length < 2) {
-                    setDialog({ isOpen: true, type: 'error', title: 'Lỗi', message: 'Đường cắt phải đi xuyên qua thửa đất.' });
-                    setIsSplitMode(false);
-                    setActiveInteraction('SELECT');
-                    return;
-                }
-
-                const startHit = intersections[0];
-                const endHit = intersections[intersections.length - 1];
-                const ringStart = startHit.ringPosition <= endHit.ringPosition ? startHit : endHit;
-                const ringEnd = startHit.ringPosition <= endHit.ringPosition ? endHit : startHit;
-
-                const cutPath = [startHit.point];
-                for (let i = startHit.lineIndex + 1; i <= endHit.lineIndex; i++) {
-                    cutPath.push(lineCoords[i]);
-                }
-                cutPath.push(endHit.point);
-
-                const ringPathForward = [ringStart.point];
-                for (let i = ringStart.ringIndex + 1; i <= ringEnd.ringIndex; i++) {
-                    ringPathForward.push(ring[i]);
-                }
-                ringPathForward.push(ringEnd.point);
-
-                const ringPathBackward = [ringEnd.point];
-                for (let i = ringEnd.ringIndex + 1; i < ring.length - 1; i++) {
-                    ringPathBackward.push(ring[i]);
-                }
-                for (let i = 0; i <= ringStart.ringIndex; i++) {
-                    ringPathBackward.push(ring[i]);
-                }
-                ringPathBackward.push(ringStart.point);
-
-                const cutFromRingStartToEnd = ringStart === startHit ? cutPath : [...cutPath].reverse();
-                const cutFromRingEndToStart = [...cutFromRingStartToEnd].reverse();
-
-                const closeRing = (coords: [number, number][]) => {
-                    const cleaned = coords.filter((coord, index) => index === 0 || Math.hypot(coord[0] - coords[index - 1][0], coord[1] - coords[index - 1][1]) > 0.001);
-                    const first = cleaned[0];
-                    const last = cleaned[cleaned.length - 1];
-                    if (first && last && Math.hypot(first[0] - last[0], first[1] - last[1]) > 0.001) {
-                        cleaned.push([...first] as [number, number]);
-                    }
-                    return cleaned;
-                };
-
-                [
-                    closeRing([...ringPathForward, ...cutFromRingEndToStart.slice(1)]),
-                    closeRing([...ringPathBackward, ...cutFromRingStartToEnd.slice(1)])
-                ].forEach((coords) => {
-                    if (coords.length >= 4) {
-                        const poly = new Polygon([coords]);
-                        if (getArea(poly) > 0.01) {
-                            newPolygons.push(poly);
-                        }
-                    }
-                });
-            }
-
-            if (newPolygons.length < 2) {
-                setDialog({ isOpen: true, type: 'error', title: 'Lỗi', message: 'Không thể tách thửa với hình cắt này.' });
-                setIsSplitMode(false);
-                setActiveInteraction('SELECT');
-                return;
-            }
-
-            // Remove original feature
-            editSource.current.removeFeature(feature);
-
-            // Create features with sequential numbers
-            const newFeatures: Feature[] = newPolygons.map((poly, idx) => {
-                const f = createFeatureFromPolygon(poly, feature, soTo, String(soThuaStart + idx));
-                return f;
-            });
-
-            editSource.current.addFeatures(newFeatures);
-            setSelectedFeature(newFeatures[0]);
-            updateVerticesFromFeature(newFeatures[0]);
-            updateFeatureListState();
-
-            setSplitMergeResultModal({
-                isOpen: true,
-                type: 'split',
-                originalFeatures: [originalInfo],
-                newFeatures: newFeatures.map((f, i) => ({
-                    sodoto: f.get('sodoto'),
-                    sothua: f.get('sothua'),
-                    area: getArea(f.getGeometry() as any)
-                }))
-            });
-        } catch (err: any) {
-            setDialog({ isOpen: true, type: 'error', title: 'Lỗi', message: err.message || 'Không thể tách thửa đất.' });
-        }
-
-        setIsSplitMode(false);
-        setActiveInteraction('SELECT');
-    };
-
-    const handleConfirmSplitMergeResult = () => {
-        setSplitMergeResultModal({ isOpen: false, type: 'split', originalFeatures: [], newFeatures: [] });
-    };
-
-    const handleCancelSplitMode = () => {
-        setIsSplitMode(false);
-        setActiveInteraction('SELECT');
-        splitConfigRef.current = null;
-        featureToSplitRef.current = null;
-    };
-
-    const canSplit = !!selectedFeature && featuresList.length === 1 && !!selectedFeature.get('sodoto') && !!selectedFeature.get('sothua');
-    const canMerge = selectedFeatureUids.length >= 2;
 
     return (
         <div className="flex h-full w-full bg-[#05070a] overflow-hidden font-sans text-white">

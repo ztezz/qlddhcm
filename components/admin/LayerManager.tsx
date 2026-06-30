@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { adminService, hasAnyPermission } from '../../services/apiClient';
+import { adminService } from '../../services/apiClient';
 import { parcelApi } from '../../services/parcelApi';
 import { WMSLayerConfig, BasemapConfig } from '../../types';
 import { Layers, Database, Plus, Edit2, Trash2, X, Eye, EyeOff, Save, Table, Link2Off, RefreshCw, Map as MapIcon, CheckCircle2, Globe, AlertCircle, Check, ShieldAlert, Lock, Tags, Info, Sun, DatabaseZap, Search, Shield, Wrench, GripVertical } from 'lucide-react';
@@ -18,6 +18,7 @@ import {
     stripScopeMarker
 } from '../../utils/layerManagerHelpers';
 import ParcelGeoJsonImportModal from './ParcelGeoJsonImportModal';
+import { useLayerManagerPermissions } from '../../hooks/useLayerManagerPermissions';
 
 interface LayerManagerProps {
     dbStatus: any;
@@ -73,20 +74,22 @@ const LayerManager: React.FC<LayerManagerProps> = ({ dbStatus, permissions = [] 
         targetName: ''
     });
 
-    const canCreateTable = hasAnyPermission(permissions, ['CREATE_TABLES', 'MANAGE_TABLES']);
-    const canEditTable = hasAnyPermission(permissions, ['EDIT_TABLES', 'MANAGE_TABLES']);
-    const canDeleteTable = hasAnyPermission(permissions, ['DELETE_TABLES', 'MANAGE_TABLES']);
-    const canSyncTable = hasAnyPermission(permissions, ['SYNC_TABLES', 'MANAGE_TABLES']);
-    const canRepairTable = hasAnyPermission(permissions, ['REPAIR_TABLES', 'MANAGE_TABLES']);
-    const canImportGeoJsonParcels = hasAnyPermission(permissions, ['IMPORT_PARCELS', 'CREATE_TABLES', 'MANAGE_TABLES']);
-    const canCreateLayer = hasAnyPermission(permissions, ['CREATE_LAYERS', 'MANAGE_LAYERS']);
-    const canEditLayer = hasAnyPermission(permissions, ['EDIT_LAYERS', 'MANAGE_LAYERS']);
-    const canDeleteLayer = hasAnyPermission(permissions, ['DELETE_LAYERS', 'MANAGE_LAYERS']);
-    const canToggleLayer = hasAnyPermission(permissions, ['TOGGLE_LAYERS', 'MANAGE_LAYERS']);
-    const canCreateBasemap = hasAnyPermission(permissions, ['CREATE_BASEMAPS', 'MANAGE_BASEMAPS']);
-    const canEditBasemap = hasAnyPermission(permissions, ['EDIT_BASEMAPS', 'MANAGE_BASEMAPS']);
-    const canDeleteBasemap = hasAnyPermission(permissions, ['DELETE_BASEMAPS', 'MANAGE_BASEMAPS']);
-    const canReorderMapConfig = hasAnyPermission(permissions, ['REORDER_MAP_LAYERS', 'MANAGE_LAYERS', 'MANAGE_BASEMAPS']);
+    const {
+        canCreateTable,
+        canEditTable,
+        canDeleteTable,
+        canSyncTable,
+        canRepairTable,
+        canImportGeoJsonParcels,
+        canCreateLayer,
+        canEditLayer,
+        canDeleteLayer,
+        canToggleLayer,
+        canCreateBasemap,
+        canEditBasemap,
+        canDeleteBasemap,
+        canReorderMapConfig
+    } = useLayerManagerPermissions(permissions);
 
     useEffect(() => { loadData(); }, []);
 
