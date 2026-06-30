@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { adminService } from '../../services/mockBackend';
+import { adminService } from '../../services/apiClient';
 import { LandPriceConfig } from '../../types';
 import { Calculator, Plus, Edit2, Trash2, X, Save, DollarSign, Tag } from 'lucide-react';
 

@@ -1,13 +1,12 @@
 
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { User, UserRole } from '../types';
-import { gisService, adminService, DEFAULT_ROLE_PERMISSIONS, hasAnyPermission } from '../services/mockBackend';
+import { gisService, adminService, DEFAULT_ROLE_PERMISSIONS, hasAnyPermission } from '../services/apiClient';
 import { parcelApi } from '../services/parcelApi';
 import { getUid } from 'ol/util';
-import proj4 from "proj4";
-import { register } from 'ol/proj/proj4';
 import { exportDxfFile, exportGeoJsonFile, exportShpZipFile } from '../utils/parcelExport';
 import { importDxfAsPolygonFeatures } from '../utils/dxfImport';
+import { registerDynamicVn2000, Vn2000Zone } from '../utils/editorProjection';
 
 // Icons
 import { Search, X, RefreshCw } from 'lucide-react';
@@ -53,26 +52,6 @@ import { getArea, getLength } from 'ol/sphere';
 import { isEmpty as isExtentEmpty } from 'ol/extent';
 import { click } from 'ol/events/condition';
 
-// Register VN-2000 (EPSG:9210 - Kinh tuyến trục 105.75 cho khu vực miền Nam)
-proj4.defs("EPSG:9210", "+proj=tmerc +lat_0=0 +lon_0=105.75 +k=0.9999 +x_0=500000 +y_0=0 +ellps=WGS84 +towgs84=-191.904,-39.303,-111.450,0,0,0,0 +units=m +no_defs");
-register(proj4);
-
-// Helper functions for dynamic VN-2000 projections by province
-const getVn2000ProjName = (centralMeridian: number, zone: '3' | '6') => {
-    return `VN2000_DYNAMIC_${centralMeridian.toString().replace('.', '_')}_${zone}`;
-};
-
-const registerDynamicVn2000 = (centralMeridian: number, zone: '3' | '6') => {
-    const name = getVn2000ProjName(centralMeridian, zone);
-    if (!proj.get(name)) {
-        const scaleFactor = zone === '3' ? 0.9999 : 0.9996;
-        const def = `+proj=tmerc +lat_0=0 +lon_0=${centralMeridian} +k=${scaleFactor} +x_0=500000 +y_0=0 +ellps=WGS84 +towgs84=-191.904,-39.303,-111.450,0,0,0,0 +units=m +no_defs`;
-        proj4.defs(name, def);
-        register(proj4);
-    }
-    return name;
-};
-
 const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     const mapElement = useRef<HTMLDivElement>(null);
     const mapInstance = useRef<Map | null>(null);
@@ -98,7 +77,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
 
     // Advanced GIS features states
     const [centralMeridian, setCentralMeridian] = useState<number>(105.75);
-    const [projectionZone, setProjectionZone] = useState<'3' | '6'>('3');
+    const [projectionZone, setProjectionZone] = useState<Vn2000Zone>('3');
     const [drawShape, setDrawShape] = useState<'Polygon' | 'Rectangle' | 'Circle'>('Polygon');
     const [showVertexNumbers, setShowVertexNumbers] = useState<boolean>(true);
     const [showSegmentLengths, setShowSegmentLengths] = useState<boolean>(false);

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { adminService } from '../../services/mockBackend';
+import { adminService } from '../../services/apiClient';
 import { SystemLog } from '../../types';
 import {
     Activity, RefreshCw, Search, Download, Filter,

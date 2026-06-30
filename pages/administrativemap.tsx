@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react'
 import { User, WMSLayerConfig } from '../types';
 import Seo from '../components/Seo';
 import { API_URL } from '../services/parcelApi';
-import { gisService } from '../services/mockBackend';
+import { gisService } from '../services/apiClient';
 import { parcelApi, AdminSearchResult } from '../services/parcelApi';
 
 // Hooks

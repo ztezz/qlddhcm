@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { User, SystemNotification } from '../types';
-import { notificationService } from '../services/mockBackend';
+import { notificationService } from '../services/apiClient';
 import { Bell, RefreshCw, Search, Info, AlertTriangle, CheckCircle2, ShieldAlert, Filter } from 'lucide-react';
 
 interface NotificationsProps {

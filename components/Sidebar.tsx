@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { User, MenuItem, getRoleLabel } from '../types';
 import { LogOut, LogIn, ChevronLeft, ChevronRight, ChevronDown, User as UserIcon, Database, HelpCircle, ExternalLink, Bell, X, Menu, FolderCog, QrCode, ArrowRightLeft } from 'lucide-react';
 import * as Icons from 'lucide-react';
-import { adminService, notificationService, API_URL } from '../services/mockBackend';
+import { adminService, notificationService, API_URL } from '../services/apiClient';
 
 interface SidebarProps {
   user: User | null;

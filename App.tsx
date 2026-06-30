@@ -5,7 +5,7 @@ import Sidebar from './components/Sidebar';
 import Login from './pages/Login';
 import { User, UserRole, SystemSetting } from './types';
 import { ShieldAlert, RefreshCw, WifiOff } from 'lucide-react';
-import { adminService, authService } from './services/mockBackend';
+import { adminService, authService } from './services/apiClient';
 
 // Lazy Load các trang để tối ưu tốc độ tải bundle ban đầu
 const MapPage = lazy(() => import('./pages/MapPage'));

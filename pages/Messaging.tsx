@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { User, Message, UserRole } from '../types';
-import { messageService, adminService, API_URL } from '../services/mockBackend';
+import { messageService, adminService, API_URL } from '../services/apiClient';
 import { Send, User as UserIcon, Search, Loader2, Mail, Inbox, SendHorizontal, Trash2, ArrowLeft, Plus, RefreshCw, Clock, ShieldCheck, CheckCircle2, AlertTriangle, Check, CheckCheck, Undo2, Bold, Italic, List, Smile, CornerUpLeft, Trash, X, Info } from 'lucide-react';
 
 interface MessagingProps {

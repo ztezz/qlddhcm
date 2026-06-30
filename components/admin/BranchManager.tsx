@@ -1,6 +1,6 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { adminService, hasAnyPermission } from '../../services/mockBackend';
+import { adminService, hasAnyPermission } from '../../services/apiClient';
 import { Branch } from '../../types';
 import {
     AlertTriangle,

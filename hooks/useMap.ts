@@ -1,7 +1,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { User, LandParcel, WMSLayerConfig, BasemapConfig } from '../types';
-import { gisService, API_URL } from '../services/mockBackend';
+import { gisService, API_URL } from '../services/apiClient';
 import { parcelApi, ParcelDTO } from '../services/parcelApi';
 import { Coordinate } from 'ol/coordinate';
 import Map from 'ol/Map';

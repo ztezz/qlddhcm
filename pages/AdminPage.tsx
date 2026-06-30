@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { ShieldAlert } from 'lucide-react';
 import AdminMenu from '../components/AdminMenu';
 import ParcelManager from './ParcelManager';
-import { adminService, ADMIN_TAB_PERMISSIONS, DEFAULT_ROLE_PERMISSIONS } from '../services/mockBackend';
+import { adminService, ADMIN_TAB_PERMISSIONS, DEFAULT_ROLE_PERMISSIONS } from '../services/apiClient';
 
 import UserManager from '../components/admin/UserManager';
 import PermissionManager from '../components/admin/PermissionManager';

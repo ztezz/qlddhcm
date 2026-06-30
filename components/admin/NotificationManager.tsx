@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { notificationService, hasAnyPermission } from '../../services/mockBackend';
+import { notificationService, hasAnyPermission } from '../../services/apiClient';
 import { SystemNotification, UserRole, getRoleLabel } from '../../types';
 import { Bell, Send, Trash2, Plus, X, Loader2, AlertCircle, Info, CheckCircle2, AlertTriangle, Search, RefreshCw, Users, ShieldAlert, Eye, Edit2, Clock } from 'lucide-react';
 

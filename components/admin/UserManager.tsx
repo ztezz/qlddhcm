@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { adminService, hasAnyPermission } from '../../services/mockBackend';
+import { adminService, hasAnyPermission } from '../../services/apiClient';
 import { User, UserRole, Branch, getRoleLabel } from '../../types';
 import { Users, Plus, Edit2, Trash2, X, Save, Loader2, Key, Check, AlertTriangle, CheckCircle2, Info, Ban, UserCheck, MessageCircle, MessageCircleOff, Search, Filter, ShieldCheck, Eye, RefreshCw } from 'lucide-react';
 

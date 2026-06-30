@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { adminService, gisService, DEFAULT_ROLE_PERMISSIONS, PERMISSIONS_LIST } from '../../services/mockBackend';
+import { adminService, gisService, DEFAULT_ROLE_PERMISSIONS, PERMISSIONS_LIST } from '../../services/apiClient';
 import { RoleConfig, UserRole, Branch } from '../../types';
 import {
     ShieldCheck, Loader2, Info, CheckSquare, Square,

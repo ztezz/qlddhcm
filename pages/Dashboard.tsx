@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState, useRef } from 'react';
-import { statsService } from '../services/mockBackend';
+import { statsService } from '../services/apiClient';
 import { DashboardStats, User } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, Sector, LineChart, Line } from 'recharts';
 import { FileText, Download, RefreshCw, DollarSign, Scaling, Building, ChevronRight, Activity, Loader2, AlertTriangle, ListFilter, Wifi, Image, ArrowUpRight, ArrowDownRight, Minus, PieChart as PieChartIcon, Table2, CalendarDays, RotateCcw, Braces } from 'lucide-react';

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Loader2, X, MapPin, User, Filter, AlertTriangle, Crosshair, Navigation, ChevronDown } from 'lucide-react';
-import { gisService } from '../../services/mockBackend';
+import { gisService } from '../../services/apiClient';
 import { LandParcel } from '../../types';
 import { removeAccents } from '../../utils/helpers';
 

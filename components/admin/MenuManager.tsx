@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { adminService, hasAnyPermission } from '../../services/mockBackend';
+import { adminService, hasAnyPermission } from '../../services/apiClient';
 import { MenuItem, UserRole, getRoleLabel } from '../../types';
 import { LayoutList, Plus, Edit2, Trash2, X, Save, Info, Search, Link as LinkIcon, Globe, Monitor, Check, Loader2, AlertTriangle, CheckCircle2, GripVertical, RefreshCw, FolderCog, ChevronUp, ChevronDown } from 'lucide-react';
 import * as Icons from 'lucide-react';

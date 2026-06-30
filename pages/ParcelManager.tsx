@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { parcelApi, ParcelDTO, SpatialTable } from '../services/parcelApi';
-import { hasAnyPermission } from '../services/mockBackend';
+import { hasAnyPermission } from '../services/apiClient';
 import { RefreshCw, Database, Layers, CheckCircle2, AlertTriangle, Info, Plus, FileSpreadsheet } from 'lucide-react';
 import { removeAccents, toSafeFilename } from '../utils/helpers';
 import { ParcelExportFormat, exportDxfFile, exportGeoJsonFile, exportShpZipFile } from '../utils/parcelExport';

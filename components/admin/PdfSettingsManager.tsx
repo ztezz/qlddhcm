@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { adminService, hasAnyPermission } from '../../services/mockBackend';
+import { adminService, hasAnyPermission } from '../../services/apiClient';
 import { SystemSetting } from '../../types';
 import { Save, RefreshCw, AlertTriangle, Image as ImageIcon, Trash2, CheckCircle2, Info, FileText } from 'lucide-react';
 import { PDF_TEMPLATE_PRESETS, getPdfTemplatePreset } from '../../utils/pdfTemplatePresets';
