@@ -205,7 +205,7 @@ const LandPriceLookup: React.FC<LandPriceLookupProps> = ({ user, systemSettings 
                             <Calculator className="text-emerald-400 w-8 h-8" />
                         </div>
                         <div>
-                            <h1 className="text-3xl font-black text-white uppercase tracking-tight">Tra cứu Bảng Giá Đất 2026 - Thành phố Hồ Chi Minh</h1>
+                            <h1 className="text-3xl font-black text-white uppercase tracking-tight">Tra cứu Bảng Giá Đất 2026 - Thành phố Hồ Chí Minh</h1>
                             <p className="text-slate-500 text-sm font-bold uppercase tracking-widest">Hệ thống thông tin giá đất nhà nước</p>
                         </div>
                     </div>

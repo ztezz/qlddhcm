@@ -11,11 +11,24 @@ interface SeoProps {
 const Seo: React.FC<SeoProps> = ({ title, description, keywords, systemSettings }) => {
     useEffect(() => {
         // Tên hệ thống / Suffix tiêu đề
-        const siteName = systemSettings?.system_name || "GeoMaster";
-        const seoTitleSuffix = systemSettings?.seo_title || siteName;
+        const siteName = (systemSettings?.system_name || "GeoMaster").trim();
+        const seoTitleSuffix = (systemSettings?.seo_title || siteName).trim();
         
         // Cập nhật Title
-        document.title = `${title} | ${seoTitleSuffix}`;
+        let finalTitle = title;
+        if (seoTitleSuffix && seoTitleSuffix !== title) {
+            finalTitle = `${title} | ${seoTitleSuffix}`;
+        }
+
+        // Loại bỏ các khoảng trắng thừa và dấu gạch đứng bị lặp lại hoặc dư thừa
+        finalTitle = finalTitle
+            .replace(/\|+/g, '|')        // Thay thế các dấu || liên tiếp bằng một dấu |
+            .replace(/\s*\|\s*/g, ' | ')  // Chuẩn hóa khoảng trắng quanh dấu |
+            .trim()
+            .replace(/^\|\s*/, '')        // Loại bỏ dấu | ở đầu
+            .replace(/\s*\|$/, '');       // Loại bỏ dấu | ở cuối
+
+        document.title = finalTitle;
 
         // Cập nhật Meta Description
         const finalDesc = description || systemSettings?.seo_description || "Hệ thống WebGIS GeoMaster - Tra cứu quy hoạch và quản lý đất đai chuyên nghiệp.";
