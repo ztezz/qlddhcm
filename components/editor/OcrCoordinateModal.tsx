@@ -326,7 +326,42 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
         setPoints(parsedPoints);
     };
 
-    // Preprocess image to paint transparent background with solid white
+    // Convert image to grayscale and binarize using adaptive average thresholding
+    const binarizeImage = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
+        const imgData = ctx.getImageData(0, 0, width, height);
+        const data = imgData.data;
+        const len = data.length;
+        
+        // Calculate average relative luminance
+        let sumLuminance = 0;
+        for (let i = 0; i < len; i += 4) {
+            const r = data[i];
+            const g = data[i+1];
+            const b = data[i+2];
+            const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+            data[i] = gray; // store temporary gray value in R channel
+            sumLuminance += gray;
+        }
+        
+        const avgLuminance = sumLuminance / (len / 4);
+        
+        // Apply high-contrast binarization threshold
+        // Pixels darker than 85% of average become solid black (0), others white (255)
+        const threshold = avgLuminance * 0.85;
+        
+        for (let i = 0; i < len; i += 4) {
+            const gray = data[i];
+            const val = gray < threshold ? 0 : 255;
+            data[i] = val;
+            data[i+1] = val;
+            data[i+2] = val;
+            data[i+3] = 255; // fully opaque
+        }
+        
+        ctx.putImageData(imgData, 0, 0);
+    };
+
+    // Preprocess image to scale up 2x and convert to sharp binary black & white
     const preprocessImage = (src: string): Promise<string> => {
         return new Promise((resolve) => {
             const img = new Image();
@@ -339,17 +374,29 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
                     return;
                 }
                 
-                canvas.width = img.width;
-                canvas.height = img.height;
+                // Scale up by 2x to enlarge small fonts for better OCR recognition
+                const scale = 2.0;
+                canvas.width = img.width * scale;
+                canvas.height = img.height * scale;
+                
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
                 
                 // Solid white background
                 ctx.fillStyle = '#ffffff';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 
-                // Draw image on top
-                ctx.drawImage(img, 0, 0);
+                // Draw image upscaled
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                 
-                // Output as JPEG (retaining white background)
+                // Apply binarization
+                try {
+                    binarizeImage(ctx, canvas.width, canvas.height);
+                } catch (e) {
+                    console.error('Binarization error:', e);
+                }
+                
+                // Output as high quality JPEG
                 const jpegData = canvas.toDataURL('image/jpeg', 0.95);
                 resolve(jpegData);
             };
