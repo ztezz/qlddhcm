@@ -135,14 +135,66 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
         return cleaned;
     };
 
+    // Preprocess raw token to fix common OCR character misrecognitions
+    const preprocessOcrToken = (token: string): string => {
+        let t = token.trim();
+        
+        // Remove brackets, pipes at ends
+        t = t.replace(/^[|\[\]\s]+/, '').replace(/[|\[\]\s]+$/, '');
+        
+        // Replace leading letters with numbers:
+        // I, l, i followed by digits -> 1
+        t = t.replace(/^[Ili](?=\d)/, '1');
+        // J, j followed by digits -> strip it (often J12... means 12...)
+        t = t.replace(/^[Jj](?=\d)/, '');
+        // s, S followed by digits -> 5
+        t = t.replace(/^[sS](?=\d)/, '5');
+        
+        return t;
+    };
+
+    // Split token containing merged coordinates (e.g. "12375088031587343472")
+    const splitMergedToken = (token: string): string[] => {
+        // Remove all non-digits to analyze length
+        const digits = token.replace(/[^0-9]/g, '');
+        if (digits.length >= 15 && digits.length <= 22) {
+            // Find transition to Easting-like prefix (starts with 4, 5, 6 or merged 14, 15, 16)
+            let splitIdx = 10;
+            for (let i = 8; i <= 12; i++) {
+                const substring = digits.slice(i);
+                if (/^(4|5|6|14|15|16)/.test(substring)) {
+                    splitIdx = i;
+                    break;
+                }
+            }
+            const part1 = digits.slice(0, splitIdx);
+            const part2 = digits.slice(splitIdx);
+            return [part1, part2];
+        }
+        return [token];
+    };
+
     // Auto-fix decimal points for coordinates without separators
     const autoFixCoordinateDecimals = (valStr: string, type: 'northing' | 'easting'): string => {
-        const cleanDigits = valStr.replace(/[^0-9]/g, '');
+        let cleanDigits = valStr.replace(/[^0-9]/g, '');
         if (cleanDigits.length >= 8 && !valStr.includes('.') && !valStr.includes(',')) {
+            // For Easting: check if it has 10 digits and starts with 14, 15, 16 (merged pipe)
+            if (type === 'easting' && cleanDigits.length === 10 && /^(14|15|16)/.test(cleanDigits)) {
+                cleanDigits = cleanDigits.slice(1); // strip the leading '1'
+            }
+
             if (type === 'northing') {
                 return cleanDigits.slice(0, 7) + '.' + cleanDigits.slice(7);
             } else {
                 return cleanDigits.slice(0, 6) + '.' + cleanDigits.slice(6);
+            }
+        } else if (type === 'easting' && valStr.includes('.')) {
+            // Even if it has a decimal point, check if it has a merged leading '1' (e.g. 1587347.657)
+            const numericValue = parseFloat(valStr);
+            if (numericValue >= 1000000 && /^(14|15|16)/.test(cleanDigits)) {
+                // Strip the leading '1'
+                const cleanWithoutOne = cleanDigits.slice(1);
+                return cleanWithoutOne.slice(0, 6) + '.' + cleanWithoutOne.slice(6);
             }
         }
         return valStr;
@@ -157,8 +209,18 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
             // Clean spacing around commas/dots (e.g. "1237527 , 999" -> "1237527,999")
             let processedLine = line.replace(/([0-9]+)\s*([.,])\s*([0-9]+)/g, '$1$2$3');
             
-            // Extract tokens using spaces/pipes/slashes/semicolons
-            const tokens = processedLine.trim().split(/[\s\t|/\\;]+/).filter(Boolean);
+            // Extract raw tokens using spaces/pipes/slashes/semicolons
+            const rawTokens = processedLine.trim().split(/[\s\t|/\\;]+/).filter(Boolean);
+
+            // Preprocess and split merged tokens
+            const tokens: string[] = [];
+            rawTokens.forEach(t => {
+                const preprocessed = preprocessOcrToken(t);
+                if (preprocessed) {
+                    const split = splitMergedToken(preprocessed);
+                    tokens.push(...split);
+                }
+            });
 
             const numberCandidates: { raw: string; cleaned: string; value: number }[] = [];
             let indexStr = '';
@@ -179,19 +241,35 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
                 let foundPair = false;
 
                 if (coordSystem === 'VN2000') {
-                    // Try range-based matching:
-                    // Northing (X): 900,000 to 3,000,000
-                    // Easting (Y): 100,000 to 900,000
-                    const northings = numberCandidates.filter(c => c.value >= 900000 && c.value <= 3000000);
-                    const eastings = numberCandidates.filter(c => c.value >= 100000 && c.value < 900000);
+                    // Pre-apply decimal auto-fixing to candidate values for range matching
+                    const fixedCandidates = numberCandidates.map(c => {
+                        let fixedCleaned = c.cleaned;
+                        if (!c.cleaned.includes('.') && !c.cleaned.includes(',')) {
+                            const cleanDigits = c.cleaned.replace(/[^0-9]/g, '');
+                            if (cleanDigits.length === 10 && /^(14|15|16)/.test(cleanDigits)) {
+                                fixedCleaned = autoFixCoordinateDecimals(c.cleaned, 'easting');
+                            } else if (cleanDigits.length >= 9) {
+                                fixedCleaned = autoFixCoordinateDecimals(c.cleaned, 'northing');
+                            } else if (cleanDigits.length >= 8) {
+                                fixedCleaned = autoFixCoordinateDecimals(c.cleaned, 'easting');
+                            }
+                        } else {
+                            fixedCleaned = autoFixCoordinateDecimals(c.cleaned, 'easting');
+                        }
+                        
+                        const fixedValue = parseFloat(fixedCleaned);
+                        return { ...c, fixedCleaned, fixedValue };
+                    });
+
+                    const northings = fixedCandidates.filter(c => c.fixedValue >= 900000 && c.fixedValue <= 3000000);
+                    const eastings = fixedCandidates.filter(c => c.fixedValue >= 100000 && c.fixedValue < 900000);
 
                     if (northings.length >= 1 && eastings.length >= 1) {
-                        xStr = northings[0].cleaned;
-                        yStr = eastings[0].cleaned;
+                        xStr = northings[0].fixedCleaned;
+                        yStr = eastings[0].fixedCleaned;
                         foundPair = true;
                     }
                 } else {
-                    // WGS84: Latitude (8 to 30) and Longitude (95 to 115)
                     const lats = numberCandidates.filter(c => c.value >= 8 && c.value <= 30);
                     const lons = numberCandidates.filter(c => c.value >= 95 && c.value <= 115);
 
@@ -202,31 +280,35 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
                     }
                 }
 
-                // Fallback: match the two largest numbers in the line if range-based matching didn't trigger
+                // Fallback: match the two largest numbers
                 if (!foundPair) {
                     const sorted = [...numberCandidates].sort((a, b) => b.value - a.value);
                     if (sorted.length >= 2) {
                         const val1 = sorted[0];
                         const val2 = sorted[1];
-                        if (val1.value > val2.value) {
-                            xStr = val1.cleaned;
-                            yStr = val2.cleaned;
+                        
+                        let xTemp = val1.cleaned;
+                        let yTemp = val2.cleaned;
+                        if (coordSystem === 'VN2000') {
+                            xTemp = autoFixCoordinateDecimals(xTemp, 'northing');
+                            yTemp = autoFixCoordinateDecimals(yTemp, 'easting');
+                        }
+
+                        const v1 = parseFloat(xTemp);
+                        const v2 = parseFloat(yTemp);
+
+                        if (v1 > v2) {
+                            xStr = xTemp;
+                            yStr = yTemp;
                         } else {
-                            xStr = val2.cleaned;
-                            yStr = val1.cleaned;
+                            xStr = yTemp;
+                            yStr = xTemp;
                         }
                         foundPair = true;
                     }
                 }
 
                 if (foundPair) {
-                    // Apply decimal auto-fixing for coordinates that lost their decimal point in OCR
-                    if (coordSystem === 'VN2000') {
-                        xStr = autoFixCoordinateDecimals(xStr, 'northing');
-                        yStr = autoFixCoordinateDecimals(yStr, 'easting');
-                    }
-
-                    // Guess point index: the first small number < 100 in the line that isn't coordinate
                     const indexToken = numberCandidates.find(c => 
                         c.cleaned !== xStr && 
                         c.cleaned !== yStr && 
