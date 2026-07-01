@@ -135,81 +135,117 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
         return cleaned;
     };
 
+    // Auto-fix decimal points for coordinates without separators
+    const autoFixCoordinateDecimals = (valStr: string, type: 'northing' | 'easting'): string => {
+        const cleanDigits = valStr.replace(/[^0-9]/g, '');
+        if (cleanDigits.length >= 8 && !valStr.includes('.') && !valStr.includes(',')) {
+            if (type === 'northing') {
+                return cleanDigits.slice(0, 7) + '.' + cleanDigits.slice(7);
+            } else {
+                return cleanDigits.slice(0, 6) + '.' + cleanDigits.slice(6);
+            }
+        }
+        return valStr;
+    };
+
     // Intelligent parser for recognized text
     const parseOcrText = (text: string) => {
         const lines = text.split('\n');
         const parsedPoints: ParsedPoint[] = [];
 
         lines.forEach((line) => {
-            // Find all blocks of text that look like numbers (with optional commas/dots)
-            // Example match: "1", "2.098.123,45", "589.123,54"
-            const tokens = line.trim().split(/[\s\t|/\\-]+/).filter(t => {
-                const cleaned = t.replace(/[^0-9.,]/g, '');
-                return cleaned.length > 0 && /\d/.test(cleaned);
+            // Clean spacing around commas/dots (e.g. "1237527 , 999" -> "1237527,999")
+            let processedLine = line.replace(/([0-9]+)\s*([.,])\s*([0-9]+)/g, '$1$2$3');
+            
+            // Extract tokens using spaces/pipes/slashes/semicolons
+            const tokens = processedLine.trim().split(/[\s\t|/\\;]+/).filter(Boolean);
+
+            const numberCandidates: { raw: string; cleaned: string; value: number }[] = [];
+            let indexStr = '';
+
+            tokens.forEach((token) => {
+                const cleaned = cleanNumberString(token);
+                if (cleaned) {
+                    const val = parseFloat(cleaned);
+                    if (!isNaN(val)) {
+                        numberCandidates.push({ raw: token, cleaned, value: val });
+                    }
+                }
             });
 
-            if (tokens.length >= 2) {
-                // If there are 3 tokens: assume format [Index, X, Y] or [Index, Y, X]
-                // If 2 tokens: assume [X, Y] or [Y, X]
-                let idxStr = '';
-                let val1Raw = '';
-                let val2Raw = '';
+            if (numberCandidates.length >= 2) {
+                let xStr = '';
+                let yStr = '';
+                let foundPair = false;
 
-                if (tokens.length >= 3) {
-                    idxStr = tokens[0].replace(/[^0-9]/g, '');
-                    val1Raw = tokens[1];
-                    val2Raw = tokens[2];
+                if (coordSystem === 'VN2000') {
+                    // Try range-based matching:
+                    // Northing (X): 900,000 to 3,000,000
+                    // Easting (Y): 100,000 to 900,000
+                    const northings = numberCandidates.filter(c => c.value >= 900000 && c.value <= 3000000);
+                    const eastings = numberCandidates.filter(c => c.value >= 100000 && c.value < 900000);
+
+                    if (northings.length >= 1 && eastings.length >= 1) {
+                        xStr = northings[0].cleaned;
+                        yStr = eastings[0].cleaned;
+                        foundPair = true;
+                    }
                 } else {
-                    val1Raw = tokens[0];
-                    val2Raw = tokens[1];
+                    // WGS84: Latitude (8 to 30) and Longitude (95 to 115)
+                    const lats = numberCandidates.filter(c => c.value >= 8 && c.value <= 30);
+                    const lons = numberCandidates.filter(c => c.value >= 95 && c.value <= 115);
+
+                    if (lats.length >= 1 && lons.length >= 1) {
+                        xStr = lats[0].cleaned;
+                        yStr = lons[0].cleaned;
+                        foundPair = true;
+                    }
                 }
 
-                const val1Cleaned = cleanNumberString(val1Raw);
-                const val2Cleaned = cleanNumberString(val2Raw);
-
-                const val1 = parseFloat(val1Cleaned);
-                const val2 = parseFloat(val2Cleaned);
-
-                if (!isNaN(val1) && !isNaN(val2)) {
-                    // Try to identify which is X (Northing: usually 7 digits ~ 1,000,000 to 2,500,000)
-                    // and Y (Easting: usually 6 digits ~ 100,000 to 900,000)
-                    let xStr = '';
-                    let yStr = '';
-
-                    if (coordSystem === 'VN2000') {
-                        // In VN-2000:
-                        // X is Northing (vertical, e.g. 1.2M - 2.1M)
-                        // Y is Easting (horizontal, e.g. 300K - 900K)
-                        if (val1 > 900000 && val2 < 900000) {
-                            xStr = val1Cleaned;
-                            yStr = val2Cleaned;
-                        } else if (val2 > 900000 && val1 < 900000) {
-                            xStr = val2Cleaned;
-                            yStr = val1Cleaned;
+                // Fallback: match the two largest numbers in the line if range-based matching didn't trigger
+                if (!foundPair) {
+                    const sorted = [...numberCandidates].sort((a, b) => b.value - a.value);
+                    if (sorted.length >= 2) {
+                        const val1 = sorted[0];
+                        const val2 = sorted[1];
+                        if (val1.value > val2.value) {
+                            xStr = val1.cleaned;
+                            yStr = val2.cleaned;
                         } else {
-                            // Fallback to order in table
-                            xStr = val1Cleaned;
-                            yStr = val2Cleaned;
+                            xStr = val2.cleaned;
+                            yStr = val1.cleaned;
                         }
+                        foundPair = true;
+                    }
+                }
+
+                if (foundPair) {
+                    // Apply decimal auto-fixing for coordinates that lost their decimal point in OCR
+                    if (coordSystem === 'VN2000') {
+                        xStr = autoFixCoordinateDecimals(xStr, 'northing');
+                        yStr = autoFixCoordinateDecimals(yStr, 'easting');
+                    }
+
+                    // Guess point index: the first small number < 100 in the line that isn't coordinate
+                    const indexToken = numberCandidates.find(c => 
+                        c.cleaned !== xStr && 
+                        c.cleaned !== yStr && 
+                        c.value > 0 && 
+                        c.value < 100
+                    );
+                    
+                    if (indexToken) {
+                        indexStr = Math.round(indexToken.value).toString();
                     } else {
-                        // WGS84: val1/val2 are lat/lon (e.g. 10.123456, 106.123456)
-                        if (val1 < 90 && val2 > 90) {
-                            // Latitude, Longitude (X: Lat, Y: Lon)
-                            xStr = val1Cleaned;
-                            yStr = val2Cleaned;
-                        } else if (val2 < 90 && val1 > 90) {
-                            // Longitude, Latitude
-                            xStr = val2Cleaned;
-                            yStr = val1Cleaned;
-                        } else {
-                            xStr = val1Cleaned;
-                            yStr = val2Cleaned;
+                        const match = line.trim().match(/^(\d+)\b/);
+                        if (match) {
+                            indexStr = match[1];
                         }
                     }
 
                     parsedPoints.push({
                         id: 'pt-' + Math.random().toString(36).substr(2, 9),
-                        indexStr: idxStr || (parsedPoints.length + 1).toString(),
+                        indexStr: indexStr || (parsedPoints.length + 1).toString(),
                         xStr,
                         yStr
                     });
