@@ -361,12 +361,77 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
         ctx.putImageData(imgData, 0, 0);
     };
 
-    // Preprocess image to scale up 2x and convert to sharp binary black & white
+    // Detect and erase vertical grid lines (table borders) to prevent Tesseract from skipping columns
+    const eraseVerticalGridLines = (canvas: HTMLCanvasElement) => {
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        const width = canvas.width;
+        const height = canvas.height;
+        const imgData = ctx.getImageData(0, 0, width, height);
+        const data = imgData.data;
+        
+        // Count dark pixels in each column
+        const colDarkCounts = new Array(width).fill(0);
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const idx = (width * y + x) << 2;
+                const r = data[idx];
+                const g = data[idx+1];
+                const b = data[idx+2];
+                const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+                if (gray < 180) {
+                    colDarkCounts[x]++;
+                }
+            }
+        }
+        
+        // Find columns where more than 65% of the vertical pixels are dark (vertical lines)
+        const lineThreshold = height * 0.65;
+        const verticalLineColumns: number[] = [];
+        for (let x = 0; x < width; x++) {
+            if (colDarkCounts[x] > lineThreshold) {
+                verticalLineColumns.push(x);
+            }
+        }
+        
+        // Erase detected vertical lines by painting them white
+        if (verticalLineColumns.length > 0) {
+            verticalLineColumns.forEach(x => {
+                for (let y = 0; y < height; y++) {
+                    const idx = (width * y + x) << 2;
+                    data[idx] = 255;   // R
+                    data[idx+1] = 255; // G
+                    data[idx+2] = 255; // B
+                }
+            });
+            ctx.putImageData(imgData, 0, 0);
+        }
+    };
+
+    // Preprocess image: remove vertical lines, scale up 2x, and add 20px padding
     const preprocessImage = (src: string): Promise<string> => {
         return new Promise((resolve) => {
             const img = new Image();
             img.crossOrigin = 'anonymous';
             img.onload = () => {
+                // Step 1: Draw to a temporary canvas of original size to erase vertical grid lines
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = img.width;
+                tempCanvas.height = img.height;
+                const tempCtx = tempCanvas.getContext('2d');
+                if (!tempCtx) {
+                    resolve(src);
+                    return;
+                }
+                tempCtx.drawImage(img, 0, 0);
+                
+                try {
+                    eraseVerticalGridLines(tempCanvas);
+                } catch (e) {
+                    console.error('Error erasing vertical lines:', e);
+                }
+
+                // Step 2: Upscale by 2x and add 20px white padding around edges
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
                 if (!ctx) {
@@ -374,10 +439,7 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
                     return;
                 }
                 
-                // Scale up by 2x to enlarge small fonts for better OCR recognition
                 const scale = 2.0;
-                // Add 20px solid white padding around edges. 
-                // Tesseract struggles to read characters right up against the image boundary.
                 const padding = 20; 
                 
                 canvas.width = img.width * scale + padding * 2;
@@ -390,17 +452,10 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
                 ctx.fillStyle = '#ffffff';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 
-                // Draw image upscaled with padding offset
-                ctx.drawImage(img, padding, padding, img.width * scale, img.height * scale);
+                // Draw upscaled clean image with padding offset
+                ctx.drawImage(tempCanvas, padding, padding, img.width * scale, img.height * scale);
                 
-                // Apply binarization
-                try {
-                    binarizeImage(ctx, canvas.width, canvas.height);
-                } catch (e) {
-                    console.error('Binarization error:', e);
-                }
-                
-                // Output as high quality JPEG
+                // Output as high quality JPEG (Tesseract will handle binarization internally using Otsu)
                 const jpegData = canvas.toDataURL('image/jpeg', 0.95);
                 resolve(jpegData);
             };
