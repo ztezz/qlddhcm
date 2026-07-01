@@ -150,6 +150,17 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
         // s, S followed by digits -> 5
         t = t.replace(/^[sS](?=\d)/, '5');
         
+        // Fix merged index column (e.g. "11237533,246" or "21237533,246")
+        // If the clean number has 11 digits and the 2nd and 3rd digits represent a valid VN2000 northing prefix (12, 21, 22, 20),
+        // it means the 1-digit row index was merged with the Northing coordinate.
+        const cleanDigits = t.replace(/[^0-9]/g, '');
+        if (cleanDigits.length === 11) {
+            const secondAndThird = cleanDigits.slice(1, 3);
+            if (secondAndThird === '12' || secondAndThird === '21' || secondAndThird === '22' || secondAndThird === '20') {
+                t = t.slice(1);
+            }
+        }
+        
         return t;
     };
 
@@ -313,9 +324,18 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
                         }
                     }
 
+                    // Validate guessed index (must be a small positive number < 100)
+                    let finalIndex = '';
+                    if (indexStr) {
+                        const parsedIdx = parseInt(indexStr, 10);
+                        if (!isNaN(parsedIdx) && parsedIdx > 0 && parsedIdx < 100) {
+                            finalIndex = parsedIdx.toString();
+                        }
+                    }
+
                     parsedPoints.push({
                         id: 'pt-' + Math.random().toString(36).substr(2, 9),
-                        indexStr: indexStr || (parsedPoints.length + 1).toString(),
+                        indexStr: finalIndex || (parsedPoints.length + 1).toString(),
                         xStr,
                         yStr
                     });
