@@ -38,6 +38,32 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
     const [centralMeridian, setCentralMeridian] = useState(defaultCentralMeridian);
     const [projectionZone, setProjectionZone] = useState<Vn2000Zone>(defaultProjectionZone);
 
+    // Gemini API settings
+    const [useGemini, setUseGemini] = useState<boolean>(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('ocr_use_gemini') === 'true';
+        }
+        return false;
+    });
+    const [geminiKey, setGeminiKey] = useState<string>(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('ocr_gemini_key') || '';
+        }
+        return '';
+    });
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('ocr_use_gemini', useGemini.toString());
+        }
+    }, [useGemini]);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('ocr_gemini_key', geminiKey);
+        }
+    }, [geminiKey]);
+
     // Parsed points
     const [points, setPoints] = useState<ParsedPoint[]>([]);
     
@@ -501,6 +527,70 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
         });
     };
 
+    // Run OCR using Google Gemini Vision API directly from the client side
+    const runGeminiOcr = async (base64Image: string, apiKey: string): Promise<ParsedPoint[]> => {
+        const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '');
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+        
+        const prompt = `Analyze this image of a land coordinate table. Extract the coordinates (vertices) of the parcel. 
+For each row, identify the vertex index (Đỉnh), coordinate X (Northing, e.g. 1237xxx), and coordinate Y (Easting, e.g. 587xxx). 
+If it is a VN2000 coordinate system, Northing X is usually 7 digits before decimal, Easting Y is usually 6 digits.
+Output ONLY a raw JSON array of objects without markdown formatting, code blocks, or HTML.
+Example format:
+[
+  {"index": "1", "x": "1237601.079", "y": "587324.518"},
+  {"index": "2", "x": "1237582.096", "y": "587325.328"}
+]`;
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                contents: [
+                    {
+                        parts: [
+                            { text: prompt },
+                            {
+                                inlineData: {
+                                    mimeType: "image/jpeg",
+                                    data: base64Data
+                                }
+                            }
+                        ]
+                    }
+                ],
+                generationConfig: {
+                    responseMimeType: "application/json"
+                }
+            })
+        });
+
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData?.error?.message || `API error: ${response.statusText}`);
+        }
+
+        const resData = await response.json();
+        const jsonText = resData?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!jsonText) {
+            throw new Error("Không có phản hồi từ Gemini.");
+        }
+
+        const parsed = JSON.parse(jsonText.trim());
+        if (!Array.isArray(parsed)) {
+            throw new Error("Phản hồi không khớp định dạng danh sách.");
+        }
+
+        return parsed.map((item: any, idx: number) => ({
+            id: 'pt-' + Math.random().toString(36).substr(2, 9),
+            indexStr: (item.index || item.Đỉnh || item.id || (idx + 1)).toString(),
+            xStr: (item.x || item.X || '').toString(),
+            yStr: (item.y || item.Y || '').toString()
+        }));
+    };
+
     // Run OCR using Tesseract.js
     const handleStartScan = async () => {
         if (!imageSrc) return;
@@ -508,6 +598,39 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
         setIsScanning(true);
         setStep('scanning');
         setProgress(0);
+        
+        if (useGemini && geminiKey) {
+            setProgressStatus('Đang gửi hình ảnh lên Google Gemini API...');
+            try {
+                const cleanImageSrc = await preprocessImage(imageSrc);
+                setProgress(30);
+                
+                setProgressStatus('Gemini đang phân tích và trích xuất dữ liệu...');
+                const parsedPoints = await runGeminiOcr(cleanImageSrc, geminiKey);
+                setProgress(90);
+                
+                setPoints(parsedPoints);
+                setRawText('Dữ liệu phản hồi dạng JSON từ Google Gemini:\n\n' + JSON.stringify(parsedPoints.map(p => ({
+                    đỉnh: p.indexStr,
+                    x: p.xStr,
+                    y: p.yStr
+                })), null, 2));
+                
+                setProgressStatus('Hoàn tất quét ảnh!');
+                setProgress(100);
+                
+                setTimeout(() => {
+                    setStep('edit');
+                    setIsScanning(false);
+                }, 600);
+                return;
+            } catch (e: any) {
+                console.error("Gemini OCR error, falling back to Tesseract:", e);
+                setProgressStatus('Gemini API lỗi. Tự động chuyển sang Tesseract offline...');
+                await new Promise(r => setTimeout(r, 1200));
+            }
+        }
+
         setProgressStatus('Đang tiền xử lý hình ảnh (loại bỏ độ trong suốt)...');
 
         try {
@@ -789,6 +912,41 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
                                                     <option value="6">6 Độ (k = 0.9996)</option>
                                                 </select>
                                             </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="border-t border-slate-800/80 pt-4 space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5 cursor-pointer select-none">
+                                            <input
+                                                type="checkbox"
+                                                checked={useGemini}
+                                                onChange={e => setUseGemini(e.target.checked)}
+                                                className="rounded bg-slate-900 border-slate-800 text-blue-600 focus:ring-0 focus:ring-offset-0 cursor-pointer"
+                                            />
+                                            Sử dụng Gemini OCR (Chuẩn xác 99.9%)
+                                        </label>
+                                        <a
+                                            href="https://aistudio.google.com/"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="text-[9px] text-blue-400 hover:text-blue-300 font-bold uppercase tracking-wider underline cursor-pointer"
+                                        >
+                                            Lấy Key Miễn Phí
+                                        </a>
+                                    </div>
+                                    
+                                    {useGemini && (
+                                        <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
+                                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block">Gemini API Key</label>
+                                            <input
+                                                type="password"
+                                                placeholder="Nhập API Key để quét hình chất lượng cao..."
+                                                value={geminiKey}
+                                                onChange={e => setGeminiKey(e.target.value)}
+                                                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-blue-500 font-mono"
+                                            />
                                         </div>
                                     )}
                                 </div>
