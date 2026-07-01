@@ -64,12 +64,17 @@ const LandPriceLookup: React.FC<LandPriceLookupProps> = ({ user, systemSettings 
     useEffect(() => {
         const updateSuggestions = async () => {
             try {
-                const data = await adminService.getLandPriceSuggestions(phuongxa);
+                const data = await adminService.getLandPriceSuggestions(phuongxa, undefined, tenduong);
                 setSuggestions(data);
             } catch (e) {}
         };
         updateSuggestions();
-    }, [phuongxa]);
+    }, [phuongxa, tenduong]);
+
+    useEffect(() => {
+        setTu('');
+        setDen('');
+    }, [tenduong]);
 
     useEffect(() => {
         return () => {

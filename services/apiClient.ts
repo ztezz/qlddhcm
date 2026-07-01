@@ -398,10 +398,11 @@ export const adminService = {
         const data = await apiCall(`/land-prices-2026/wards?t=${Date.now()}`);
         return Array.isArray(data) ? data : [];
     },
-    getLandPriceSuggestions: async (phuongxa?: string, tinhcu?: string): Promise<{streets: string[], fromPoints: string[], toPoints: string[]}> => {
+    getLandPriceSuggestions: async (phuongxa?: string, tinhcu?: string, tenduong?: string): Promise<{streets: string[], fromPoints: string[], toPoints: string[]}> => {
              let qs = `?t=${Date.now()}`;
         if (phuongxa) qs += `&phuongxa=${encodeURIComponent(phuongxa)}`;
         if (tinhcu) qs += `&tinhcu=${encodeURIComponent(tinhcu)}`;
+        if (tenduong) qs += `&tenduong=${encodeURIComponent(tenduong)}`;
         return await apiCall(`/land-prices-2026/suggestions${qs}`);
     },
     searchLandPrices2026: async (

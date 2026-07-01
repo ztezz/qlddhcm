@@ -107,9 +107,10 @@ export default function(pool, logSystemAction) {
     });
 
 
-    // API goi y tong hop (duong, doan) theo phuong/xa + tinh cu.
+    // API goi y tong hop (duong, doan) theo phuong/xa + tinh cu + duong.
     router.get('/land-prices-2026/suggestions', async (req, res) => {
         const { phuongxa, tinhcu } = parseWardLabel(req.query.phuongxa, req.query.tinhcu);
+        const tenduong = String(req.query.tenduong || '').trim();
 
         try {
             const filters = [];
@@ -128,8 +129,19 @@ export default function(pool, logSystemAction) {
             const whereClause = filters.length > 0 ? `WHERE ${filters.join(' AND ')}` : 'WHERE 1=1';
 
             const streets = await pool.query(`SELECT DISTINCT tenduong FROM bang_gia_dat_2026 ${whereClause} AND tenduong IS NOT NULL ORDER BY tenduong ASC`, params);
-            const fromPoints = await pool.query(`SELECT DISTINCT tu FROM bang_gia_dat_2026 ${whereClause} AND tu IS NOT NULL ORDER BY tu ASC`, params);
-            const toPoints = await pool.query(`SELECT DISTINCT den FROM bang_gia_dat_2026 ${whereClause} AND den IS NOT NULL ORDER BY den ASC`, params);
+            
+            // Build separate filters for fromPoints and toPoints, including tenduong if provided
+            const pointsFilters = [...filters];
+            const pointsParams = [...params];
+            let pointsIdx = idx;
+            if (tenduong) {
+                pointsFilters.push(`tenduong = $${pointsIdx++}`);
+                pointsParams.push(tenduong);
+            }
+            const pointsWhereClause = pointsFilters.length > 0 ? `WHERE ${pointsFilters.join(' AND ')}` : 'WHERE 1=1';
+
+            const fromPoints = await pool.query(`SELECT DISTINCT tu FROM bang_gia_dat_2026 ${pointsWhereClause} AND tu IS NOT NULL ORDER BY tu ASC`, pointsParams);
+            const toPoints = await pool.query(`SELECT DISTINCT den FROM bang_gia_dat_2026 ${pointsWhereClause} AND den IS NOT NULL ORDER BY den ASC`, pointsParams);
 
             res.json({
                 streets: streets.rows.map(r => r.tenduong),
