@@ -530,7 +530,7 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
     // Run OCR using Google Gemini Vision API directly from the client side
     const runGeminiOcr = async (base64Image: string, apiKey: string): Promise<ParsedPoint[]> => {
         const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '');
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
         
         const prompt = `Analyze this image of a land coordinate table. Extract the coordinates (vertices) of the parcel. 
 For each row, identify the vertex index (Đỉnh), coordinate X (Northing, e.g. 1237xxx), and coordinate Y (Easting, e.g. 587xxx). 
