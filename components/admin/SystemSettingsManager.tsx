@@ -341,7 +341,7 @@ const SystemSettingsManager: React.FC<SystemSettingsManagerProps> = ({ permissio
         setGeminiTestMsg('Đang gửi truy vấn thử nghiệm (Ping) tới Gemini API...');
 
         try {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName || 'gemini-flash-latest'}:generateContent?key=${apiKey}`;
             const res = await fetch(url, {
                 method: 'POST',
                 headers: {
@@ -556,19 +556,41 @@ const SystemSettingsManager: React.FC<SystemSettingsManagerProps> = ({ permissio
             );
         }
 
+
+
         if (key === 'ocr_gemini_model') {
+            const isCustom = !['gemini-flash-latest', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'].includes(setting.value || 'gemini-flash-latest');
             return (
-                <div className="space-y-1">
+                <div className="space-y-2">
                     <select
                         className={`w-full bg-gray-900 border rounded p-2.5 text-white outline-none font-medium transition-colors ${dirty ? 'border-yellow-500/60 focus:border-yellow-400' : 'border-gray-600 focus:border-blue-500'}`}
-                        value={setting.value || 'gemini-flash-latest'}
-                        onChange={e => updateSettingValue(key, e.target.value)}
+                        value={isCustom ? 'CUSTOM' : (setting.value || 'gemini-flash-latest')}
+                        onChange={e => {
+                            const val = e.target.value;
+                            if (val === 'CUSTOM') {
+                                updateSettingValue(key, '');
+                            } else {
+                                updateSettingValue(key, val);
+                            }
+                        }}
                     >
                         <option value="gemini-flash-latest">gemini-flash-latest (Khuyên dùng - Ổn định cao)</option>
-                        <option value="gemini-2.5-flash">gemini-2.5-flash (Thử nghiệm 2.5)</option>
-                        <option value="gemini-2.0-flash">gemini-2.0-flash (Tốc độ nhanh)</option>
-                        <option value="gemini-1.5-flash">gemini-1.5-flash (Bản cũ 1.5)</option>
+                        <option value="gemini-3.5-flash">gemini-3.5-flash (Thế hệ mới 3.5)</option>
+                        <option value="gemini-2.5-flash">gemini-2.5-flash (Thế hệ 2.5)</option>
+                        <option value="gemini-2.0-flash">gemini-2.0-flash (Thế hệ 2.0)</option>
+                        <option value="gemini-1.5-flash">gemini-1.5-flash (Thế hệ 1.5)</option>
+                        <option value="CUSTOM">Nhập mã mô hình tùy chỉnh...</option>
                     </select>
+                    {isCustom && (
+                        <div className="animate-in slide-in-from-top-1 duration-200">
+                            <input
+                                className={`w-full bg-gray-900 border rounded p-2.5 text-white outline-none font-mono text-xs transition-colors ${dirty ? 'border-yellow-500/60 focus:border-yellow-400' : 'border-gray-600 focus:border-blue-500'}`}
+                                value={setting.value || ''}
+                                placeholder="Nhập tên mô hình, VD: gemini-3.5-pro"
+                                onChange={e => updateSettingValue(key, e.target.value)}
+                            />
+                        </div>
+                    )}
                     {dirty && <p className="text-[10px] text-yellow-500">● Chưa lưu</p>}
                 </div>
             );

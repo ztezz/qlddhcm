@@ -50,7 +50,7 @@ export const SETTING_METADATA: Record<string, { label: string; description: stri
     'pdf_show_signer': { label: 'Hiển thị khối chữ ký', description: 'Bật hoặc tắt phần ngày ký và người ký', type: 'boolean' },
     'ocr_use_gemini': { label: 'Kích hoạt Gemini OCR', description: 'Sử dụng mô hình Google Gemini để nhận diện ranh đất từ ảnh với độ chính xác 99.9%', type: 'boolean' },
     'ocr_gemini_key': { label: 'Gemini API Key', description: 'Khóa API Key miễn phí lấy từ Google AI Studio', type: 'text' },
-    'ocr_gemini_model': { label: 'Mô hình Gemini (Model)', description: 'Chọn phiên bản mô hình AI phù hợp (Ví dụ: gemini-flash-latest, gemini-2.5-flash)', type: 'text' }
+    'ocr_gemini_model': { label: 'Mô hình Gemini (Model)', description: 'Tên định danh mô hình sử dụng (Mặc định: gemini-flash-latest)', type: 'text' }
 };
 
 // ─── Tab → keys mapping ──────────────────────────────────────────────────────
