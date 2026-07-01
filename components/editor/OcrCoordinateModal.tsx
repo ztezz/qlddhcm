@@ -376,8 +376,12 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
                 
                 // Scale up by 2x to enlarge small fonts for better OCR recognition
                 const scale = 2.0;
-                canvas.width = img.width * scale;
-                canvas.height = img.height * scale;
+                // Add 20px solid white padding around edges. 
+                // Tesseract struggles to read characters right up against the image boundary.
+                const padding = 20; 
+                
+                canvas.width = img.width * scale + padding * 2;
+                canvas.height = img.height * scale + padding * 2;
                 
                 ctx.imageSmoothingEnabled = true;
                 ctx.imageSmoothingQuality = 'high';
@@ -386,8 +390,8 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
                 ctx.fillStyle = '#ffffff';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 
-                // Draw image upscaled
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                // Draw image upscaled with padding offset
+                ctx.drawImage(img, padding, padding, img.width * scale, img.height * scale);
                 
                 // Apply binarization
                 try {
@@ -704,6 +708,7 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
                                     <div>
                                         <p className="font-black uppercase tracking-wider mb-1">Mẹo quét ảnh tối ưu:</p>
                                         <ul className="list-disc pl-4 space-y-1 font-bold">
+                                            <li className="text-emerald-400 font-extrabold">Cắt (Crop) sát bảng tọa độ: Hãy cắt ảnh chỉ lấy vùng chứa các cột số (Đỉnh, X, Y) để tránh chữ thừa xung quanh gây nhiễu AI.</li>
                                             <li>Chụp ảnh bảng tọa độ vuông góc, rõ nét và không bị bóng mờ.</li>
                                             <li>Vùng chữ số rõ ràng giúp AI nhận diện đúng 99% các con số.</li>
                                             <li>Sau khi quét, bạn có thể chỉnh sửa lại các điểm bị lệch trước khi dựng hình.</li>
