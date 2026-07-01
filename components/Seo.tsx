@@ -17,18 +17,30 @@ const Seo: React.FC<SeoProps> = ({ title, description, keywords, systemSettings 
         // Cập nhật Title
         let finalTitle = title;
         if (seoTitleSuffix && seoTitleSuffix !== title) {
-            finalTitle = `${title} | ${seoTitleSuffix}`;
+            const lowerTitle = title.toLowerCase().trim();
+            const lowerSuffix = seoTitleSuffix.toLowerCase().trim();
+            if (lowerSuffix.includes(lowerTitle) || lowerTitle.includes(lowerSuffix)) {
+                finalTitle = seoTitleSuffix.length > title.length ? seoTitleSuffix : title;
+            } else {
+                finalTitle = `${title} | ${seoTitleSuffix}`;
+            }
         }
 
-        // Loại bỏ các khoảng trắng thừa và dấu gạch đứng bị lặp lại hoặc dư thừa
-        finalTitle = finalTitle
-            .replace(/\|+/g, '|')        // Thay thế các dấu || liên tiếp bằng một dấu |
-            .replace(/\s*\|\s*/g, ' | ')  // Chuẩn hóa khoảng trắng quanh dấu |
-            .trim()
-            .replace(/^\|\s*/, '')        // Loại bỏ dấu | ở đầu
-            .replace(/\s*\|$/, '');       // Loại bỏ dấu | ở cuối
+        // Tách các phần bằng dấu gạch đứng, làm sạch khoảng trắng, loại bỏ các phần rỗng
+        const parts = finalTitle.split('|').map(p => p.trim()).filter(p => p.length > 0);
+        
+        // Loại bỏ các phần trùng lặp case-insensitive
+        const uniqueParts: string[] = [];
+        const seen = new Set<string>();
+        for (const part of parts) {
+            const lowerPart = part.toLowerCase();
+            if (!seen.has(lowerPart)) {
+                seen.add(lowerPart);
+                uniqueParts.push(part);
+            }
+        }
 
-        document.title = finalTitle;
+        document.title = uniqueParts.join(' | ');
 
         // Cập nhật Meta Description
         const finalDesc = description || systemSettings?.seo_description || "Hệ thống WebGIS GeoMaster - Tra cứu quy hoạch và quản lý đất đai chuyên nghiệp.";
