@@ -1,0 +1,728 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Upload, RefreshCw, Layers, Sparkles, HelpCircle, ArrowLeftRight, Trash2, Plus, Play, CheckCircle } from 'lucide-react';
+import proj4 from 'proj4';
+import * as proj from 'ol/proj';
+import { registerDynamicVn2000, Vn2000Zone } from '../../utils/editorProjection';
+
+interface OcrCoordinateModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    centralMeridian: number;
+    projectionZone: Vn2000Zone;
+    onDrawShape: (coords: [number, number][]) => void;
+}
+
+interface ParsedPoint {
+    id: string;
+    indexStr: string;
+    xStr: string; // Northing
+    yStr: string; // Easting
+}
+
+export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
+    isOpen,
+    onClose,
+    centralMeridian: defaultCentralMeridian,
+    projectionZone: defaultProjectionZone,
+    onDrawShape
+}) => {
+    const [step, setStep] = useState<'upload' | 'scanning' | 'edit'>('upload');
+    const [imageSrc, setImageSrc] = useState<string | null>(null);
+    const [isScanning, setIsScanning] = useState(false);
+    const [progress, setProgress] = useState(0);
+    const [progressStatus, setProgressStatus] = useState('');
+    const [rawText, setRawText] = useState('');
+    
+    // Coordinates settings
+    const [coordSystem, setCoordSystem] = useState<'VN2000' | 'WGS84'>('VN2000');
+    const [centralMeridian, setCentralMeridian] = useState(defaultCentralMeridian);
+    const [projectionZone, setProjectionZone] = useState<Vn2000Zone>(defaultProjectionZone);
+
+    // Parsed points
+    const [points, setPoints] = useState<ParsedPoint[]>([]);
+    
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+    // Reset state on open/close
+    useEffect(() => {
+        if (isOpen) {
+            setStep('upload');
+            setImageSrc(null);
+            setIsScanning(false);
+            setProgress(0);
+            setProgressStatus('');
+            setRawText('');
+            setPoints([]);
+            setCoordSystem('VN2000');
+            setCentralMeridian(defaultCentralMeridian);
+            setProjectionZone(defaultProjectionZone);
+        }
+    }, [isOpen, defaultCentralMeridian, defaultProjectionZone]);
+
+    if (!isOpen) return null;
+
+    // Load Tesseract.js dynamically from CDN
+    const loadTesseract = (): Promise<any> => {
+        return new Promise((resolve, reject) => {
+            if ((window as any).Tesseract) {
+                resolve((window as any).Tesseract);
+                return;
+            }
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/tesseract.js@v5.0.5/dist/tesseract.min.js';
+            script.async = true;
+            script.onload = () => {
+                resolve((window as any).Tesseract);
+            };
+            script.onerror = () => {
+                reject(new Error('Không thể tải thư viện OCR Tesseract từ CDN. Vui lòng kiểm tra kết nối mạng.'));
+            };
+            document.head.appendChild(script);
+        });
+    };
+
+    // Handle Image Upload
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        readImageFile(file);
+    };
+
+    const readImageFile = (file: File) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            if (event.target?.result) {
+                setImageSrc(event.target.result as string);
+            }
+        };
+        reader.readAsDataURL(file);
+    };
+
+    // Clean number string (VN-2000 values: dots for thousands, comma for decimals or vice versa)
+    const cleanNumberString = (str: string): string => {
+        let cleaned = str.replace(/[^0-9.,]/g, '');
+        if (!cleaned) return '';
+        
+        const lastDot = cleaned.lastIndexOf('.');
+        const lastComma = cleaned.lastIndexOf(',');
+        
+        if (lastDot !== -1 && lastComma !== -1) {
+            if (lastComma > lastDot) {
+                // Format: 1.234.567,89 -> remove dots, convert comma to dot
+                return cleaned.replace(/\./g, '').replace(/,/g, '.');
+            } else {
+                // Format: 1,234,567.89 -> remove commas
+                return cleaned.replace(/,/g, '');
+            }
+        } else if (lastComma !== -1) {
+            // Only contains commas: could be thousands separators or single decimal comma
+            const commaCount = (cleaned.match(/,/g) || []).length;
+            if (commaCount === 1) {
+                // Single comma: e.g. 589123,45 -> decimal
+                return cleaned.replace(/,/g, '.');
+            } else {
+                // Multiple commas: e.g. 2,109,123 -> thousands separator
+                return cleaned.replace(/,/g, '');
+            }
+        } else if (lastDot !== -1) {
+            // Only contains dots: could be thousands separators or single decimal dot
+            const dotCount = (cleaned.match(/\./g) || []).length;
+            if (dotCount > 1) {
+                // Multiple dots: e.g. 2.109.123 -> thousands separator
+                return cleaned.replace(/\./g, '');
+            }
+        }
+        return cleaned;
+    };
+
+    // Intelligent parser for recognized text
+    const parseOcrText = (text: string) => {
+        const lines = text.split('\n');
+        const parsedPoints: ParsedPoint[] = [];
+
+        lines.forEach((line) => {
+            // Find all blocks of text that look like numbers (with optional commas/dots)
+            // Example match: "1", "2.098.123,45", "589.123,54"
+            const tokens = line.trim().split(/[\s\t|/\\-]+/).filter(t => {
+                const cleaned = t.replace(/[^0-9.,]/g, '');
+                return cleaned.length > 0 && /\d/.test(cleaned);
+            });
+
+            if (tokens.length >= 2) {
+                // If there are 3 tokens: assume format [Index, X, Y] or [Index, Y, X]
+                // If 2 tokens: assume [X, Y] or [Y, X]
+                let idxStr = '';
+                let val1Raw = '';
+                let val2Raw = '';
+
+                if (tokens.length >= 3) {
+                    idxStr = tokens[0].replace(/[^0-9]/g, '');
+                    val1Raw = tokens[1];
+                    val2Raw = tokens[2];
+                } else {
+                    val1Raw = tokens[0];
+                    val2Raw = tokens[1];
+                }
+
+                const val1Cleaned = cleanNumberString(val1Raw);
+                const val2Cleaned = cleanNumberString(val2Raw);
+
+                const val1 = parseFloat(val1Cleaned);
+                const val2 = parseFloat(val2Cleaned);
+
+                if (!isNaN(val1) && !isNaN(val2)) {
+                    // Try to identify which is X (Northing: usually 7 digits ~ 1,000,000 to 2,500,000)
+                    // and Y (Easting: usually 6 digits ~ 100,000 to 900,000)
+                    let xStr = '';
+                    let yStr = '';
+
+                    if (coordSystem === 'VN2000') {
+                        // In VN-2000:
+                        // X is Northing (vertical, e.g. 1.2M - 2.1M)
+                        // Y is Easting (horizontal, e.g. 300K - 900K)
+                        if (val1 > 900000 && val2 < 900000) {
+                            xStr = val1Cleaned;
+                            yStr = val2Cleaned;
+                        } else if (val2 > 900000 && val1 < 900000) {
+                            xStr = val2Cleaned;
+                            yStr = val1Cleaned;
+                        } else {
+                            // Fallback to order in table
+                            xStr = val1Cleaned;
+                            yStr = val2Cleaned;
+                        }
+                    } else {
+                        // WGS84: val1/val2 are lat/lon (e.g. 10.123456, 106.123456)
+                        if (val1 < 90 && val2 > 90) {
+                            // Latitude, Longitude (X: Lat, Y: Lon)
+                            xStr = val1Cleaned;
+                            yStr = val2Cleaned;
+                        } else if (val2 < 90 && val1 > 90) {
+                            // Longitude, Latitude
+                            xStr = val2Cleaned;
+                            yStr = val1Cleaned;
+                        } else {
+                            xStr = val1Cleaned;
+                            yStr = val2Cleaned;
+                        }
+                    }
+
+                    parsedPoints.push({
+                        id: 'pt-' + Math.random().toString(36).substr(2, 9),
+                        indexStr: idxStr || (parsedPoints.length + 1).toString(),
+                        xStr,
+                        yStr
+                    });
+                }
+            }
+        });
+
+        setPoints(parsedPoints);
+    };
+
+    // Run OCR using Tesseract.js
+    const handleStartScan = async () => {
+        if (!imageSrc) return;
+        
+        setIsScanning(true);
+        setStep('scanning');
+        setProgress(0);
+        setProgressStatus('Đang tải thư viện OCR Tesseract...');
+
+        try {
+            const Tesseract = await loadTesseract();
+            setProgressStatus('Đang khởi chạy bộ máy nhận diện...');
+            
+            const result = await Tesseract.recognize(
+                imageSrc,
+                'vie+eng', // Load Vietnamese and English
+                {
+                    logger: (m: any) => {
+                        if (m.status === 'recognizing text') {
+                            setProgressStatus(`Đang nhận diện chữ viết: ${Math.round(m.progress * 100)}%`);
+                            setProgress(Math.round(m.progress * 100));
+                        }
+                    }
+                }
+            );
+
+            const text = result.data.text;
+            setRawText(text);
+            setProgressStatus('Hoàn tất nhận dạng. Đang phân tích tọa độ...');
+            
+            // Wait slightly for a smooth transition
+            setTimeout(() => {
+                parseOcrText(text);
+                setStep('edit');
+                setIsScanning(false);
+            }, 600);
+
+        } catch (e: any) {
+            setIsScanning(false);
+            setStep('upload');
+            alert(e.message || 'Lỗi quét ảnh OCR.');
+        }
+    };
+
+    // Swap X and Y coordinates for all points
+    const handleSwapXY = () => {
+        setPoints(prev => prev.map(p => ({
+            ...p,
+            xStr: p.yStr,
+            yStr: p.xStr
+        })));
+    };
+
+    // Update cell value
+    const handleUpdatePoint = (id: string, field: 'indexStr' | 'xStr' | 'yStr', value: string) => {
+        setPoints(prev => prev.map(p => {
+            if (p.id === id) {
+                return { ...p, [field]: value };
+            }
+            return p;
+        }));
+    };
+
+    // Delete point
+    const handleDeletePoint = (id: string) => {
+        setPoints(prev => prev.filter(p => p.id !== id));
+    };
+
+    // Add empty point
+    const handleAddPoint = () => {
+        setPoints(prev => [
+            ...prev,
+            {
+                id: 'pt-' + Math.random().toString(36).substr(2, 9),
+                indexStr: (prev.length + 1).toString(),
+                xStr: '',
+                yStr: ''
+            }
+        ]);
+    };
+
+    // Plot Points and Draw Shape
+    const handlePlotAndDraw = () => {
+        try {
+            if (points.length < 3) {
+                alert("Cần ít nhất 3 tọa độ điểm để dựng hình thửa đất.");
+                return;
+            }
+
+            const transformedCoords: [number, number][] = [];
+            const vnProj = coordSystem === 'VN2000' ? registerDynamicVn2000(centralMeridian, projectionZone) : null;
+
+            for (const p of points) {
+                const x = parseFloat(p.xStr);
+                const y = parseFloat(p.yStr);
+
+                if (isNaN(x) || isNaN(y)) {
+                    alert(`Tọa độ tại điểm thứ ${p.indexStr} không hợp lệ.`);
+                    return;
+                }
+
+                if (coordSystem === 'VN2000') {
+                    // OpenLayers expects coordinates in [Easting, Northing] or [Y, X] order!
+                    // X in land certificate = Northing
+                    // Y in land certificate = Easting
+                    // So we pass [Y, X] to projection transform
+                    const geomPoint = proj.transform([y, x], vnProj!, 'EPSG:3857');
+                    transformedCoords.push(geomPoint as [number, number]);
+                } else {
+                    // WGS84: standard [Lon, Lat] or [Y, X]
+                    const geomPoint = proj.fromLonLat([y, x]);
+                    transformedCoords.push(geomPoint as [number, number]);
+                }
+            }
+
+            // Close the polygon if not already closed
+            if (transformedCoords.length > 0) {
+                const first = transformedCoords[0];
+                const last = transformedCoords[transformedCoords.length - 1];
+                if (first[0] !== last[0] || first[1] !== last[1]) {
+                    transformedCoords.push([...first] as [number, number]);
+                }
+            }
+
+            onDrawShape(transformedCoords);
+            onClose();
+        } catch (e: any) {
+            alert(`Lỗi khi dựng hình: ${e.message}`);
+        }
+    };
+
+    // Render SVG Preview of the points
+    const renderSvgPreview = () => {
+        const validCoords = points
+            .map(p => ({ x: parseFloat(p.xStr), y: parseFloat(p.yStr) }))
+            .filter(c => !isNaN(c.x) && !isNaN(c.y));
+
+        if (validCoords.length < 3) {
+            return (
+                <div className="w-full h-full bg-slate-950/50 rounded-2xl flex flex-col items-center justify-center text-slate-600 border border-slate-800 border-dashed p-8 text-center text-[10px] font-bold uppercase tracking-wider">
+                    Chờ đủ 3 tọa độ hợp lệ để xem trước hình học
+                </div>
+            );
+        }
+
+        // Bounding box calculation
+        const xs = validCoords.map(c => c.x);
+        const ys = validCoords.map(c => c.y);
+        const minX = Math.min(...xs);
+        const maxX = Math.max(...xs);
+        const minY = Math.min(...ys);
+        const maxY = Math.max(...ys);
+
+        const width = maxX - minX || 1;
+        const height = maxY - minY || 1;
+        
+        // Scale to 140x140 with 15px padding inside a 170x170 box
+        const size = 170;
+        const pad = 20;
+        const scaleX = (size - pad * 2) / width;
+        const scaleY = (size - pad * 2) / height;
+        const scale = Math.min(scaleX, scaleY);
+
+        // Center alignment calculations
+        const offsetX = pad + (size - pad * 2 - width * scale) / 2;
+        const offsetY = pad + (size - pad * 2 - height * scale) / 2;
+
+        // Map real-world coordinates to SVG pixels
+        // X_real is Northing (vertical, increases upwards), so Y_svg = size - mappedY
+        // Y_real is Easting (horizontal, increases rightwards), so X_svg = mappedX
+        const svgPoints = validCoords.map(c => {
+            const mappedX = offsetX + (c.y - minY) * scale;
+            const mappedY = size - (offsetY + (c.x - minX) * scale); // Invert Y for screen coordinates
+            return `${mappedX},${mappedY}`;
+        }).join(' ');
+
+        return (
+            <div className="relative w-full h-full bg-slate-950/70 rounded-3xl border border-slate-800 flex flex-col items-center justify-center p-4">
+                <span className="absolute top-3 left-4 text-[9px] font-black text-slate-500 uppercase tracking-widest">Xem trước thửa đất</span>
+                <svg className="w-[170px] h-[170px] drop-shadow-[0_0_15px_rgba(59,130,246,0.2)]" viewBox={`0 0 ${size} ${size}`}>
+                    {/* Grid background lines */}
+                    <circle cx={size/2} cy={size/2} r={size/2 - 5} fill="none" stroke="#1e293b" strokeWidth="0.5" strokeDasharray="2 2" />
+                    
+                    {/* Polygon path */}
+                    <polygon
+                        points={svgPoints}
+                        fill="rgba(59, 130, 246, 0.15)"
+                        stroke="#3b82f6"
+                        strokeWidth="2.5"
+                        strokeLinejoin="round"
+                    />
+
+                    {/* Vertices indicator points */}
+                    {validCoords.map((c, i) => {
+                        const mappedX = offsetX + (c.y - minY) * scale;
+                        const mappedY = size - (offsetY + (c.x - minX) * scale);
+                        return (
+                            <g key={i}>
+                                <circle
+                                    cx={mappedX}
+                                    cy={mappedY}
+                                    r="4"
+                                    fill="#10b981"
+                                    stroke="#1e293b"
+                                    strokeWidth="1"
+                                />
+                                <text
+                                    x={mappedX + 6}
+                                    y={mappedY - 6}
+                                    fill="#94a3b8"
+                                    fontSize="8"
+                                    fontWeight="bold"
+                                    fontFamily="sans-serif"
+                                >
+                                    {points[i]?.indexStr || (i + 1)}
+                                </text>
+                            </g>
+                        );
+                    })}
+                </svg>
+                <div className="mt-2 text-[9px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1.5 bg-slate-900 border border-slate-800 px-3 py-1 rounded-full">
+                    <CheckCircle size={10} className="text-emerald-500"/> Khép góc thành công
+                </div>
+            </div>
+        );
+    };
+
+    return (
+        <div className="fixed inset-0 z-[1000] bg-black/95 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-gray-900 border border-gray-800 rounded-[2.5rem] w-full max-w-4xl p-8 shadow-2xl animate-in zoom-in-95 flex flex-col max-h-[90vh]">
+                
+                {/* Header */}
+                <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-4 shrink-0">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-blue-600/20 p-2.5 rounded-2xl border border-blue-500/30 text-blue-400">
+                            <Sparkles size={20} />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-black text-white uppercase tracking-tight">Quét Bảng Tọa Độ (OCR)</h3>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Trích xuất tọa độ từ ảnh chụp bản vẽ / sổ đỏ</p>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="text-slate-500 hover:text-white transition-all bg-slate-800 hover:bg-slate-700 p-2 rounded-xl"><X size={20}/></button>
+                </div>
+
+                {/* Step 1: Upload */}
+                {step === 'upload' && (
+                    <div className="flex-1 overflow-y-auto space-y-6 pr-2 custom-scrollbar">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Left: Settings */}
+                            <div className="bg-slate-950 p-6 rounded-3xl border border-slate-800 space-y-5">
+                                <h4 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2"><Layers size={14} className="text-blue-500"/> 1. Cấu hình hệ tọa độ</h4>
+                                
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Hệ tọa độ</label>
+                                        <div className="grid grid-cols-2 gap-2 bg-slate-900 p-1 rounded-xl border border-slate-800">
+                                            <button onClick={() => setCoordSystem('VN2000')} className={`py-2 rounded-lg text-xs font-bold uppercase transition-all ${coordSystem === 'VN2000' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>VN-2000</button>
+                                            <button onClick={() => setCoordSystem('WGS84')} className={`py-2 rounded-lg text-xs font-bold uppercase transition-all ${coordSystem === 'WGS84' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>WGS-84</button>
+                                        </div>
+                                    </div>
+
+                                    {coordSystem === 'VN2000' && (
+                                        <div className="grid grid-cols-2 gap-4 animate-in fade-in duration-300">
+                                            <div>
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Kinh tuyến trục</label>
+                                                <input
+                                                    type="number"
+                                                    value={centralMeridian}
+                                                    onChange={e => setCentralMeridian(parseFloat(e.target.value))}
+                                                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-blue-500 font-bold"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Múi chiếu</label>
+                                                <select
+                                                    value={projectionZone}
+                                                    onChange={e => setProjectionZone(e.target.value as Vn2000Zone)}
+                                                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-blue-500 font-bold"
+                                                >
+                                                    <option value="3">3 Độ (k = 0.9999)</option>
+                                                    <option value="6">6 Độ (k = 0.9996)</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="p-4 bg-blue-900/10 border border-blue-500/20 rounded-2xl flex gap-3 text-blue-300 text-[10px] leading-relaxed">
+                                    <HelpCircle size={16} className="shrink-0 text-blue-400 mt-0.5" />
+                                    <div>
+                                        <p className="font-black uppercase tracking-wider mb-1">Mẹo quét ảnh tối ưu:</p>
+                                        <ul className="list-disc pl-4 space-y-1 font-bold">
+                                            <li>Chụp ảnh bảng tọa độ vuông góc, rõ nét và không bị bóng mờ.</li>
+                                            <li>Vùng chữ số rõ ràng giúp AI nhận diện đúng 99% các con số.</li>
+                                            <li>Sau khi quét, bạn có thể chỉnh sửa lại các điểm bị lệch trước khi dựng hình.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Right: Upload Area */}
+                            <div className="flex flex-col">
+                                {imageSrc ? (
+                                    <div className="flex-1 bg-slate-950 rounded-3xl border border-slate-800 p-4 flex flex-col items-center justify-center relative group min-h-[220px]">
+                                        <img src={imageSrc} alt="Coordinate table draft" className="max-h-[200px] object-contain rounded-xl opacity-90" />
+                                        <button
+                                            onClick={() => setImageSrc(null)}
+                                            className="absolute top-4 right-4 bg-red-600 hover:bg-red-500 text-white p-2 rounded-xl transition-all shadow-lg active:scale-95"
+                                            title="Xóa hình ảnh"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="flex-1 bg-slate-950 hover:bg-slate-900/50 cursor-pointer rounded-3xl border-2 border-dashed border-slate-800 hover:border-blue-500/50 p-8 flex flex-col items-center justify-center text-center gap-4 transition-all min-h-[220px]"
+                                    >
+                                        <div className="w-16 h-16 bg-slate-900 rounded-full flex items-center justify-center border border-slate-800 text-slate-500">
+                                            <Upload size={24} />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-black uppercase text-slate-300 tracking-wider">Tải lên hình ảnh bảng tọa độ</p>
+                                            <p className="text-[10px] text-slate-500 mt-1">Hỗ trợ định dạng PNG, JPG, JPEG</p>
+                                        </div>
+                                        <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {imageSrc && (
+                            <button
+                                onClick={handleStartScan}
+                                className="w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 shadow-xl shadow-blue-900/30 transition-all active:scale-95"
+                            >
+                                <Sparkles size={16} /> BẮT ĐẦU QUÉT ẢNH & TRÍCH XUẤT TOẠ ĐỘ
+                            </button>
+                        )}
+                    </div>
+                )}
+
+                {/* Step 2: Scanning */}
+                {step === 'scanning' && (
+                    <div className="flex-1 flex flex-col items-center justify-center p-12 text-center space-y-6">
+                        <div className="relative w-full max-w-md bg-slate-950 rounded-3xl border border-slate-800 p-6 overflow-hidden min-h-[160px] flex items-center justify-center">
+                            {imageSrc && <img src={imageSrc} alt="Scanning" className="max-h-[120px] object-contain rounded-lg opacity-30 blur-[1px]" />}
+                            
+                            {/* Scanning Laser Line */}
+                            <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent shadow-[0_0_12px_#3b82f6] animate-pulse" style={{
+                                animation: 'scan 2.5s infinite linear',
+                                top: '0%'
+                            }}></div>
+                        </div>
+
+                        <style>{`
+                            @keyframes scan {
+                                0% { top: 5%; }
+                                50% { top: 95%; }
+                                100% { top: 5%; }
+                            }
+                        `}</style>
+
+                        <div className="space-y-2 w-full max-w-md">
+                            <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                <span>{progressStatus}</span>
+                                <span>{progress}%</span>
+                            </div>
+                            <div className="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                                <div className="h-full bg-blue-600 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Step 3: Edit & Preview */}
+                {step === 'edit' && (
+                    <div className="flex-1 overflow-hidden flex flex-col md:flex-row gap-6 min-h-0">
+                        {/* Left: Coordinate Table */}
+                        <div className="flex-1 flex flex-col min-h-0">
+                            <div className="flex justify-between items-center mb-3 shrink-0">
+                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">🔍 BẢNG KẾT QUẢ TRÍCH XUẤT ({points.length} điểm)</h4>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={handleSwapXY}
+                                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[9px] font-black uppercase tracking-wider rounded-lg flex items-center gap-1 transition-all"
+                                        title="Hoán đổi cột X và Y"
+                                    >
+                                        <ArrowLeftRight size={10} /> ĐẢO X ⇄ Y
+                                    </button>
+                                    <button
+                                        onClick={handleAddPoint}
+                                        className="px-3 py-1.5 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 text-[9px] font-black uppercase tracking-wider rounded-lg flex items-center gap-1 transition-all"
+                                    >
+                                        <Plus size={10} /> THÊM ĐIỂM
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="flex-1 bg-slate-950 rounded-3xl border border-slate-800 overflow-hidden flex flex-col min-h-0">
+                                <div className="overflow-y-auto flex-1 custom-scrollbar">
+                                    <table className="w-full text-xs font-mono border-collapse text-left">
+                                        <thead className="bg-slate-900 text-slate-500 text-[10px] font-black uppercase tracking-widest sticky top-0 z-10">
+                                            <tr>
+                                                <th className="p-3 text-center w-12">Điểm</th>
+                                                <th className="p-3">Tọa độ X (Northing - m)</th>
+                                                <th className="p-3">Tọa độ Y (Easting - m)</th>
+                                                <th className="p-3 text-center w-12"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-800 text-slate-300">
+                                            {points.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={4} className="p-12 text-center text-slate-600 italic text-[10px] font-bold uppercase">Không tìm thấy tọa độ. Hãy bấm thêm điểm.</td>
+                                                </tr>
+                                            ) : points.map((p, i) => (
+                                                <tr key={p.id} className="hover:bg-slate-900/30 group">
+                                                    <td className="p-2 text-center font-bold text-slate-600">
+                                                        <input
+                                                            type="text"
+                                                            value={p.indexStr}
+                                                            onChange={e => handleUpdatePoint(p.id, 'indexStr', e.target.value)}
+                                                            className="w-full bg-transparent border-none text-center outline-none focus:text-white font-bold"
+                                                        />
+                                                    </td>
+                                                    <td className="p-2">
+                                                        <input
+                                                            type="text"
+                                                            value={p.xStr}
+                                                            onChange={e => handleUpdatePoint(p.id, 'xStr', e.target.value)}
+                                                            placeholder="Nhập X..."
+                                                            className="w-full bg-transparent border-none text-blue-400 font-bold outline-none focus:bg-slate-900/60 rounded px-2 py-1"
+                                                        />
+                                                    </td>
+                                                    <td className="p-2">
+                                                        <input
+                                                            type="text"
+                                                            value={p.yStr}
+                                                            onChange={e => handleUpdatePoint(p.id, 'yStr', e.target.value)}
+                                                            placeholder="Nhập Y..."
+                                                            className="w-full bg-transparent border-none text-emerald-400 font-bold outline-none focus:bg-slate-900/60 rounded px-2 py-1"
+                                                        />
+                                                    </td>
+                                                    <td className="p-2 text-center">
+                                                        <button
+                                                            onClick={() => handleDeletePoint(p.id)}
+                                                            className="text-slate-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all p-1"
+                                                        >
+                                                            <Trash2 size={12} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Right: SVG Polygon Geometry Preview */}
+                        <div className="w-full md:w-[240px] shrink-0 flex flex-col gap-4">
+                            <div className="flex-1 min-h-[170px]">
+                                {renderSvgPreview()}
+                            </div>
+
+                            <div className="bg-slate-950 p-4 rounded-3xl border border-slate-800 text-[9px] font-bold text-slate-500 uppercase tracking-widest space-y-2">
+                                <div className="flex justify-between">
+                                    <span>Hệ tọa độ:</span>
+                                    <span className="text-white">{coordSystem}</span>
+                                </div>
+                                {coordSystem === 'VN2000' && (
+                                    <>
+                                        <div className="flex justify-between">
+                                            <span>Kinh tuyến trục:</span>
+                                            <span className="text-white">{centralMeridian}°</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span>Múi chiếu:</span>
+                                            <span className="text-white">{projectionZone} Độ</span>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setStep('upload')}
+                                    className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all"
+                                >
+                                    Quét lại
+                                </button>
+                                <button
+                                    onClick={handlePlotAndDraw}
+                                    className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-1.5 shadow-xl shadow-blue-900/30 transition-all active:scale-95"
+                                >
+                                    <Play size={12} /> DỰNG HÌNH
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};

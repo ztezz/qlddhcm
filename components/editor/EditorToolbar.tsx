@@ -1,5 +1,5 @@
 import React from 'react';
-import { MousePointer2, Plus, Move, Maximize, Search, Map as MapIcon, Grid, Keyboard, Magnet, Trash2, Undo2, Redo2, ChevronDown, Scissors, Combine, X, SquareDashedMousePointer, Ruler, Square, Circle } from 'lucide-react';
+import { MousePointer2, Plus, Move, Maximize, Search, Map as MapIcon, Grid, Keyboard, Magnet, Trash2, Undo2, Redo2, ChevronDown, Scissors, Combine, X, SquareDashedMousePointer, Ruler, Square, Circle, Scan } from 'lucide-react';
 
 interface EditorToolbarProps {
     activeInteraction: 'SELECT' | 'AREA_SELECT' | 'DRAW' | 'MODIFY';
@@ -17,6 +17,7 @@ interface EditorToolbarProps {
     canRedo: boolean;
     onOpenSearch: () => void;
     onOpenManual: () => void;
+    onOpenOcr?: () => void;
     onClearSelection: () => void;
     onClearAll: () => void;
     currentBasemap?: string;
@@ -39,7 +40,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
     isSnapping, setIsSnapping,
     showBasemap, setShowBasemap,
     showGrid, setShowGrid,
-    onFitView, onUndo, onRedo, canUndo, canRedo, onOpenSearch, onOpenManual, onClearSelection, onClearAll,
+    onFitView, onUndo, onRedo, canUndo, canRedo, onOpenSearch, onOpenManual, onOpenOcr, onClearSelection, onClearAll,
     currentBasemap = 'google-satellite',
     onChangeBasemap,
     onSplitFeature, onMergeFeatures, canSplit, canMerge,
@@ -175,6 +176,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
             <ToolbarGroup id="tools" icon={<Keyboard size={20}/>} title="Công cụ khác" accentClass="text-emerald-400">
                 <ToolbarButton onClick={onOpenSearch} className="text-slate-500 hover:bg-slate-800 hover:text-blue-400" title="Tìm tọa độ (Go to)"><Search size={20}/></ToolbarButton>
                 <ToolbarButton onClick={onOpenManual} className="text-slate-500 hover:bg-slate-800 hover:text-blue-400" title="Nhập tọa độ tay"><Keyboard size={20}/></ToolbarButton>
+                <ToolbarButton onClick={onOpenOcr} className="text-slate-500 hover:bg-slate-800 hover:text-blue-400" title="Quét tọa độ OCR"><Scan size={20}/></ToolbarButton>
                 <ToolbarButton onClick={onClearSelection} className="text-slate-500 hover:bg-slate-800 hover:text-rose-300" title="Hủy chọn"><X size={20}/></ToolbarButton>
                 <ToolbarButton onClick={() => setIsSnapping(!isSnapping)} className={isSnapping ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30' : 'text-slate-500 hover:bg-slate-800'} title="Chế độ bắt điểm (Snap)"><Magnet size={20}/></ToolbarButton>
                 <ToolbarButton disabled={!canUndo} onClick={onUndo} className={canUndo ? 'text-slate-400 hover:bg-slate-800 hover:text-amber-300' : 'text-slate-700 cursor-not-allowed'} title="Hoàn tác (Ctrl+Z)"><Undo2 size={20}/></ToolbarButton>

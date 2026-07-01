@@ -16,6 +16,7 @@ import EditorSidebar from '../components/editor/EditorSidebar';
 import EditorLayoutShell from '../components/editor/EditorLayoutShell';
 import EditorModals from '../components/editor/EditorModals';
 import { ParcelSearchDialog, ParcelResultDialog } from '../components/editor/ParcelLookupDialogs';
+import { OcrCoordinateModal } from '../components/editor/OcrCoordinateModal';
 
 // Hooks
 import { useEditorHistory } from '../hooks/useEditorHistory';
@@ -96,6 +97,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     // Modal States
     const [searchModal, setSearchModal] = useState({ isOpen: false, coords: { x: '', y: '' } });
     const [manualModal, setManualModal] = useState({ isOpen: false, text: '' });
+    const [ocrModalOpen, setOcrModalOpen] = useState(false);
     const dxfInputRef = useRef<HTMLInputElement | null>(null);
     const [dialog, setDialog] = useState<{ isOpen: boolean; type: 'success' | 'error' | 'info'; title: string; message: string; }>({ isOpen: false, type: 'info', title: '', message: '' });
     const [isMapLoading, setIsMapLoading] = useState(false);
@@ -573,6 +575,31 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         } catch (e: any) { setDialog({ isOpen: true, type: 'error', title: 'Lỗi', message: e.message }); }
     };
 
+    const handleDrawOcrShape = (coords: [number, number][]) => {
+        try {
+            if (coords.length < 3) throw new Error("Cần ít nhất 3 điểm.");
+            const polygon = new Polygon([coords]);
+            const feature = new Feature({ geometry: polygon });
+            
+            editSource.current.addFeature(feature);
+            selectInteraction.current?.getFeatures().clear();
+            selectInteraction.current?.getFeatures().push(feature);
+            updateSelectionState(feature);
+            updateVerticesFromFeature(feature);
+            updateFeatureListState();
+            mapInstance.current?.getView().fit(polygon.getExtent(), { padding: [100, 100, 100, 100], duration: 800 });
+            
+            setDialog({
+                isOpen: true,
+                type: 'success',
+                title: 'Dựng hình thành công',
+                message: `Đã dựng xong thửa đất với ${coords.length - 1} đỉnh từ kết quả quét OCR.`
+            });
+        } catch (e: any) {
+            setDialog({ isOpen: true, type: 'error', title: 'Lỗi', message: e.message });
+        }
+    };
+
 
 
 
@@ -992,6 +1019,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                 canRedo={canRedo}
                 onOpenSearch={() => setSearchModal({ ...searchModal, isOpen: true })}
                 onOpenManual={() => setManualModal({ ...manualModal, isOpen: true })}
+                onOpenOcr={() => setOcrModalOpen(true)}
                 onClearSelection={handleClearSelection}
                 onClearAll={() => { editSource.current.clear(); handleClearSelection(); setVertices([]); updateFeatureListState(); clearDraft(); }}
                 currentBasemap={currentBasemap}
@@ -1136,6 +1164,14 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                     setParcelModal({...parcelModal, isOpen: false, soTo: '', soThua: '', searchTable: ''});
                     setParcelList([]);
                 }}
+            />
+
+            <OcrCoordinateModal
+                isOpen={ocrModalOpen}
+                onClose={() => setOcrModalOpen(false)}
+                centralMeridian={centralMeridian}
+                projectionZone={projectionZone}
+                onDrawShape={handleDrawOcrShape}
             />
         </div>
     );
