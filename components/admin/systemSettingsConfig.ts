@@ -1,4 +1,4 @@
-import { Settings, Map as MapIcon, Globe, Mail, Activity, DatabaseBackup } from 'lucide-react';
+import { Settings, Map as MapIcon, Globe, Mail, Activity, DatabaseBackup, Sparkles } from 'lucide-react';
 
 export const SETTING_METADATA: Record<string, { label: string; description: string; type: 'text' | 'number' | 'boolean' | 'image' }> = {
     'system_name': { label: 'Tên hệ thống', description: 'Tên hiển thị chính trên website và tiêu đề trình duyệt', type: 'text' },
@@ -47,7 +47,9 @@ export const SETTING_METADATA: Record<string, { label: string; description: stri
     'pdf_note_text': { label: 'Ghi chú PDF', description: 'Ghi chú hoặc thông tin bổ sung hiển thị trong mẫu PDF', type: 'text' },
     'pdf_footer_text': { label: 'Chân trang PDF', description: 'Dòng chữ in dưới cùng trang PDF', type: 'text' },
     'pdf_show_qr': { label: 'Hiển thị mã QR', description: 'Bật hoặc tắt khối mã QR xác thực trên biểu mẫu', type: 'boolean' },
-    'pdf_show_signer': { label: 'Hiển thị khối chữ ký', description: 'Bật hoặc tắt phần ngày ký và người ký', type: 'boolean' }
+    'pdf_show_signer': { label: 'Hiển thị khối chữ ký', description: 'Bật hoặc tắt phần ngày ký và người ký', type: 'boolean' },
+    'ocr_use_gemini': { label: 'Kích hoạt Gemini OCR', description: 'Sử dụng mô hình Google Gemini để nhận diện ranh đất từ ảnh với độ chính xác 99.9%', type: 'boolean' },
+    'ocr_gemini_key': { label: 'Gemini API Key', description: 'Khóa API Key miễn phí lấy từ Google AI Studio', type: 'text' }
 };
 
 // ─── Tab → keys mapping ──────────────────────────────────────────────────────
@@ -56,6 +58,7 @@ export const TAB_KEYS: Record<string, string[]> = {
     MAP:     ['map_center_lat', 'map_center_lng', 'default_zoom', 'map_max_zoom', 'map_min_zoom', 'thematic_map_center_lat', 'thematic_map_center_lng', 'thematic_default_zoom', 'thematic_map_max_zoom', 'thematic_map_min_zoom', 'thematic_default_basemap_id', 'parcel_identifier_format'],
     SEO:     ['seo_title', 'seo_description', 'seo_keywords', 'seo_og_image'],
     MAIL:    ['mail_provider', 'mail_host', 'mail_port', 'mail_user', 'mail_pass', 'mail_from_email', 'mail_from_name'],
+    AI:      ['ocr_use_gemini', 'ocr_gemini_key'],
 };
 
 export const SETTINGS_GROUPS = [
@@ -63,7 +66,8 @@ export const SETTINGS_GROUPS = [
         title: 'Cấu hình hệ thống',
         items: [
             { key: 'GENERAL', label: 'Web & bảo mật', Icon: Settings, style: 'text-blue-400 border-blue-500/40 bg-blue-950/20', desc: 'Tên hệ thống, logo, quyền truy cập và chân trang.' },
-            { key: 'MAP', label: 'Bản đồ & nền', Icon: MapIcon, style: 'text-cyan-400 border-cyan-500/40 bg-cyan-950/20', desc: 'Tâm bản đồ, zoom và nền mặc định cho từng trang.' }
+            { key: 'MAP', label: 'Bản đồ & nền', Icon: MapIcon, style: 'text-cyan-400 border-cyan-500/40 bg-cyan-950/20', desc: 'Tâm bản đồ, zoom và nền mặc định cho từng trang.' },
+            { key: 'AI', label: 'AI & Tiện ích', Icon: Sparkles, style: 'text-purple-400 border-purple-500/40 bg-purple-950/20', desc: 'Cấu hình Google Gemini API Key để quét ảnh bản vẽ.' }
         ]
     },
     {
@@ -87,6 +91,7 @@ export const TAB_TITLES: Record<string, { title: string; description: string }> 
     MAP: { title: 'Thiết lập bản đồ', description: 'Nhóm cấu hình điều hướng, tâm bản đồ và nền mặc định.' },
     SEO: { title: 'Thiết lập SEO', description: 'Quản lý cách website hiển thị trên Google và mạng xã hội.' },
     MAIL: { title: 'Thiết lập Mail Server', description: 'Cấu hình SMTP và thử gửi email trực tiếp.' },
+    AI: { title: 'Thiết lập Trí tuệ nhân tạo (AI)', description: 'Cấu hình Google Gemini API Key và các công cụ AI khác.' },
     STATUS: { title: 'Trạng thái hệ thống', description: 'Theo dõi máy chủ và kiểm tra kết nối dịch vụ.' },
     BACKUP: { title: 'Sao lưu và khôi phục', description: 'Xuất hoặc phục hồi dữ liệu từ tệp SQL.' }
 };

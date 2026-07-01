@@ -3,6 +3,7 @@ import { X, Upload, RefreshCw, Layers, Sparkles, HelpCircle, ArrowLeftRight, Tra
 import proj4 from 'proj4';
 import * as proj from 'ol/proj';
 import { registerDynamicVn2000, Vn2000Zone } from '../../utils/editorProjection';
+import { adminService } from '../../services/apiClient';
 
 interface OcrCoordinateModalProps {
     isOpen: boolean;
@@ -38,38 +39,16 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
     const [centralMeridian, setCentralMeridian] = useState(defaultCentralMeridian);
     const [projectionZone, setProjectionZone] = useState<Vn2000Zone>(defaultProjectionZone);
 
-    // Gemini API settings
-    const [useGemini, setUseGemini] = useState<boolean>(() => {
-        if (typeof window !== 'undefined') {
-            return localStorage.getItem('ocr_use_gemini') === 'true';
-        }
-        return false;
-    });
-    const [geminiKey, setGeminiKey] = useState<string>(() => {
-        if (typeof window !== 'undefined') {
-            return localStorage.getItem('ocr_gemini_key') || '';
-        }
-        return '';
-    });
-
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('ocr_use_gemini', useGemini.toString());
-        }
-    }, [useGemini]);
-
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('ocr_gemini_key', geminiKey);
-        }
-    }, [geminiKey]);
+    // Gemini API settings (loaded from global system settings)
+    const [useGemini, setUseGemini] = useState<boolean>(false);
+    const [geminiKey, setGeminiKey] = useState<string>('');
 
     // Parsed points
     const [points, setPoints] = useState<ParsedPoint[]>([]);
     
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-    // Reset state on open/close
+    // Reset state on open/close and load system settings
     useEffect(() => {
         if (isOpen) {
             setStep('upload');
@@ -82,6 +61,25 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
             setCoordSystem('VN2000');
             setCentralMeridian(defaultCentralMeridian);
             setProjectionZone(defaultProjectionZone);
+
+            // Fetch global settings from database
+            const fetchGlobalSettings = async () => {
+                try {
+                    const settingsList = await adminService.getSettings();
+                    const useGeminiSetting = settingsList.find(s => s.key === 'ocr_use_gemini');
+                    const keySetting = settingsList.find(s => s.key === 'ocr_gemini_key');
+                    
+                    if (useGeminiSetting) {
+                        setUseGemini(useGeminiSetting.value === 'true');
+                    }
+                    if (keySetting && keySetting.value) {
+                        setGeminiKey(keySetting.value);
+                    }
+                } catch (e) {
+                    console.error("Failed to load global OCR settings from server:", e);
+                }
+            };
+            fetchGlobalSettings();
         }
     }, [isOpen, defaultCentralMeridian, defaultProjectionZone]);
 
@@ -912,41 +910,6 @@ Example format:
                                                     <option value="6">6 Độ (k = 0.9996)</option>
                                                 </select>
                                             </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="border-t border-slate-800/80 pt-4 space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5 cursor-pointer select-none">
-                                            <input
-                                                type="checkbox"
-                                                checked={useGemini}
-                                                onChange={e => setUseGemini(e.target.checked)}
-                                                className="rounded bg-slate-900 border-slate-800 text-blue-600 focus:ring-0 focus:ring-offset-0 cursor-pointer"
-                                            />
-                                            Sử dụng Gemini OCR (Chuẩn xác 99.9%)
-                                        </label>
-                                        <a
-                                            href="https://aistudio.google.com/"
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="text-[9px] text-blue-400 hover:text-blue-300 font-bold uppercase tracking-wider underline cursor-pointer"
-                                        >
-                                            Lấy Key Miễn Phí
-                                        </a>
-                                    </div>
-                                    
-                                    {useGemini && (
-                                        <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
-                                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block">Gemini API Key</label>
-                                            <input
-                                                type="password"
-                                                placeholder="Nhập API Key để quét hình chất lượng cao..."
-                                                value={geminiKey}
-                                                onChange={e => setGeminiKey(e.target.value)}
-                                                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-blue-500 font-mono"
-                                            />
                                         </div>
                                     )}
                                 </div>

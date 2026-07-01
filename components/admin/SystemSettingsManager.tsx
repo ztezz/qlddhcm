@@ -15,7 +15,7 @@ interface SystemSettingsManagerProps {
 const SystemSettingsManager: React.FC<SystemSettingsManagerProps> = ({ permissions = [] }) => {
     const [settings, setSettings] = useState<SystemSetting[]>([]);
     const [savedSettings, setSavedSettings] = useState<SystemSetting[]>([]); // pristine copy from server
-    const [subTab, setSubTab] = useState<'GENERAL' | 'MAP' | 'SEO' | 'MAIL' | 'STATUS' | 'BACKUP'>('GENERAL');
+    const [subTab, setSubTab] = useState<'GENERAL' | 'MAP' | 'SEO' | 'MAIL' | 'STATUS' | 'BACKUP' | 'AI'>('GENERAL');
     const [loading, setLoading] = useState(false);
     const [serverInfo, setServerInfo] = useState<any>(null);
     const [basemapOptions, setBasemapOptions] = useState<Array<{ id: string; name: string }>>([]);
@@ -619,6 +619,20 @@ const SystemSettingsManager: React.FC<SystemSettingsManagerProps> = ({ permissio
                                 <div className="col-span-1">
                                     <label className="text-sm font-bold text-gray-200 block mb-1">{SETTING_METADATA[key]?.label || key}</label>
                                     <span className="text-[10px] text-gray-500 font-mono italic">{SETTING_METADATA[key]?.description}</span>
+                                </div>
+                                <div className="col-span-2">{renderSettingInput(key)}</div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {subTab === 'AI' && (
+                    <div className="space-y-6 animate-in fade-in duration-300">
+                        {['ocr_use_gemini', 'ocr_gemini_key'].map(key => (
+                            <div key={key} className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-gray-700/50 pb-6 last:border-0 last:pb-0">
+                                <div className="col-span-1">
+                                    <label className="text-sm font-bold text-gray-200 block mb-1">{SETTING_METADATA[key]?.label || key}</label>
+                                    <span className="text-xs text-gray-500 italic">{SETTING_METADATA[key]?.description}</span>
                                 </div>
                                 <div className="col-span-2">{renderSettingInput(key)}</div>
                             </div>
