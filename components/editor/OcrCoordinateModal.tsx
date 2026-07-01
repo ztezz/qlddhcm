@@ -42,6 +42,7 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
     // Gemini API settings (loaded from global system settings)
     const [useGemini, setUseGemini] = useState<boolean>(false);
     const [geminiKey, setGeminiKey] = useState<string>('');
+    const [geminiModel, setGeminiModel] = useState<string>('gemini-flash-latest');
 
     // Parsed points
     const [points, setPoints] = useState<ParsedPoint[]>([]);
@@ -68,12 +69,16 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
                     const settingsList = await adminService.getSettings();
                     const useGeminiSetting = settingsList.find(s => s.key === 'ocr_use_gemini');
                     const keySetting = settingsList.find(s => s.key === 'ocr_gemini_key');
+                    const modelSetting = settingsList.find(s => s.key === 'ocr_gemini_model');
                     
                     if (useGeminiSetting) {
                         setUseGemini(useGeminiSetting.value === 'true');
                     }
                     if (keySetting && keySetting.value) {
                         setGeminiKey(keySetting.value);
+                    }
+                    if (modelSetting && modelSetting.value) {
+                        setGeminiModel(modelSetting.value);
                     }
                 } catch (e) {
                     console.error("Failed to load global OCR settings from server:", e);
@@ -526,9 +531,9 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
     };
 
     // Run OCR using Google Gemini Vision API directly from the client side
-    const runGeminiOcr = async (base64Image: string, apiKey: string): Promise<ParsedPoint[]> => {
+    const runGeminiOcr = async (base64Image: string, apiKey: string, modelName: string): Promise<ParsedPoint[]> => {
         const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '');
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName || 'gemini-flash-latest'}:generateContent?key=${apiKey}`;
         
         const prompt = `Analyze this image of a land coordinate table. Extract the coordinates (vertices) of the parcel. 
 For each row, identify the vertex index (Đỉnh), coordinate X (Northing, e.g. 1237xxx), and coordinate Y (Easting, e.g. 587xxx). 
@@ -604,7 +609,7 @@ Example format:
                 setProgress(30);
                 
                 setProgressStatus('Gemini đang phân tích và trích xuất dữ liệu...');
-                const parsedPoints = await runGeminiOcr(cleanImageSrc, geminiKey);
+                const parsedPoints = await runGeminiOcr(cleanImageSrc, geminiKey, geminiModel);
                 setProgress(90);
                 
                 setPoints(parsedPoints);

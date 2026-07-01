@@ -35,6 +35,10 @@ const SystemSettingsManager: React.FC<SystemSettingsManagerProps> = ({ permissio
     const [mailTestStatus, setMailTestStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle');
     const [mailTestMsg, setMailTestMsg] = useState('');
 
+    // Gemini API test
+    const [geminiTestStatus, setGeminiTestStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle');
+    const [geminiTestMsg, setGeminiTestMsg] = useState('');
+
     // Backup
     const [backupTables, setBackupTables] = useState<{system: string[], spatial: string[]}>({ system: [], spatial: [] });
     const [selectedTables, setSelectedTables] = useState<string[]>([]);
@@ -323,6 +327,51 @@ const SystemSettingsManager: React.FC<SystemSettingsManagerProps> = ({ permissio
         setTimeout(() => setDbTestStatus('idle'), 5000);
     };
 
+    const handleGeminiTest = async () => {
+        const apiKey = settings.find(s => s.key === 'ocr_gemini_key')?.value || '';
+        const modelName = settings.find(s => s.key === 'ocr_gemini_model')?.value || 'gemini-flash-latest';
+        
+        if (!apiKey) {
+            setGeminiTestStatus('error');
+            setGeminiTestMsg('Vui lòng nhập API Key trước khi thử nghiệm.');
+            return;
+        }
+
+        setGeminiTestStatus('testing');
+        setGeminiTestMsg('Đang gửi truy vấn thử nghiệm (Ping) tới Gemini API...');
+
+        try {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    contents: [
+                        { parts: [{ text: 'Ping' }] }
+                    ]
+                })
+            });
+
+            const json = await res.json().catch(() => ({}));
+            
+            if (res.ok) {
+                setGeminiTestStatus('ok');
+                const reply = json?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || 'Thành công';
+                setGeminiTestMsg(`Kết nối thành công! Phản hồi từ mô hình: "${reply}"`);
+            } else {
+                setGeminiTestStatus('error');
+                const errMsg = json?.error?.message || `Lỗi HTTP ${res.status}: ${res.statusText}`;
+                setGeminiTestMsg(`Kết nối thất bại: ${errMsg}`);
+            }
+        } catch (e: any) {
+            setGeminiTestStatus('error');
+            setGeminiTestMsg(`Lỗi mạng: ${e.message}`);
+        }
+        setTimeout(() => setGeminiTestStatus('idle'), 8000);
+    };
+
     const handleFileChange = (key: string, e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -507,6 +556,24 @@ const SystemSettingsManager: React.FC<SystemSettingsManagerProps> = ({ permissio
             );
         }
 
+        if (key === 'ocr_gemini_model') {
+            return (
+                <div className="space-y-1">
+                    <select
+                        className={`w-full bg-gray-900 border rounded p-2.5 text-white outline-none font-medium transition-colors ${dirty ? 'border-yellow-500/60 focus:border-yellow-400' : 'border-gray-600 focus:border-blue-500'}`}
+                        value={setting.value || 'gemini-flash-latest'}
+                        onChange={e => updateSettingValue(key, e.target.value)}
+                    >
+                        <option value="gemini-flash-latest">gemini-flash-latest (Khuyên dùng - Ổn định cao)</option>
+                        <option value="gemini-2.5-flash">gemini-2.5-flash (Thử nghiệm 2.5)</option>
+                        <option value="gemini-2.0-flash">gemini-2.0-flash (Tốc độ nhanh)</option>
+                        <option value="gemini-1.5-flash">gemini-1.5-flash (Bản cũ 1.5)</option>
+                    </select>
+                    {dirty && <p className="text-[10px] text-yellow-500">● Chưa lưu</p>}
+                </div>
+            );
+        }
+
         return (
             <div className="space-y-1">
                 <input
@@ -628,7 +695,34 @@ const SystemSettingsManager: React.FC<SystemSettingsManagerProps> = ({ permissio
 
                 {subTab === 'AI' && (
                     <div className="space-y-6 animate-in fade-in duration-300">
-                        {['ocr_use_gemini', 'ocr_gemini_key'].map(key => (
+                        {/* Gemini status card / test interface */}
+                        <div className="bg-gray-950/40 p-5 rounded-xl border border-gray-700 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3 text-purple-400">
+                                    <Cpu size={20}/> 
+                                    <h4 className="font-black uppercase tracking-tight text-sm">Kiểm tra kết nối Gemini</h4>
+                                </div>
+                                <button onClick={handleGeminiTest} disabled={geminiTestStatus === 'testing'}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] rounded bg-purple-800/40 border border-purple-700/50 text-purple-300 hover:bg-purple-700/50 transition-colors disabled:opacity-50 font-bold uppercase tracking-wider">
+                                    {geminiTestStatus === 'testing' ? <RefreshCw size={11} className="animate-spin" /> : <Zap size={11} />}
+                                    Kiểm tra kết nối
+                                </button>
+                            </div>
+
+                            {geminiTestStatus !== 'idle' && (
+                                <div className={`flex items-start gap-2 p-3 rounded-lg text-xs border
+                                    ${geminiTestStatus === 'testing' ? 'bg-purple-900/20 border-purple-800 text-purple-300'
+                                    : geminiTestStatus === 'ok' ? 'bg-emerald-900/20 border-emerald-800 text-emerald-300'
+                                    : 'bg-red-900/20 border-red-800 text-red-300'}`}>
+                                    {geminiTestStatus === 'testing' && <RefreshCw size={13} className="animate-spin shrink-0 mt-0.5" />}
+                                    {geminiTestStatus === 'ok' && <Check size={13} className="shrink-0 mt-0.5" />}
+                                    {geminiTestStatus === 'error' && <X size={13} className="shrink-0 mt-0.5" />}
+                                    <span className="font-medium">{geminiTestMsg}</span>
+                                </div>
+                            )}
+                        </div>
+
+                        {['ocr_use_gemini', 'ocr_gemini_key', 'ocr_gemini_model'].map(key => (
                             <div key={key} className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-gray-700/50 pb-6 last:border-0 last:pb-0">
                                 <div className="col-span-1">
                                     <label className="text-sm font-bold text-gray-200 block mb-1">{SETTING_METADATA[key]?.label || key}</label>
