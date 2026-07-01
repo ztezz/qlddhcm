@@ -240,27 +240,31 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
                 let yStr = '';
                 let foundPair = false;
 
-                if (coordSystem === 'VN2000') {
-                    // Pre-apply decimal auto-fixing to candidate values for range matching
-                    const fixedCandidates = numberCandidates.map(c => {
-                        let fixedCleaned = c.cleaned;
+                // Pre-apply decimal auto-fixing or normalization to all candidates
+                const fixedCandidates = numberCandidates.map(c => {
+                    let fixedCleaned = c.cleaned;
+                    let fixedValue = c.value;
+                    
+                    if (coordSystem === 'VN2000') {
                         if (!c.cleaned.includes('.') && !c.cleaned.includes(',')) {
                             const cleanDigits = c.cleaned.replace(/[^0-9]/g, '');
-                            if (cleanDigits.length === 10 && /^(14|15|16)/.test(cleanDigits)) {
+                            if (/^(14|15|16)/.test(cleanDigits) && cleanDigits.length === 10) {
                                 fixedCleaned = autoFixCoordinateDecimals(c.cleaned, 'easting');
-                            } else if (cleanDigits.length >= 9) {
+                            } else if (/^(1|2)/.test(cleanDigits) && cleanDigits.length >= 9) {
                                 fixedCleaned = autoFixCoordinateDecimals(c.cleaned, 'northing');
-                            } else if (cleanDigits.length >= 8) {
+                            } else if (/^(3|4|5|6|7|8|9)/.test(cleanDigits) && cleanDigits.length >= 8) {
                                 fixedCleaned = autoFixCoordinateDecimals(c.cleaned, 'easting');
                             }
                         } else {
                             fixedCleaned = autoFixCoordinateDecimals(c.cleaned, 'easting');
                         }
-                        
-                        const fixedValue = parseFloat(fixedCleaned);
-                        return { ...c, fixedCleaned, fixedValue };
-                    });
+                        fixedValue = parseFloat(fixedCleaned);
+                    }
+                    
+                    return { ...c, fixedCleaned, fixedValue };
+                });
 
+                if (coordSystem === 'VN2000') {
                     const northings = fixedCandidates.filter(c => c.fixedValue >= 900000 && c.fixedValue <= 3000000);
                     const eastings = fixedCandidates.filter(c => c.fixedValue >= 100000 && c.fixedValue < 900000);
 
@@ -270,51 +274,35 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
                         foundPair = true;
                     }
                 } else {
-                    const lats = numberCandidates.filter(c => c.value >= 8 && c.value <= 30);
-                    const lons = numberCandidates.filter(c => c.value >= 95 && c.value <= 115);
+                    // WGS84: Latitude (8 to 30) and Longitude (95 to 115)
+                    const lats = fixedCandidates.filter(c => c.fixedValue >= 8 && c.fixedValue <= 30);
+                    const lons = fixedCandidates.filter(c => c.fixedValue >= 95 && c.fixedValue <= 115);
 
                     if (lats.length >= 1 && lons.length >= 1) {
-                        xStr = lats[0].cleaned;
-                        yStr = lons[0].cleaned;
+                        xStr = lats[0].fixedCleaned;
+                        yStr = lons[0].fixedCleaned;
                         foundPair = true;
                     }
                 }
 
-                // Fallback: match the two largest numbers
+                // Fallback: match the two largest numbers based on their fixed/corrected values
                 if (!foundPair) {
-                    const sorted = [...numberCandidates].sort((a, b) => b.value - a.value);
+                    const sorted = [...fixedCandidates].sort((a, b) => b.fixedValue - a.fixedValue);
                     if (sorted.length >= 2) {
-                        const val1 = sorted[0];
-                        const val2 = sorted[1];
-                        
-                        let xTemp = val1.cleaned;
-                        let yTemp = val2.cleaned;
-                        if (coordSystem === 'VN2000') {
-                            xTemp = autoFixCoordinateDecimals(xTemp, 'northing');
-                            yTemp = autoFixCoordinateDecimals(yTemp, 'easting');
-                        }
-
-                        const v1 = parseFloat(xTemp);
-                        const v2 = parseFloat(yTemp);
-
-                        if (v1 > v2) {
-                            xStr = xTemp;
-                            yStr = yTemp;
-                        } else {
-                            xStr = yTemp;
-                            yStr = xTemp;
-                        }
+                        xStr = sorted[0].fixedCleaned;
+                        yStr = sorted[1].fixedCleaned;
                         foundPair = true;
                     }
                 }
 
                 if (foundPair) {
-                    const indexToken = numberCandidates.find(c => 
-                        c.cleaned !== xStr && 
-                        c.cleaned !== yStr && 
-                        c.value > 0 && 
-                        c.value < 100
-                    );
+                    // Guess point index: the first small number < 100 in the line that isn't coordinate
+                    const indexToken = numberCandidates.find(c => {
+                        const cleanC = c.cleaned.replace(/[^0-9]/g, '');
+                        const cleanX = xStr.replace(/[^0-9]/g, '');
+                        const cleanY = yStr.replace(/[^0-9]/g, '');
+                        return cleanC !== cleanX && cleanC !== cleanY && c.value > 0 && c.value < 100;
+                    });
                     
                     if (indexToken) {
                         indexStr = Math.round(indexToken.value).toString();
