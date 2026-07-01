@@ -186,9 +186,9 @@ const LandPriceLookup: React.FC<LandPriceLookupProps> = ({ user, systemSettings 
     return (
         <>
             <Seo 
-                title="Tra C?u B?ng Gi� �?t 2026" 
-                description="C�ng c? tra c?u b?ng gi� d?t m?i nh?t nam 2026 t?i TP.HCM v� B�nh Duong. H? tr? t�nh gi� d?t theo v? tr� m?t ti?n, h?m ch�nh x�c."
-                keywords="b?ng gi� d?t 2026, gi� d?t hcm, gi� d?t b�nh duong, tra c?u gi� d?t, h? s? di?u ch?nh gi� d?t"
+                title="Tra Cứu Bảng Giá Đất 2026" 
+                description="Công cụ tra cứu bảng giá đất mới nhất năm 2026 tại TP.HCM và Bình Dương. Hỗ trợ tính giá đất theo vị trí mặt tiền, hẻm chính xác."
+                keywords="bảng giá đất 2026, giá đất hcm, giá đất bình dương, tra cứu giá đất, hệ số điều chỉnh giá đất"
                 systemSettings={systemSettings}
             />
             
@@ -200,8 +200,8 @@ const LandPriceLookup: React.FC<LandPriceLookupProps> = ({ user, systemSettings 
                             <Calculator className="text-emerald-400 w-8 h-8" />
                         </div>
                         <div>
-                            <h1 className="text-3xl font-black text-white uppercase tracking-tight">Tra c?u B?ng Gi� �?t 2026 - Th�nh ph? H? Chi Minh</h1>
-                            <p className="text-slate-500 text-sm font-bold uppercase tracking-widest">H? th?ng th�ng tin gi� d?t nh� nu?c</p>
+                            <h1 className="text-3xl font-black text-white uppercase tracking-tight">Tra cứu Bảng Giá Đất 2026 - Thành phố Hồ Chi Minh</h1>
+                            <p className="text-slate-500 text-sm font-bold uppercase tracking-widest">Hệ thống thông tin giá đất nhà nước</p>
                         </div>
                     </div>
 
@@ -210,39 +210,39 @@ const LandPriceLookup: React.FC<LandPriceLookupProps> = ({ user, systemSettings 
                         <form onSubmit={handleSearch} className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                                 <AutocompleteInput 
-                                    label="Phu?ng / X� (T?nh cu)" 
+                                    label="Phường / Xã (Tỉnh cũ)" 
                                     icon={<MapPin size={12}/>}
                                     value={phuongxa}
                                     onChange={setPhuongxa}
                                     suggestions={wards}
-                                    placeholder="Ch?n phu?ng/x�..."
+                                    placeholder="Chọn phường/xã..."
                                 />
                                 
                                 <AutocompleteInput 
-                                    label="T�n du?ng" 
+                                    label="Tên đường" 
                                     icon={<Search size={12}/>}
                                     value={tenduong}
                                     onChange={setTenduong}
                                     suggestions={suggestions.streets}
-                                    placeholder="Nh?p t�n du?ng..."
+                                    placeholder="Nhập tên đường..."
                                 />
 
                                 <AutocompleteInput 
-                                    label="T? (�i?m d?u)" 
+                                    label="Từ (Điểm đầu)" 
                                     icon={<ArrowRight size={12} className="rotate-180"/>}
                                     value={tu}
                                     onChange={setTu}
                                     suggestions={suggestions.fromPoints}
-                                    placeholder="Giao l? / C?t m?c..."
+                                    placeholder="Giao lộ / Cột mốc..."
                                 />
 
                                 <AutocompleteInput 
-                                    label="�?n (�i?m cu?i)" 
+                                    label="Đến (Điểm cuối)" 
                                     icon={<ArrowRight size={12}/>}
                                     value={den}
                                     onChange={setDen}
                                     suggestions={suggestions.toPoints}
-                                    placeholder="Giao l? / C?t m?c..."
+                                    placeholder="Giao lộ / Cột mốc..."
                                 />
                             </div>
                             <button 
@@ -251,7 +251,7 @@ const LandPriceLookup: React.FC<LandPriceLookupProps> = ({ user, systemSettings 
                                 className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-2xl font-black uppercase text-xs tracking-[0.2em] flex items-center justify-center gap-2 shadow-xl shadow-emerald-900/30 transition-all active:scale-95 disabled:opacity-50"
                             >
                                 {loading ? <RefreshCw className="animate-spin" size={18}/> : <Search size={18}/>}
-                                B?T �?U TRA C?U
+                                BẮT ĐẦU TRA CỨU
                             </button>
                         </form>
                     </div>
@@ -268,12 +268,12 @@ const LandPriceLookup: React.FC<LandPriceLookupProps> = ({ user, systemSettings 
                         {loading ? (
                             <div className="p-20 text-center flex flex-col items-center gap-4 text-emerald-500/50 animate-pulse">
                                 <RefreshCw size={48} className="animate-spin"/>
-                                <p className="text-xs font-black uppercase tracking-widest">�ang truy xu?t d? li?u...</p>
+                                <p className="text-xs font-black uppercase tracking-widest">Đang truy xuất dữ liệu...</p>
                             </div>
                         ) : hasSearched && results.length === 0 ? (
                             <div className="p-20 text-center bg-slate-900/50 rounded-3xl border border-slate-800 flex flex-col items-center gap-4">
                                 <Info size={48} className="text-slate-600"/>
-                                <p className="text-slate-500 font-bold uppercase text-xs tracking-widest">Kh�ng t�m th?y k?t qu? n�o ph� h?p.</p>
+                                <p className="text-slate-500 font-bold uppercase text-xs tracking-widest">Không tìm thấy kết quả nào phù hợp.</p>
                             </div>
                         ) : results.length > 0 ? (
                             <div className="grid grid-cols-1 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -281,14 +281,14 @@ const LandPriceLookup: React.FC<LandPriceLookupProps> = ({ user, systemSettings 
                                     <div>
                                         <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
                                             <Info size={16} className="text-blue-400"/>
-                                            K?t qu? t�m ki?m ({pagination.total})
+                                            Kết quả tìm kiếm ({pagination.total})
                                         </h3>
                                         <div className="mt-1 flex items-center gap-1.5 text-amber-400">
                                             <Coins size={12}/>
-                                            <span className="text-[10px] font-black uppercase tracking-widest">�on v? t�nh: 1.000 d?ng/m�</span>
+                                            <span className="text-[10px] font-black uppercase tracking-widest">Đơn vị tính: 1.000 đồng/m²</span>
                                         </div>
                                     </div>
-                                    <span className="text-[10px] bg-slate-800 text-slate-400 px-3 py-1.5 rounded-xl border border-slate-700 font-mono self-start md:self-center">Nam �p d?ng: {results[0].nam_ap_dung}</span>
+                                    <span className="text-[10px] bg-slate-800 text-slate-400 px-3 py-1.5 rounded-xl border border-slate-700 font-mono self-start md:self-center">Năm áp dụng: {results[0].nam_ap_dung}</span>
                                 </div>
                                 
                                 <div className="bg-slate-900 rounded-[2rem] border border-slate-800 overflow-hidden shadow-2xl">
@@ -296,9 +296,9 @@ const LandPriceLookup: React.FC<LandPriceLookupProps> = ({ user, systemSettings 
                                         <table className="w-full text-left border-collapse">
                                             <thead className="bg-slate-950 text-slate-500 uppercase text-[10px] font-black tracking-widest border-b border-slate-800">
                                                 <tr>
-                                                    <th className="p-5 whitespace-nowrap">�u?ng / Phu?ng x�</th>
-                                                    <th className="p-5 whitespace-nowrap">�o?n (T? - �?n)</th>
-                                                    <th className="p-5 text-right whitespace-nowrap">�?t ? (ODT)</th>
+                                                    <th className="p-5 whitespace-nowrap">Đường / Phường xã</th>
+                                                    <th className="p-5 whitespace-nowrap">Đoạn (Từ - Đến)</th>
+                                                    <th className="p-5 text-right whitespace-nowrap">Đất Ở (ODT)</th>
                                                     <th className="p-5 text-right whitespace-nowrap">TMDV</th>
                                                     <th className="p-5 text-right whitespace-nowrap">SXKD</th>
                                                 </tr>
@@ -317,14 +317,14 @@ const LandPriceLookup: React.FC<LandPriceLookupProps> = ({ user, systemSettings 
                                                                     <MapPin size={10} className="text-emerald-500"/> {r.phuongxa}
                                                                 </div>
                                                                 <div className="flex items-center gap-1.5 text-slate-500">
-                                                                    <Landmark size={10} className="text-blue-500"/> T?nh cu: {r.tinhcu}
+                                                                    <Landmark size={10} className="text-blue-500"/> Tỉnh cũ: {r.tinhcu}
                                                                 </div>
                                                             </div>
                                                         </td>
                                                         <td className="p-5 text-slate-400 text-xs">
                                                             <div className="flex flex-col gap-1">
-                                                                <span className="flex gap-2"><b>T?:</b> {r.tu || '�?u du?ng'}</span>
-                                                                <span className="flex gap-2"><b>�?n:</b> {r.den || 'Cu?i du?ng'}</span>
+                                                                <span className="flex gap-2"><b>Từ:</b> {r.tu || 'Đầu đường'}</span>
+                                                                <span className="flex gap-2"><b>Đến:</b> {r.den || 'Cuối đường'}</span>
                                                             </div>
                                                         </td>
                                                         <td className="p-5 text-right font-mono font-bold text-emerald-400 text-base bg-emerald-950/10 whitespace-nowrap">
@@ -415,7 +415,7 @@ const LandPriceLookup: React.FC<LandPriceLookupProps> = ({ user, systemSettings 
                                         </button>
                                     </div>
                                 </div>
-                                <p className="text-[10px] text-slate-600 italic mt-2 px-2">* Nh?p v�o t?ng d�ng d? xem chi ti?t t�nh to�n gi� d?t cho c�c v? tr� h?m.</p>
+                                <p className="text-[10px] text-slate-600 italic mt-2 px-2">* Nhấp vào từng dòng để xem chi tiết tính toán giá đất cho các vị trí hẻm.</p>
                             </div>
                         ) : null}
                     </div>

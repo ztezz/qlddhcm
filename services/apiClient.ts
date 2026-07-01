@@ -274,8 +274,8 @@ export const gisService = {
         const qs = `?t=${Date.now()}&gid=${gid}&radius=${radius}&includeSelf=${includeSelf ? 'true' : 'false'}`;
         const payload = await apiCall(`/data/${encodeURIComponent(normalizedTableName)}/nearby${qs}`, undefined, { suppressAuthReload: true });
         const rows = Array.isArray(payload)
-            ? payload
-            : (Array.isArray(payload?.data) ? payload.data : []);
+                ? payload
+                : (Array.isArray(payload?.data) ? payload.data : []);
 
         if (!Array.isArray(rows)) return [];
 
@@ -287,7 +287,7 @@ export const gisService = {
             const address = pickFirstValue(item, ['diachi', 'dia_chi', 'address', 'location', 'vitri', 'vi_tri']);
             const area = pickFirstValue(item, ['dientich', 'dien_tich', 'area', 'shape_area', 'st_area']);
             const landType = pickFirstValue(item, ['loaidat', 'loai_dat', 'kyhieumucd', 'ky_hieu_muc_dich', 'mucdich', 'mdsd']);
-            const geometry = typeof item.geometry === 'string' ? JSON.parse(item.geometry) : item.geometry;
+                 const geometry = typeof item.geometry === 'string' ? JSON.parse(item.geometry) : item.geometry;
             const rowGid = Number(item.gid);
             const fallbackId = [normalizedTableName, soTo, soThua, index].filter(Boolean).join('-') || `n-${index}`;
 
@@ -303,7 +303,7 @@ export const gisService = {
                     ownerName,
                     address,
                     area,
-                    landType: landType || 'Chưa cập nhật',
+                         landType: landType || 'Chưa cập nhật',
                     tableName: normalizedTableName
                 }
             };
@@ -362,7 +362,7 @@ export const adminService = {
     reorderBasemaps: async (items: Array<{ id: string; sortOrder: number }>) => apiCall('/basemaps/reorder', { method: 'POST', body: JSON.stringify({ items }) }),
     deleteBasemap: async (id: string) => apiCall(`/basemaps/${id}`, { method: 'DELETE' }),
     getLogs: async (params?: { page?: number; limit?: number; action?: string; search?: string; from?: string; to?: string }) => {
-        let qs = `?t=${Date.now()}`;
+             let qs = `?t=${Date.now()}`;
         if (params?.page) qs += `&page=${params.page}`;
         if (params?.limit) qs += `&limit=${params.limit}`;
         if (params?.action) qs += `&action=${encodeURIComponent(params.action)}`;
@@ -399,7 +399,7 @@ export const adminService = {
         return Array.isArray(data) ? data : [];
     },
     getLandPriceSuggestions: async (phuongxa?: string, tinhcu?: string): Promise<{streets: string[], fromPoints: string[], toPoints: string[]}> => {
-        let qs = `?t=${Date.now()}`;
+             let qs = `?t=${Date.now()}`;
         if (phuongxa) qs += `&phuongxa=${encodeURIComponent(phuongxa)}`;
         if (tinhcu) qs += `&tinhcu=${encodeURIComponent(tinhcu)}`;
         return await apiCall(`/land-prices-2026/suggestions${qs}`);
@@ -627,7 +627,7 @@ export const authService = {
     getBranches: async (): Promise<Branch[]> => { 
         try { 
             const data = await apiCall('/branches'); 
-            return Array.isArray(data) ? data : [];
+        return Array.isArray(data) ? data : [];
         } catch { return []; } 
     },
     getProfile: async (id: string): Promise<User> => apiCall(`/users/${id}`),

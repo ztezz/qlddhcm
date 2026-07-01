@@ -17,7 +17,7 @@ export const detectGeoJsonProjection = (geoJson: any): string => {
         return null;
     };
 
-    if (geoJson.type === 'FeatureCollection' && geoJson.features?.length > 0) {
+        if (geoJson.type === 'FeatureCollection' && geoJson.features?.length > 0) {
         const geom = geoJson.features[0].geometry;
         if (geom && geom.coordinates) coord = findCoord(geom.coordinates);
     } else if (geoJson.type === 'Feature' && geoJson.geometry) {
@@ -35,7 +35,7 @@ export const detectGeoJsonProjection = (geoJson: any): string => {
 };
 
 export const validateEditorGeometry = (geometry: any): string | null => {
-    if (!geometry) return 'H�nh v? kh�ng h?p l?';
+    if (!geometry) return 'Hình vẽ không hợp lệ';
 
     let coords: any[] = [];
 
@@ -47,14 +47,14 @@ export const validateEditorGeometry = (geometry: any): string | null => {
             coords = polyCoords[0][0];
         }
     } else {
-        return 'Lo?i h�nh h?c kh�ng h? tr?';
+        return 'Loại hình học không hỗ trợ';
     }
 
-    if (coords.length < 4) return 'Polygon c?n t?i thi?u 3 d?nh (=4 khi t�nh di?m kh�p)';
+    if (coords.length < 4) return 'Polygon cần tối thiểu 3 đỉnh (≥4 khi tính điểm khóp)';
 
     const area = getArea(geometry);
-    if (area === 0) return 'Polygon c� di?n t�ch b?ng 0';
-    if (area < 1) return `Di?n t�ch qu� nh? (${area.toFixed(2)}m�). Ki?m tra l?i t?a d?.`;
+        if (area === 0) return 'Polygon có diện tích bằng 0';
+        if (area < 1) return `Diện tích quá nhỏ (${area.toFixed(2)}m²). Kiểm tra lại tọa độ.`;
 
     for (let i = 0; i < coords.length - 2; i++) {
         for (let j = i + 2; j < coords.length - 1; j++) {
@@ -69,7 +69,7 @@ export const validateEditorGeometry = (geometry: any): string | null => {
                 const ua = ((line2End[0] - line2Start[0]) * (line1Start[1] - line2Start[1]) - (line2End[1] - line2Start[1]) * (line1Start[0] - line2Start[0])) / denom;
                 const ub = ((line1End[0] - line1Start[0]) * (line1Start[1] - line2Start[1]) - (line1End[1] - line1Start[1]) * (line1Start[0] - line2Start[0])) / denom;
                 if (ua > 0.001 && ua < 0.999 && ub > 0.001 && ub < 0.999) {
-                    return `Polygon t? c?t t?i do?n ${i + 1}-${i + 2} v� ${j + 1}-${j + 2}`;
+                    return `Polygon tự cắt tại đoạn ${i + 1}-${i + 2} và ${j + 1}-${j + 2}`;
                 }
             }
         }
@@ -80,7 +80,7 @@ export const validateEditorGeometry = (geometry: any): string | null => {
 
 export const exportCoordsTxt = (vertices: EditorVertex[], coordSystem: EditorCoordSystem, centralMeridian: number, projectionZone: Vn2000Zone) => {
     if (vertices.length === 0) return;
-    let content = `DANH S�CH T?A �? TH?A �?T - H?: ${coordSystem}\n`;
+        let content = `DANH SÁCH TỌA ĐỘ THỬA ĐẤT - HỆ: ${coordSystem}\n`;
     content += `STT\tX (m)\tY (m)\n`;
     content += `------------------------------------\n`;
     const vnProj = registerDynamicVn2000(centralMeridian, projectionZone);

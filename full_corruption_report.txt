@@ -1,0 +1,649 @@
+
+File: App.tsx
+  Line 204: const handleNavigate = (pageId: string, routePath?: string) => {
+  Line 218: const ProtectedRoute = ({ children, requiredRole }: { children?: React.ReactNode, requiredRole?: UserRole }) => {
+  Line 279: if (systemSettings['maintenance_mode'] === 'true' && user?.role !== UserRole.ADMIN) return (
+
+File: index.html
+  Line 56: <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+File: types.ts
+  Line 14: export const getRoleLabel = (role?: string): string => {
+  Line 32: sender_name?: string;
+  Line 33: receiver_name?: string;
+  Line 34: sender_avatar?: string;
+  Line 35: sender_email?: string;
+  Line 36: receiver_email?: string;
+  Line 37: receiver_avatar?: string;
+  Line 48: expires_at?: string | null;
+  Line 49: sender_name?: string;
+  Line 59: type?: 'INTERNAL' | 'EXTERNAL';
+  Line 60: url?: string;
+  Line 74: username?: string;
+  Line 78: is_verified?: boolean;
+  Line 79: can_chat?: boolean;
+  Line 80: avatar?: string;
+  Line 85: gid?: any;
+  Line 95: updatedBy?: string;
+  Line 96: updatedAt?: string;
+  Line 112: nguon_du_lieu?: string;
+  Line 113: ghi_chu?: string;
+  Line 114: created_at?: string;
+  Line 115: updated_at?: string;
+  Line 161: opacity?: number;
+  Line 162: type?: 'WMS' | 'XYZ';
+  Line 163: category?: 'STANDARD' | 'PLANNING' | 'ADMINISTRATIVE';
+  Line 164: mapScope?: 'MAIN' | 'ADMIN' | 'SHARED';
+  Line 165: availableMaps?: string[];
+  Line 166: description?: string;
+  Line 167: sortOrder?: number;
+  Line 177: useProxy?: boolean; // Thêm thuộc tính này
+  Line 178: description?: string;
+  Line 179: sortOrder?: number;
+  Line 185: label?: string;
+  Line 186: description?: string;
+  Line 194: description?: string;
+
+File: components\AdminMenu.tsx
+  Line 9: systemName?: string;
+  Line 10: logoUrl?: string;
+  Line 11: allowedTabs?: string[];
+
+File: components\Seo.tsx
+  Line 6: description?: string;
+  Line 7: keywords?: string;
+  Line 8: systemSettings?: Record<string, string>;
+  Line 14: const siteName = systemSettings?.system_name || "GeoMaster";
+  Line 15: const seoTitleSuffix = systemSettings?.seo_title || siteName;
+  Line 21: const finalDesc = description || systemSettings?.seo_description || "Hệ thống WebGIS GeoMaster - Tra cứu quy hoạch và quản lý đất đai chuyên nghiệp.";
+  Line 31: const finalKeywords = keywords || systemSettings?.seo_keywords || "webgis, quy hoạch, giá đất, postgis, bản đồ số";
+  Line 49: if (systemSettings?.seo_og_image) {
+  Line 56: if (systemSettings?.site_favicon) {
+
+File: components\Sidebar.tsx
+  Line 11: onNavigate: (page: string, routePath?: string) => void;
+  Line 16: systemName?: string;
+  Line 17: logoUrl?: string;
+  Line 18: sidebarToolsConfig?: string;
+  Line 70: }, [user?.avatar]);
+  Line 92: }, [user?.role]);
+  Line 103: setUnreadCount(Number(data?.count || 0));
+  Line 135: const internalPath = item.url?.startsWith('/') ? item.url : undefined;
+  Line 140: const getAvatarUrl = (path?: string) => {
+  Line 145: return `${baseUrl}${cleanPath}?cache_bust=${new Date().getTime()}`;
+
+File: components\admin\BranchManager.tsx
+  Line 24: permissions?: string[];
+  Line 38: const [formErrors, setFormErrors] = useState<{ code?: string; name?: string; address?: string }>({});
+  Line 107: const errors: { code?: string; name?: string; address?: string } = {};
+  Line 172: setMessage({ type: 'error', text: e?.message || 'Lưu dữ liệu thất bại.' });
+  Line 184: if (confirm("Bạn có chắc chắn muốn xóa chi nhánh này?")) {
+  Line 190: setMessage({ type: 'error', text: e?.message || 'Xóa chi nhánh thất bại.' });
+
+File: components\admin\LandPriceManager.tsx
+  Line 10: permissions?: string[];
+  Line 82: const runSearch = async (page = 1, overridePageSize?: number, options?: { preserveTable?: boolean }) => {
+  Line 84: const preserveTable = !!options?.preserveTable;
+
+File: components\admin\LayerManager.tsx
+  Line 25: permissions?: string[];
+  Line 67: isDangerous?: boolean;
+  Line 136: sortOrder: normalizeSortOrderValue(item?.sortOrder ?? item?.sort_order, index + 1)
+  Line 143: sortOrder: normalizeSortOrderValue(item?.sortOrder ?? item?.sort_order, index + 1)
+  Line 157: const openModal = (type: 'LAYER' | 'TABLE' | 'BASEMAP', item?: any) => {
+  Line 204: name: prev?.name?.trim() ? prev.name : preset.name,
+  Line 208: description: prev?.description?.trim() ? prev.description : preset.description,
+  Line 209: visible: prev?.visible ?? true
+  Line 357: message = `Làm mới thông tin các cột (To, Thua, LoaiDat...) và SRID cho bảng "${name}" từ Database?`;
+  Line 418: failedCount = Array.isArray(result?.failed) ? result.failed.length : 0;
+  Line 419: syncedCount = Array.isArray(result?.synced) ? result.synced.length : 0;
+  Line 421: const message = String(e?.message || '');
+  Line 428: const tableName = String(table?.table_name || '').trim();
+
+File: components\admin\LogViewer.tsx
+  Line 154: const fetchData = useCallback(async (overridePage?: number) => {
+  Line 166: setLoadError(e?.message || 'Không thể tải dữ liệu nhật ký.');
+  Line 261: <div className="text-2xl font-bold text-green-400 tabular-nums">{stats?.today ?? '—'}</div>
+  Line 265: <div className="text-2xl font-bold text-blue-400 tabular-nums">{stats?.uniqueUsersWeek ?? '—'}</div>
+  Line 271: {(stats?.actionStats ?? []).slice(0, 4).map(s => {
+
+File: components\admin\MenuManager.tsx
+  Line 9: permissions?: string[];
+  Line 55: onConfirm?: () => void;
+  Line 58: const showDialog = (type: any, title: string, message: string, onConfirm?: () => void) => {
+  Line 72: const isValidExternalUrl = (value: string) => /^https?:\/\//i.test(value);
+  Line 190: showDialog('confirm', 'Xác nhận xóa', "Thao tác này sẽ gỡ bỏ mục menu khỏi Sidebar của toàn bộ người dùng. Bạn vẫn muốn tiếp tục?", async () => {
+  Line 199: const openModal = (item?: MenuItem) => {
+  Line 488: <button onClick={() => { setDialog({ ...dialog, isOpen: false }); dialog.onConfirm?.(); }} className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-red-900/20 transition-all">XÁC NHẬN</button>
+  Line 614: const isSelected = formData.roles?.includes(role);
+
+File: components\admin\NotificationManager.tsx
+  Line 16: const toDatetimeLocal = (iso?: string | null): string => {
+  Line 22: const isExpired = (expires_at?: string | null): boolean => {
+  Line 28: permissions?: string[];
+  Line 50: onConfirm?: () => void;
+  Line 53: const showDialog = (type: any, title: string, message: string, onConfirm?: () => void) => {
+  Line 160: showDialog('confirm', 'Xác nhận xóa', 'Bạn có chắc chắn muốn xóa vĩnh viễn thông báo này khỏi hệ thống không?', async () => {
+  Line 456: <button onClick={() => { setDialog({ ...dialog, isOpen: false }); dialog.onConfirm?.(); }} className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg transition-all">XÁC NHẬN</button>
+
+File: components\admin\ParcelGeoJsonImportModal.tsx
+  Line 97: if (parsed?.type === 'FeatureCollection' && Array.isArray(parsed.features)) {
+  Line 99: } else if (parsed?.type === 'Feature') {
+  Line 111: const props = feature?.properties || {};
+  Line 157: }) as { inserted?: number; totalFeatures?: number; tableName?: string };
+  Line 160: inserted: result?.inserted ?? 0,
+  Line 161: totalFeatures: result?.totalFeatures ?? 0,
+  Line 162: tableName: result?.tableName || tableName
+  Line 285: onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
+
+File: components\admin\PdfSettingsManager.tsx
+  Line 8: permissions?: string[];
+  Line 106: const file = e.target.files?.[0];
+  Line 133: const setting = settings.find(s => s.key === key) || { key, value: meta?.type === 'boolean' ? boolDefault : '', type: meta?.type || 'text' };
+  Line 137: if (meta?.type === 'image') {
+  Line 158: if (meta?.type === 'boolean') {
+  Line 209: type={meta?.type === 'number' ? 'number' : 'text'}
+  Line 210: step={meta?.type === 'number' ? 'any' : undefined}
+
+File: components\admin\systemSettingsConfig.ts
+  Line 119: export type BackupRecord = { date: string; tables: number; filename: string; format?: BackupFormat; scope?: BackupScope };
+
+File: components\admin\SystemSettingsManager.tsx
+  Line 12: permissions?: string[];
+  Line 139: setMailTestMsg(result?.message || 'Đã gửi email test thành công.');
+  Line 267: const filename = result?.fileName || `backup_${backupScope.toLowerCase()}_${backupFormat.toLowerCase()}_${new Date().toISOString().slice(0, 10)}.sql`;
+  Line 278: const warningText = result?.skippedCount > 0 ? ` Tuy có ${result.skippedCount} bảng được bỏ qua do lỗi cấu trúc.` : '';
+  Line 327: const file = e.target.files?.[0];
+  Line 348: if (metadata?.type === 'image') {
+  Line 370: if (metadata?.type === 'boolean') {
+  Line 516: type={metadata?.type === 'number' ? 'number' : 'text'}
+  Line 517: step={metadata?.type === 'number' ? 'any' : undefined}
+  Line 934: <input ref={restoreInputRef} type="file" accept=".sql,.txt" className="hidden" onChange={e => setRestoreFile(e.target.files?.[0] || null)}/>
+  Line 936: <button onClick={() => restoreInputRef.current?.click()} disabled={!canRestoreBackup} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed text-sm rounded-lg border border-gray-600 text-gray-300 flex items-center gap-2">
+
+File: components\admin\UserManager.tsx
+  Line 21: permissions?: string[];
+  Line 46: onConfirm?: () => void;
+  Line 49: const showDialog = (type: any, title: string, message: string, onConfirm?: () => void) => {
+  Line 148: showDialog('confirm', 'Xác nhận xóa', "Bạn có chắc chắn muốn xóa vĩnh viễn người dùng này khỏi hệ thống?", async () => {
+  Line 387: <button onClick={() => { setDialog({ ...dialog, isOpen: false }); dialog.onConfirm?.(); }} className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-red-900/20 transition-all">XÁC NHẬN</button>
+
+File: components\admin\parcel\BulkImportModal.tsx
+  Line 311: const selectedFile = e.target.files?.[0];
+  Line 325: const buffer = event.target?.result as ArrayBuffer;
+  Line 335: const content = JSON.parse(event.target?.result as string);
+  Line 549: onClick={() => fileInputRef.current?.click()}
+  Line 595: <input className="w-full bg-gray-950 border border-orange-500/50 rounded px-2 py-1.5 text-[11px] text-white font-black" value={editBuffer?.sodoto} onChange={e=>setEditBuffer({...editBuffer!, sodoto: e.target.value})} placeholder="Tờ" />
+  Line 596: <input className="w-full bg-gray-950 border border-orange-500/50 rounded px-2 py-1.5 text-[11px] text-white font-black" value={editBuffer?.sothua} onChange={e=>setEditBuffer({...editBuffer!, sothua: e.target.value})} placeholder="Thửa" />
+  Line 607: <input className="w-full bg-gray-950 border border-slate-700 rounded px-2 py-1 text-[10px] text-white" value={editBuffer?.tenchu || ''} onChange={e=>setEditBuffer({...editBuffer!, tenchu: e.target.value})} placeholder="Chủ sử dụng" />
+  Line 608: <input className="w-full bg-gray-950 border border-slate-700 rounded px-2 py-1 text-[10px] text-blue-300 font-bold uppercase" value={editBuffer?.loaidat || ''} onChange={e=>setEditBuffer({...editBuffer!, loaidat: e.target.value.toUpperCase()})} placeholder="Loại đất" />
+
+File: components\admin\parcel\ParcelForm.tsx
+  Line 108: const file = e.target.files?.[0];
+  Line 121: const buffer = event.target?.result as ArrayBuffer;
+  Line 151: const content = JSON.parse(event.target?.result as string);
+  Line 343: onClick={() => fileInputRef.current?.click()}
+
+File: components\admin\parcel\ParcelList.tsx
+  Line 16: canEdit?: boolean;
+  Line 17: canDelete?: boolean;
+
+File: components\admin\parcel\QuickView.tsx
+  Line 27: if (!parcel?.geometry) return;
+
+File: components\admin\parcel\TableFilter.tsx
+  Line 56: {currentTable?.display_name || currentTable?.table_name || 'Chọn lớp...'}
+
+File: components\common\AutocompleteInput.tsx
+  Line 13: disabled?: boolean;
+
+File: components\editor\EditorLayoutShell.tsx
+  Line 10: isMapLoading?: boolean;
+
+File: components\editor\EditorModals.tsx
+  Line 138: defaultValue={splitModal.originalFeature?.sodoto || ''}
+  Line 153: splitModal.onSplit(soToInput?.value || '', parseInt(soThuaInput?.value) || 1);
+  Line 216: mergeModal.onMerge(soToInput?.value || '', soThuaInput?.value || '1');
+
+File: components\editor\EditorSidebar.tsx
+  Line 38: onSelectFeature: (uid: string, isMultiSelect?: boolean) => void;
+
+File: components\editor\EditorToolbar.tsx
+  Line 22: currentBasemap?: string;
+  Line 23: onChangeBasemap?: (basemap: string) => void;
+  Line 72: disabled?: boolean;
+  Line 92: accentClass?: string;
+  Line 151: onClick={() => onChangeBasemap?.(bm.key)}
+
+File: components\editor\ParcelLookupDialogs.tsx
+  Line 10: includeNearby?: boolean;
+  Line 11: nearbyRadiusMeters?: string;
+  Line 19: onSearchParcel: (overrideSoTo?: string, overrideSoThua?: string) => void;
+
+File: components\land-price\LandPriceDetailModal.tsx
+  Line 12: user?: User | null;
+  Line 13: systemSettings?: Record<string, string>;
+
+File: components\land-price\LandPricePrintTemplate.tsx
+  Line 9: user?: User | null;
+  Line 10: systemSettings?: Record<string, string>;
+  Line 28: const pdfSignerName = effectiveSettings.pdf_signer_name || user?.name || 'HỆ THỐNG WEBGIS';
+
+File: components\map\LayerControl.tsx
+  Line 208: let thumbUrl = 'https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?auto=format&fit=crop&w=150&q=80'; // Default Map
+  Line 210: thumbUrl = 'https://images.unsplash.com/photo-1580137189272-c9379f8864fd?auto=format&fit=crop&w=150&q=80'; // Satellite
+  Line 212: thumbUrl = 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=150&q=80'; // Terrain
+  Line 214: thumbUrl = 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=150&q=80'; // Dark
+
+File: components\map\MapControls.tsx
+  Line 10: isLegendOpen?: boolean;
+  Line 11: activeLayerId?: string | null;
+  Line 13: onRestoreActiveLayerView?: () => void;
+  Line 14: onToggleLegend?: () => void;
+  Line 15: onShareView?: () => void;
+  Line 16: showLegendToggle?: boolean;
+  Line 70: onClick={() => mapInstance?.getView().animate({ rotation: 0, duration: 500 })}
+  Line 79: onClick={() => mapInstance?.getView().animate({ zoom: (mapInstance?.getView().getZoom() || 0) + 1, duration: 250 })}
+  Line 85: onClick={() => mapInstance?.getView().animate({ zoom: (mapInstance?.getView().getZoom() || 0) - 1, duration: 250 })}
+
+File: components\map\MapLegend.tsx
+  Line 9: visibleLayers?: WMSLayerConfig[];
+
+File: components\map\ParcelPopup.tsx
+  Line 11: systemSettings?: Record<string, string>;
+  Line 14: onEdit?: (parcel: LandParcel) => void;
+  Line 15: onDelete?: (parcel: LandParcel) => void;
+  Line 22: const parcelIdentifier = formatParcelIdentifier(p, systemSettings?.parcel_identifier_format);
+
+File: components\map\PdfTemplateEditor.tsx
+  Line 10: systemSettings?: Record<string, string>;
+  Line 31: const p = (parcel?.properties || {}) as Record<string, any>;
+  Line 34: return templateSettings[key] ?? systemSettings?.[key] ?? fallback;
+  Line 209: <div className="font-bold uppercase">{resolveValue('pdf_signer_name', user?.name || 'HỆ THỐNG WEBGIS')}</div>
+  Line 215: {resolveValue('pdf_footer_text', systemSettings?.footer_text || 'Trung tâm dữ liệu GIS')}
+
+File: components\map\PrintTemplate.tsx
+  Line 10: user?: User | null;
+  Line 11: systemSettings?: Record<string, string>;
+  Line 12: templateId?: string;
+  Line 19: distanceNext?: string;
+  Line 35: const parcelIdentifier = formatParcelIdentifier(formData, systemSettings?.parcel_identifier_format);
+  Line 197: const pdfSignerName = effectiveSettings.pdf_signer_name || user?.name || 'HỆ THỐNG WEBGIS';
+
+File: components\map\SearchPanel.tsx
+  Line 12: systemSettings?: Record<string, string>;
+  Line 14: onSearchCoordinate?: (lat: number, lon: number) => void;
+  Line 93: const message = typeof err?.message === 'string' ? err.message : '';
+  Line 134: const normalizedUrl = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+
+File: components\tools\CoordinateConverter.tsx
+  Line 219: const file = event.target.files?.[0];
+
+File: hooks\useEditorDraft.ts
+  Line 46: mapInstance.current?.getView().fit(extent, { padding: [100, 100, 100, 100], duration: 600 });
+
+File: hooks\useEditorMapInteractions.ts
+  Line 38: updateSelectionState: (primary?: Feature | null) => void;
+  Line 41: executeSplit: (cutGeom: LineString | Polygon, featureToSplit?: Feature, config?: SplitConfig) => void;
+  Line 165: selectInteraction.current?.getFeatures().clear();
+
+File: hooks\useEditorMapSetup.ts
+  Line 44: updateSelectionState: (primary?: Feature | null) => void;
+  Line 48: executeSplit: (cutGeom: LineString, featureToSplit?: Feature, config?: SplitConfig) => void;
+  Line 134: if ((event as any).mapBrowserEvent?.originalEvent?.shiftKey) {
+  Line 150: const keepExistingSelection = !!(event as any)?.mapBrowserEvent?.originalEvent?.shiftKey;
+
+File: hooks\useEditorMeasure.ts
+  Line 51: geometry?.on('change', (changeEvent) => {
+
+File: hooks\useEditorParcelSearch.ts
+  Line 20: updateSelectionState: (primary?: Feature | null) => void;
+  Line 65: const handleSearchParcel = async (overrideSoTo?: string, overrideSoThua?: string) => {
+  Line 146: selectInteraction.current?.getFeatures().clear();
+  Line 147: selectInteraction.current?.getFeatures().push(olFeature);
+  Line 208: selectInteraction.current?.getFeatures().clear();
+  Line 209: selectInteraction.current?.getFeatures().push(selectedByGid);
+  Line 220: mapInstance.current?.getView().fit(extent, { padding: [100, 100, 100, 100], duration: 800, maxZoom: 20 });
+
+File: hooks\useEditorPermissions.ts
+  Line 12: const currentPermissions = user?.role === UserRole.ADMIN
+  Line 14: : rolePermissions.find((rolePermission) => rolePermission.role === user?.role)?.permissions || (user?.role ? DEFAULT_ROLE_PERMISSIONS[user.role] || [] : []);
+  Line 17: if (user?.role === UserRole.ADMIN) return true;
+  Line 18: if (!user?.branchId || !branchPermissions) return true;
+
+File: hooks\useEditorSelection.ts
+  Line 72: const updateSelectionState = useCallback((primary?: Feature | null) => {
+  Line 73: const selected = selectInteraction.current?.getFeatures().getArray() || [];
+  Line 87: selectInteraction.current?.getFeatures().clear();
+
+File: hooks\useEditorSplitMerge.ts
+  Line 80: const selectedFeatures = selectInteraction.current?.getFeatures().getArray() || [];
+  Line 155: const executeSplit = (cutGeom: LineString | Polygon, featureToSplit?: Feature, config?: { soTo: string; soThuaStart: number }) => {
+
+File: hooks\useMap.ts
+  Line 39: systemSettings?: Record<string, string>,
+  Line 40: layerVisibilityFilter?: (layer: WMSLayerConfig) => boolean,
+  Line 41: stateStorageKey?: string
+  Line 107: source?.clear();
+  Line 111: source?.addFeature(accuracyFeature);
+  Line 115: source?.addFeature(positionFeature);
+  Line 171: const rowSoTo = (r?.sodoto || r?.so_to || '').toString().trim();
+  Line 172: const rowSoThua = (r?.sothua || r?.so_thua || '').toString().trim();
+  Line 174: }) || rows.find((r: any) => isValidGid(r?.gid));
+  Line 183: const handleSelectResult = useCallback((parcel: LandParcel, fallbackCoord?: Coordinate) => {
+  Line 199: source?.clear();
+  Line 219: source?.addFeature(new Feature({ geometry }));
+  Line 228: if (popupPos) overlayInstance.current?.setPosition(popupPos);
+  Line 353: const parcelIdentifier = formatParcelIdentifier(parcel.properties, systemSettings?.parcel_identifier_format);
+  Line 511: ? safeReadStorage<{ visibleLayerIds?: string[]; activeLayerId?: string | null; activeBasemapId?: string | null }>(storageId)
+  Line 517: const persistedVisibleIds = Array.isArray(savedUiState?.visibleLayerIds)
+  Line 529: const preferredActiveLayerId = typeof savedUiState?.activeLayerId === 'string' && eligibleLayerIdSet.has(savedUiState.activeLayerId)
+  Line 538: const persistedBasemap = nextBasemaps.find((m) => m.id === savedUiState?.activeBasemapId);
+  Line 573: if (!mapInstance.current || !measureMode) { if (drawInteraction.current) mapInstance.current?.removeInteraction(drawInteraction.current); return; }
+  Line 610: finalUrl = `${API_URL}/api/proxy/forward?url=${encodeURIComponent(rawUrl)}`
+  Line 629: const proxiedUrl = `${API_URL}/api/proxy/forward?url=${encodeURIComponent(config.url)}`.split('%7Bz%7D').join('{z}').split('%7Bx%7D').join('{x}').split('%7By%7D').join('{y}');
+  Line 633: url: `${API_URL}/api/proxy/forward?url=${encodeURIComponent(config.url)}`,
+
+File: hooks\useMapInteractions.ts
+  Line 51: const currentOlLayers = wmsLayerGroup.current?.getLayers().getArray() || [];
+  Line 67: highlightLayer.current?.getSource()?.clear();
+
+File: pages\administrativemap.tsx
+  Line 44: const ThematicMapPage: React.FC<{ user: User | null; systemSettings?: Record<string, string> }> = ({ user, systemSettings }) => {
+  Line 195: const configuredBasemapId = String(systemSettings?.thematic_default_basemap_id || '').trim();
+  Line 227: if (geometryData?.type === 'Point') coord = geometryData.coordinates;
+  Line 228: if (geometryData?.type === 'MultiPoint' && Array.isArray(geometryData.coordinates)) coord = geometryData.coordinates[0];
+  Line 229: if (geometryData?.type === 'LineString' && Array.isArray(geometryData.coordinates)) coord = geometryData.coordinates[0];
+  Line 230: if (geometryData?.type === 'Polygon' && Array.isArray(geometryData.coordinates)) coord = geometryData.coordinates[0]?.[0];
+  Line 231: if (geometryData?.type === 'MultiPolygon' && Array.isArray(geometryData.coordinates)) coord = geometryData.coordinates[0]?.[0]?.[0];
+  Line 253: const source = highlightLayer.current?.getSource();
+  Line 254: source?.clear();
+  Line 255: source?.addFeature(new Feature({ geometry }));
+  Line 260: mapInstance.current?.getView().fit(extent, {
+  Line 273: const properties = match?.properties || {};
+  Line 284: highlightGeoJsonGeometry(match?.geometry, true);
+  Line 312: if (String(err?.message || '').includes('(500)')) {
+  Line 337: const props = f?.properties || {};
+  Line 387: const proxiedUrl = `${API_URL}/api/proxy/forward?url=${encodeURIComponent(wfsUrl.toString())}`;
+  Line 400: return Array.isArray(parsed?.features) ? parsed.features : [];
+  Line 402: if (err?.name === 'AbortError') {
+  Line 449: const currentOlLayers = wmsLayerGroup.current?.getLayers().getArray() || [];
+  Line 471: properties?.ten_tinh ||
+  Line 472: properties?.ten_tinh_tp ||
+  Line 473: properties?.ten ||
+  Line 474: properties?.name ||
+  Line 475: properties?.province ||
+  Line 486: const value = properties?.[key];
+  Line 502: if (String(err?.message || '').includes('(500)')) {
+  Line 507: const dbMatched = dbResults.find((r) => isProvinceMatch(r?.properties || {})) || dbResults[0];
+  Line 519: return isProvinceMatch(f?.properties || {});
+  Line 525: gid: Number(matched?.id || 0),
+  Line 526: name: getProvinceName(matched?.properties || {}),
+  Line 527: properties: matched?.properties || {},
+  Line 528: geometry: matched?.geometry || null
+  Line 566: if (String(err?.message || '').includes('(500)')) {
+  Line 573: const currentOlLayers = wmsLayerGroup.current?.getLayers().getArray() || [];
+  Line 638: const initLng = parseFloat(systemSettings?.thematic_map_center_lng ?? '') || parseFloat(systemSettings?.map_center_lng ?? '') || MAP_CONFIG.DEFAULT_CENTER[0];
+  Line 639: const initLat = parseFloat(systemSettings?.thematic_map_center_lat ?? '') || parseFloat(systemSettings?.map_center_lat ?? '') || MAP_CONFIG.DEFAULT_CENTER[1];
+  Line 640: const initZoom = parseFloat(systemSettings?.thematic_default_zoom ?? '') || parseFloat(systemSettings?.default_zoom ?? '') || MAP_CONFIG.DEFAULT_ZOOM;
+  Line 641: const initMinZoom = parseFloat(systemSettings?.thematic_map_min_zoom ?? '') || parseFloat(systemSettings?.map_min_zoom ?? '') || MAP_CONFIG.MIN_ZOOM;
+  Line 642: const initMaxZoom = parseFloat(systemSettings?.thematic_map_max_zoom ?? '') || parseFloat(systemSettings?.map_max_zoom ?? '') || MAP_CONFIG.MAX_ZOOM;
+  Line 684: const currentOlLayers = wmsLayerGroup.current?.getLayers().getArray() || [];
+  Line 719: const source = olLayer?.getSource() as any;
+  Line 720: if (!source?.getFeatureInfoUrl) continue;
+  Line 732: if (data?.features?.length > 0) {
+  Line 749: if (full?.geometry) {
+
+File: pages\AdminPage.tsx
+  Line 22: systemName?: string;
+  Line 23: logoUrl?: string;
+  Line 24: user?: User | null;
+  Line 63: const currentPermissions = user?.role === UserRole.ADMIN
+  Line 65: : rolePermissions.find((rp) => rp.role === user?.role)?.permissions || (user?.role ? DEFAULT_ROLE_PERMISSIONS[user.role] || [] : []);
+  Line 68: if (user?.role === UserRole.ADMIN) return true;
+  Line 96: if (user?.role !== UserRole.ADMIN && !hasTabAccess(activeTab)) {
+
+File: pages\Dashboard.tsx
+  Line 123: const nav = window.navigator as Navigator & { msSaveOrOpenBlob?: (b: Blob, n?: string) => boolean };
+  Line 270: ["Chi nhánh thực hiện", user?.branchId || 'Trụ sở chính'],
+  Line 444: alert('Kh?ng th? xu?t file JSON. Vui l?ng th? l?i.');
+  Line 647: <p className="text-sm font-black text-cyan-400 uppercase tracking-wide">{dominantType?.name || 'Chưa có dữ liệu'}</p>
+  Line 677: trend: getTrend(displayStats.totalParcels, previousStats?.totalParcels ?? null),
+  Line 687: trend: getTrend(displayStats.totalArea, previousStats?.totalArea ?? null),
+  Line 697: trend: getTrend(displayStats.totalValue, previousStats?.totalValue ?? null),
+  Line 1040: <p className="text-slate-900 font-bold">{user?.branchId || 'Trụ sở chính'}</p>
+  Line 1044: <p className="text-slate-900 font-bold">{user?.name || 'Hệ thống WebGIS'}</p>
+  Line 1174: <p className="font-bold text-slate-800">{user?.name || 'Hệ thống WebGIS'}</p>
+
+File: pages\EditorPage.tsx
+  Line 566: selectInteraction.current?.getFeatures().clear();
+  Line 567: selectInteraction.current?.getFeatures().push(feature);
+  Line 571: mapInstance.current?.getView().fit(polygon.getExtent(), { padding: [100, 100, 100, 100], duration: 800 });
+  Line 580: const applyImportedFeatures = (features: Feature[], projectionLabel: string, sourceLabel: string, skippedMessage?: string) => {
+  Line 595: selectInteraction.current?.getFeatures().clear();
+  Line 596: selectInteraction.current?.getFeatures().push(lastFeature);
+  Line 603: mapInstance.current?.getView().fit(extent, { padding: [100, 100, 100, 100], duration: 800 });
+  Line 615: const file = e.target.files?.[0];
+  Line 621: const text = (event.target?.result as string).trim();
+  Line 671: const file = e.target.files?.[0];
+  Line 677: const text = String(event.target?.result || '').trim();
+  Line 904: setDialog({ isOpen: true, type: 'error', title: 'L?i export', message: e?.message || 'Kh?ng th? xu?t SHP v?o l?c n?y.' });
+  Line 912: setDialog({ isOpen: true, type: 'error', title: 'L?i export', message: 'Kh?ng c? d? li?u ?? xu?t DXF.' });
+  Line 915: setDialog({ isOpen: true, type: 'success', title: 'Xu?t th?nh c?ng', message: `File DXF (${coordSystem}) ?? ???c t?i xu?ng. M? b?ng AutoCAD ho?c MicroStation.` });
+  Line 917: setDialog({ isOpen: true, type: 'error', title: 'L?i export', message: e?.message || 'Kh?ng th? xu?t DXF v?o l?c n?y.' });
+  Line 926: const selectedCollection = selectInteraction.current?.getFeatures();
+  Line 927: selectedCollection?.remove(feature);
+  Line 929: updateSelectionState(selectedCollection?.item(0) || null);
+  Line 937: const handleSelectFeatureFromList = (uid: string, isMultiSelect?: boolean) => {
+  Line 940: const selectedFeatures = selectInteraction.current?.getFeatures();
+  Line 960: mapInstance.current?.getView().fit(extent, { padding: [100, 100, 100, 100], duration: 500 });
+  Line 1039: onOpenDxfImport: () => dxfInputRef.current?.click(),
+
+File: pages\LandPriceLookup.tsx
+  Line 12: user?: User | null;
+  Line 13: systemSettings?: Record<string, string>;
+  Line 89: overridePageSize?: number,
+  Line 90: options?: { preserveTable?: boolean }
+  Line 93: const preserveTable = !!options?.preserveTable;
+  Line 118: setError(err.message || "L?i khi tra c?u d? li?u.");
+  Line 142: setError('Vui l?ng nh?p ?t nh?t m?t ?i?u ki?n tra c?u.');
+
+File: pages\Login.tsx
+  Line 11: systemName?: string;
+  Line 12: logoUrl?: string;
+  Line 13: footerText?: string;
+  Line 14: allowRegistration?: boolean;
+  Line 15: initialToken?: string | null;
+  Line 16: verificationToken?: string | null;
+  Line 32: onClose?: () => void;
+  Line 35: const showDialog = (type: 'success' | 'error' | 'info', title: string, message: string, onClose?: () => void) => {
+  Line 84: setError(err?.message || 'Bạn đang làm mới CAPTCHA quá nhanh. Vui lòng thử lại sau.');
+  Line 375: Quên mật khẩu?
+  Line 447: <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-600'}`}>Chưa có tài khoản?</p>
+  Line 676: }`}>Quên Mật Khẩu?</h3>
+  Line 987: onClick={() => { setDialog({ ...dialog, isOpen: false }); dialog.onClose?.(); }}
+
+File: pages\MapPage.tsx
+  Line 46: const MapPage: React.FC<{ user: User | null; systemSettings?: Record<string, string> }> = ({ user, systemSettings }) => {
+  Line 161: source?.clear();
+  Line 165: source?.addFeature(pointFeature);
+  Line 202: const initLng = parseFloat(systemSettings?.map_center_lng ?? '') || MAP_CONFIG.DEFAULT_CENTER[0];
+  Line 203: const initLat = parseFloat(systemSettings?.map_center_lat ?? '') || MAP_CONFIG.DEFAULT_CENTER[1];
+  Line 204: const initZoom = parseFloat(systemSettings?.default_zoom ?? '') || MAP_CONFIG.DEFAULT_ZOOM;
+  Line 205: const initMinZoom = parseFloat(systemSettings?.map_min_zoom ?? '') || MAP_CONFIG.MIN_ZOOM;
+  Line 206: const initMaxZoom = parseFloat(systemSettings?.map_max_zoom ?? '') || MAP_CONFIG.MAX_ZOOM;
+  Line 223: const resolvedLng = Number.isFinite(paramLng) ? paramLng : Number(savedView?.center?.[0] ?? initLng);
+  Line 224: const resolvedLat = Number.isFinite(paramLat) ? paramLat : Number(savedView?.center?.[1] ?? initLat);
+  Line 225: const resolvedZoom = Number.isFinite(paramZoom) ? paramZoom : Number(savedView?.zoom ?? initZoom);
+  Line 226: const resolvedRotation = Number.isFinite(paramRotation) ? paramRotation : Number(savedView?.rotation ?? 0);
+  Line 265: const currentOlLayers = wmsLayerGroup.current?.getLayers().getArray() || [];
+  Line 279: overlayInstance.current?.setPosition(undefined);
+  Line 281: highlightLayer.current?.getSource()?.clear();
+  Line 301: if (data.features?.length > 0) {
+  Line 352: overlayInstance.current?.setPosition(undefined);
+  Line 389: onClose={() => { overlayInstance.current?.setPosition(undefined); setSelectedParcel(null); highlightLayer.current?.getSource()?.clear(); }}
+
+File: pages\Messaging.tsx
+  Line 43: onConfirm?: () => void;
+  Line 46: const showDialog = (type: any, title: string, message: string, onConfirm?: () => void) => {
+  Line 126: const isCurrentlyInTrash = view === 'TRASH' || selectedMail?.is_deleted;
+  Line 129: ? 'Thư này sẽ bị xóa vĩnh viễn khỏi hệ thống và không thể khôi phục. Tiếp tục?'
+  Line 136: if (selectedMail?.id === id) setView('INBOX');
+  Line 148: if (selectedMail?.id === id) setView('INBOX');
+  Line 163: setTimeout(() => contentRef.current?.focus(), 100);
+  Line 220: const getAvatarUrl = (path?: string) => {
+  Line 361: <div className="w-full h-full flex items-center justify-center text-blue-400 font-black text-xl">{contactName?.charAt(0)}</div>
+  Line 562: <button onClick={() => { setDialog({ ...dialog, isOpen: false }); dialog.onConfirm?.(); }} className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-red-900/20 transition-all">XÁC NHẬN</button>
+
+File: pages\ParcelManager.tsx
+  Line 17: permissions?: string[];
+  Line 42: const [dialog, setDialog] = useState<{ isOpen: boolean; type: 'alert' | 'confirm' | 'success' | 'error'; title: string; message: string; onConfirm?: () => void; }>({ isOpen: false, type: 'alert', title: '', message: '' });
+  Line 44: const showDialog = (type: any, title: string, message: string, onConfirm?: () => void) => {
+  Line 140: if (!p?.geometry) {
+  Line 165: showDialog('confirm', 'Xác nhận xóa', 'Bạn có chắc muốn xóa thửa đất này khỏi hệ thống?', async () => {
+  Line 275: <><button onClick={() => setDialog({ ...dialog, isOpen: false })} className="flex-1 py-3.5 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-2xl font-black text-xs uppercase tracking-widest">HỦY</button><button onClick={() => { setDialog({ ...dialog, isOpen: false }); dialog.onConfirm?.(); }} className="flex-1 py-3.5 bg-red-600 hover:bg-red-500 text-white rounded-2xl font-black text-xs uppercase shadow-lg">ĐỒNG Ý</button></>
+
+File: pages\UserProfile.tsx
+  Line 50: const navigationContext = useContext(UNSAFE_NavigationContext) as { navigator?: { block?: (blocker: (tx: { retry: () => void }) => void) => () => void } };
+  Line 85: const buildAvatarUrl = (avatar?: string) => {
+  Line 92: return `${baseUrl}${cleanPath}?v=${Date.now()}`;
+  Line 108: const parsed = JSON.parse(savedDraft) as { name?: string };
+  Line 177: const navigator = navigationContext?.navigator;
+  Line 178: if (!hasProfileChanges || !navigator?.block) return;
+  Line 317: const file = e.target.files?.[0];
+  Line 585: const file = e.dataTransfer.files?.[0] || null;
+  Line 612: onClick={() => fileInputRef.current?.click()}
+  Line 692: <span className="truncate">{branchLoading ? 'Đang tải chi nhánh...' : (branch?.name || 'Chưa xác định chi nhánh')}</span>
+  Line 693: <button type="button" onClick={() => handleCopy(branch?.name || user.branchId, 'branch')} className="shrink-0 text-gray-500 hover:text-white transition-colors">
+  Line 698: {branch?.code ? `${branch.code} • ` : ''}{user.branchId}
+  Line 947: Nếu rời trang ngay bây giờ, các thay đổi trong hồ sơ sẽ bị mất. Bạn muốn tiếp tục điều hướng hay ở lại để lưu dữ liệu?
+  Line 963: pendingTransition?.retry();
+
+File: services\apiClient.ts
+  Line 29: const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
+  Line 81: options?: RequestInit,
+  Line 82: config?: { suppressAuthReload?: boolean }
+  Line 87: const headers: any = { 'Content-Type': 'application/json', ...getAuthHeaders(), ...options?.headers };
+  Line 88: if (options?.body instanceof FormData) delete headers['Content-Type'];
+  Line 96: if (!config?.suppressAuthReload) {
+  Line 124: const value = source?.[key];
+  Line 139: return { count: Number(data?.count || 0) };
+  Line 212: madinhdanh: String(filters?.madinhdanh || '').trim(),
+  Line 213: sodoto: String(filters?.sodoto || '').trim(),
+  Line 214: sothua: String(filters?.sothua || '').trim(),
+  Line 215: tenchu: String(filters?.tenchu || '').trim(),
+  Line 216: diachi: String(filters?.diachi || '').trim()
+  Line 219: let qs = `?t=${Date.now()}`;
+  Line 229: : (Array.isArray(payload?.data) ? payload.data : []);
+  Line 266: searchNearbyParcels: async (tableName: string, options: { gid: number; radius: number; includeSelf?: boolean }): Promise<LandParcel[]> => {
+  Line 268: const gid = Number(options?.gid || 0);
+  Line 269: const radius = Number(options?.radius || 0);
+  Line 270: const includeSelf = options?.includeSelf !== false;
+  Line 274: const qs = `?t=${Date.now()}&gid=${gid}&radius=${radius}&includeSelf=${includeSelf ? 'true' : 'false'}`;
+  Line 278: : (Array.isArray(payload?.data) ? payload.data : []);
+  Line 346: testMail: async (payload: { to?: string; smtp?: Record<string, string> }) =>
+  Line 364: getLogs: async (params?: { page?: number; limit?: number; action?: string; search?: string; from?: string; to?: string }) => {
+  Line 365: let qs = `?t=${Date.now()}`;
+  Line 366: if (params?.page) qs += `&page=${params.page}`;
+  Line 367: if (params?.limit) qs += `&limit=${params.limit}`;
+  Line 368: if (params?.action) qs += `&action=${encodeURIComponent(params.action)}`;
+  Line 369: if (params?.search) qs += `&search=${encodeURIComponent(params.search)}`;
+  Line 370: if (params?.from) qs += `&from=${encodeURIComponent(params.from)}`;
+  Line 371: if (params?.to) qs += `&to=${encodeURIComponent(params.to)}`;
+  Line 398: const data = await apiCall(`/land-prices-2026/wards?t=${Date.now()}`);
+  Line 401: getLandPriceSuggestions: async (phuongxa?: string, tinhcu?: string): Promise<{streets: string[], fromPoints: string[], toPoints: string[]}> => {
+  Line 402: let qs = `?t=${Date.now()}`;
+  Line 410: tu?: string,
+  Line 411: den?: string,
+  Line 412: options?: { limit?: number; page?: number; tinhcu?: string }
+  Line 414: const page = Math.max(1, Math.floor(options?.page || 1));
+  Line 415: const limit = Math.max(1, Math.min(500, Math.floor(options?.limit || 50)));
+  Line 417: let qs = `?t=${Date.now()}&page=${page}&limit=${limit}`;
+  Line 419: if (options?.tinhcu) qs += `&tinhcu=${encodeURIComponent(options.tinhcu)}`;
+  Line 426: // Backward compatibility: n?u backend c? tr? array th? b?c th?nh c?u tr?c ph?n trang.
+  Line 437: const data = Array.isArray(response?.data) ? response.data : [];
+  Line 438: const total = Number(response?.total || 0);
+  Line 439: const responseLimit = Number(response?.limit || limit) || limit;
+  Line 444: page: Number(response?.page || page) || page,
+  Line 446: pages: Number(response?.pages || (total > 0 ? Math.ceil(total / responseLimit) : 0))
+  Line 455: createBackup: async (payload: string[] | { tables?: string[]; format?: string; scope?: string }) => {
+  Line 467: message = parsed?.error || parsed?.message || message;
+  Line 477: const fileName = matched?.[1] || `backup_${Date.now()}.sql`;
+  Line 599: getCaptchaChallenge: async (): Promise<{ challengeId: string; question: string; imageDataUrl?: string; codeLength?: number; expiresInSec: number }> => {
+  Line 602: refreshCaptcha: async (): Promise<{ challengeId: string; question: string; imageDataUrl?: string; codeLength?: number; expiresInSec: number }> => {
+  Line 634: register: async (name: string, email: string, branchId: string, password?: string): Promise<any> => apiCall('/auth/register', { method: 'POST', body: JSON.stringify({ name, email, branchId, password }) }),
+  Line 638: updateProfile: async (id: string, name: string, file: File | null, username?: string): Promise<any> => {
+  Line 649: getDashboardStats: async (params?: { period?: 'all' | '7d' | '30d' | '90d'; from?: string; to?: string }): Promise<DashboardStats> => {
+  Line 652: if (params?.period) qs.set('period', params.period);
+  Line 653: if (params?.from) qs.set('from', params.from);
+  Line 654: if (params?.to) qs.set('to', params.to);
+  Line 655: const endpoint = qs.toString() ? `/stats/dashboard?${qs.toString()}` : '/stats/dashboard';
+
+File: services\parcelApi.ts
+  Line 19: const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
+  Line 39: gid?: number;
+  Line 40: madinhdanh?: string;
+  Line 43: tenchu?: string;
+  Line 44: diachi?: string;
+  Line 45: loaidat?: string;
+  Line 46: dientich?: number;
+  Line 47: geometry?: any;
+  Line 48: file?: File | null;
+  Line 55: description?: string;
+  Line 123: const res = await fetch(`${API_URL}/api/admin-search/${encodeURIComponent(t)}/suggest?q=${encodeURIComponent(q)}&limit=${limit}`);
+  Line 131: const res = await fetch(`${API_URL}/api/admin-search/${encodeURIComponent(t)}?q=${encodeURIComponent(q)}&limit=${limit}`);
+  Line 146: getAll: async (layer: string, filters?: { madinhdanh?: string, sodoto?: string, sothua?: string, tenchu?: string, diachi?: string }, pagination?: { page?: number; limit?: number }): Promise<ParcelListResponse> => {
+  Line 147: let queryString = `?t=${Date.now()}`;
+  Line 155: if (pagination?.page) queryString += `&page=${pagination.page}`;
+  Line 156: if (pagination?.limit) queryString += `&limit=${pagination.limit}`;
+  Line 163: data: Array.isArray(response?.data) ? response.data : [],
+  Line 164: total: Number(response?.total || 0),
+  Line 165: page: Number(response?.page || 1),
+  Line 166: limit: Number(response?.limit || 100),
+  Line 167: pages: Number(response?.pages || 1)
+  Line 220: const res = await fetch(`${API_URL}/api/spatial-tables?t=${Date.now()}`, { headers: { ...getAuthHeaders() } });
+  Line 223: create: async (tableName: string, displayName?: string, description?: string) => {
+  Line 232: link: async (tableName: string, displayName?: string, description?: string) => {
+  Line 241: rename: async (oldName: string, newName: string, displayName: string, description?: string, renamePhysical?: boolean) => {
+  Line 301: description?: string;
+  Line 302: sourceSrid?: number;
+  Line 304: onProgress?: (percent: number) => void;
+  Line 334: payload.onProgress?.(percent);
+  Line 362: payload.onProgress?.(100);
+
+File: utils\dxfImport.ts
+  Line 78: export const importDxfAsPolygonFeatures = (text: string, customProjection?: string) => {
+  Line 85: if (entity?.type === 'LWPOLYLINE' || entity?.type === 'POLYLINE') {
+  Line 87: if (Number.isFinite(vertex?.x) && Number.isFinite(vertex?.y)) {
+  Line 92: if (entity?.type === 'CIRCLE' && entity.center) {
+  Line 95: if (entity?.type === 'ELLIPSE' && entity.center) {
+
+File: utils\editorDataUtils.ts
+  Line 20: if (geoJson.type === 'FeatureCollection' && geoJson.features?.length > 0) {
+
+File: utils\geometryUtils.ts
+  Line 268: export function validatePolygonsForMerge(polygons: Polygon[]): { valid: boolean; error?: string } {
+
+File: utils\helpers.ts
+  Line 24: const value = source?.[key] ?? source?.properties?.[key];
+  Line 43: export const formatParcelIdentifier = (source: any, template?: string): string => {
+
+File: utils\layerManagerHelpers.ts
+  Line 63: const reindexSortOrder = <T extends { sortOrder?: number }>(items: T[]): T[] => {
+
+File: utils\mapQueryUtils.ts
+  Line 7: type?: string;
+  Line 8: category?: string;
+  Line 52: if (data.features?.length > 0) {
+
+File: utils\parcelExport.ts
+  Line 28: const props = feature?.properties || {};
+  Line 164: const geometry = feature?.geometry;
+  Line 165: const props = feature?.properties || {};
+  Line 169: appendRing(geometry.coordinates?.[0], index, props);
+  Line 174: geometry.coordinates?.forEach((polygon: any) => appendRing(polygon?.[0], index, props));
+
+File: utils\pdfTemplatePresets.ts
+  Line 72: export const getPdfTemplatePreset = (key?: string) => {
+  Line 77: export const resolvePdfTemplateSettings = (settings?: Record<string, string>): Record<string, string> => {
+  Line 78: const preset = getPdfTemplatePreset(settings?.pdf_template_preset);

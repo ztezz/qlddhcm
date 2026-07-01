@@ -1,0 +1,312 @@
+=== Final Precise Vietnamese Restoration Log ===
+[components/admin/LandPriceManager.tsx] Line 45 restored:
+  OLD:     // 1. Load danh sách phu?ng ban d?u
+  NEW:     // 1. Load danh sách phường ban đầu
+[components/admin/LandPriceManager.tsx] Line 64 restored:
+  OLD:                 // Tách tên phu?ng n?u label có d?ng "Tên Phu?ng (T?nh Cu)"
+  NEW:                 // Tách tên phường nếu label có dạng "Tên Phường (Tỉnh Cũ)"
+[components/admin/LandPriceManager.tsx] Line 68 restored:
+  OLD:                 // N?u phu?ng thay d?i, có th? xóa tên du?ng cu n?u nó không thu?c phu?ng m?i (tùy ch?n)
+  NEW:                 // Nếu phường thay đổi, có thể xóa tên đường cũ nếu nó không thuộc phường mới (tùy chọn)
+[components/admin/LandPriceManager.tsx] Line 71 restored:
+  OLD:                 console.error("L?i l?y g?i ư du?ng:", e);
+  NEW:                 console.error("Lỗi lấy gợi ý đường:", e);
+[components/admin/LandPriceManager.tsx] Line 77 restored:
+  OLD:         }, 300); // Debounce nh? d? tránh g?i API liên t?c khi gơ
+  NEW:         }, 300); // Debounce nhẹ để tránh gọi API liên tục khi gõ
+[components/admin/LandPriceManager.tsx] Line 133 restored:
+  OLD:             alert(editingId ? 'B?n không có quy?n c?p nh?t giá d?t.' : 'B?n không có quy?n thêm giá d?t m?i.');
+  NEW:             alert(editingId ? 'Bạn không có quyền cập nhật giá đất.' : 'Bạn không có quyền thêm giá đất mới.');
+[components/admin/LandPriceManager.tsx] Line 137 restored:
+  OLD:             alert("Vui ḷng nh?p d?y d? các tru?ng b?t bu?c (*)");
+  NEW:             alert("Vui lòng nhập đầy đủ các trường bắt buộc (*)");
+[components/admin/LandPriceManager.tsx] Line 151 restored:
+  OLD:             alert("L?i: " + e.message);
+  NEW:             alert("Lỗi: " + e.message);
+[components/admin/LandPriceManager.tsx] Line 159 restored:
+  OLD:             alert('B?n không có quy?n xóa giá d?t.');
+  NEW:             alert('Bạn không có quyền xóa giá đất.');
+[components/admin/LandPriceManager.tsx] Line 162 restored:
+  OLD:         if (confirm(`Xóa ḍng giá d?t t?i du?ng ${name}?`)) {
+  NEW:         if (confirm(`Xóa dòng giá đất tại đường ${name}?`)) {
+[components/admin/LandPriceManager.tsx] Line 174 restored:
+  OLD:             alert('B?n không có quy?n ch?nh s?a giá d?t.');
+  NEW:             alert('Bạn không có quyền chỉnh sửa giá đất.');
+[components/admin/LandPriceManager.tsx] Line 184 restored:
+  OLD:             alert('B?n không có quy?n thêm giá d?t m?i.');
+  NEW:             alert('Bạn không có quyền thêm giá đất mới.');
+[components/admin/LandPriceManager.tsx] Line 198 restored:
+  OLD:             {/* Toolbar T́m ki?m thông minh */}
+  NEW:             {/* Toolbar Tìm kiếm thông minh */}
+[components/admin/LandPriceManager.tsx] Line 202 restored:
+  OLD:                     <h3 className="text-xs font-black text-white uppercase tracking-widest">B? l?c qu?n lư</h3>
+  NEW:                     <h3 className="text-xs font-black text-white uppercase tracking-widest">Bộ lọc quản lý</h3>
+[components/admin/LandPriceManager.tsx] Line 207 restored:
+  OLD:                         label="Phu?ng / Xă"
+  NEW:                         label="Phường / Xã"
+[components/admin/LandPriceManager.tsx] Line 212 restored:
+  OLD:                         placeholder="Ch?n ho?c gơ tên phu?ng..."
+  NEW:                         placeholder="Chọn hoặc gõ tên phường..."
+[components/admin/LandPriceManager.tsx] Line 216 restored:
+  OLD:                         label="Tên du?ng"
+  NEW:                         label="Tên đường"
+[components/admin/LandPriceManager.tsx] Line 221 restored:
+  OLD:                         placeholder={phuongxa ? `Đu?ng t?i ${phuongxa}...` : "Nh?p tên tuy?n du?ng..."}
+  NEW:                         placeholder={phuongxa ? `Đường tại ${phuongxa}...` : "Nhập tên tuyến đường..."}
+[components/admin/LandPriceManager.tsx] Line 231 restored:
+  OLD:                             {loading ? <Loader2 className="animate-spin" size={16}/> : <Search size={16}/>} L?C D? LI?U
+  NEW:                             {loading ? <Loader2 className="animate-spin" size={16}/> : <Search size={16}/>} LỌC DỮ LIỆU
+[components/admin/LandPriceManager.tsx] Line 237 restored:
+  OLD:                             title="Thêm tuy?n du?ng m?i"
+  NEW:                             title="Thêm tuyến đường mới"
+[components/admin/LandPriceManager.tsx] Line 245 restored:
+  OLD:             {/* Vùng hi?n th? k?t qu? */}
+  NEW:             {/* Vùng hiển thị kết quả */}
+[components/admin/LandPriceManager.tsx] Line 252 restored:
+  OLD:                         <p className="text-sm font-black text-gray-500 uppercase tracking-widest mb-2">Ch? d? ch? truy v?n</p>
+  NEW:                         <p className="text-sm font-black text-gray-500 uppercase tracking-widest mb-2">Chế độ chờ truy vấn</p>
+[components/admin/LandPriceManager.tsx] Line 253 restored:
+  OLD:                         <p className="text-xs text-gray-600 font-bold leading-relaxed">Nh?p thông tin Phu?ng ho?c Đu?ng ? trên d? b?t d?u qu?n tr? d? li?u giá d?t.</p>
+  NEW:                         <p className="text-xs text-gray-600 font-bold leading-relaxed">Nhập thông tin Phường hoặc Đường ở trên để bắt đầu quản trị dữ liệu giá đất.</p>
+[components/admin/LandPriceManager.tsx] Line 262 restored:
+  OLD:                                 <span className="font-bold text-gray-200 block leading-none">K?t qu? l?c d? li?u</span>
+  NEW:                                 <span className="font-bold text-gray-200 block leading-none">Kết quả lọc dữ liệu</span>
+[components/admin/LandPriceManager.tsx] Line 317 restored:
+  OLD:                                     <th className="p-4">Khu v?c / Tên du?ng</th>
+  NEW:                                     <th className="p-4">Khu vực / Tên đường</th>
+[components/admin/LandPriceManager.tsx] Line 318 restored:
+  OLD:                                     <th className="p-4">Đo?n du?ng</th>
+  NEW:                                     <th className="p-4">Đoạn đường</th>
+[components/admin/LandPriceManager.tsx] Line 319 restored:
+  OLD:                                     <th className="p-4 text-right text-emerald-400">Đ?t ?</th>
+  NEW:                                     <th className="p-4 text-right text-emerald-400">Đất Ở</th>
+[components/admin/LandPriceManager.tsx] Line 322 restored:
+  OLD:                                     <th className="p-4 text-right">Qu?n lư</th>
+  NEW:                                     <th className="p-4 text-right">Quản lý</th>
+[components/admin/LandPriceManager.tsx] Line 327 restored:
+  OLD:                                     <tr><td colSpan={6} className="p-20 text-center"><Loader2 className="animate-spin mx-auto mb-2 text-blue-500" size={32}/> Đang truy xu?t...</td></tr>
+  NEW:                                     <tr><td colSpan={6} className="p-20 text-center"><Loader2 className="animate-spin mx-auto mb-2 text-blue-500" size={32}/> Đang truy xuất...</td></tr>
+[components/admin/LandPriceManager.tsx] Line 333 restored:
+  OLD:                                                 <p className="font-bold italic">Không t́m th?y d? li?u giá d?t nào phù h?p.</p>
+  NEW:                                                 <p className="font-bold italic">Không tìm thấy dữ liệu giá đất nào phù hợp.</p>
+[components/admin/LandPriceManager.tsx] Line 347 restored:
+  OLD:                                                 <span className="truncate max-w-[120px]">{item.tu || 'Đ?u du?ng'}</span>
+  NEW:                                                 <span className="truncate max-w-[120px]">{item.tu || 'Đầu đường'}</span>
+[components/admin/LandPriceManager.tsx] Line 349 restored:
+  OLD:                                                 <span className="truncate max-w-[120px]">{item.den || 'Cu?i du?ng'}</span>
+  NEW:                                                 <span className="truncate max-w-[120px]">{item.den || 'Cuối đường'}</span>
+[components/admin/LandPriceManager.tsx] Line 363 restored:
+  OLD:                                                 <button onClick={() => openEdit(item)} disabled={!canEditLandPrice} className="p-2 text-blue-400 hover:bg-blue-400/10 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed" title="S?a"><Edit2 size={16}/></button>
+  NEW:                                                 <button onClick={() => openEdit(item)} disabled={!canEditLandPrice} className="p-2 text-blue-400 hover:bg-blue-400/10 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed" title="Sửa"><Edit2 size={16}/></button>
+[components/admin/LandPriceManager.tsx] Line 382 restored:
+  OLD:                                 {editingId ? 'C?p nh?t giá d?t' : 'Thêm tuy?n du?ng m?i'}
+  NEW:                                 {editingId ? 'Cập nhật giá đất' : 'Thêm tuyến đường mới'}
+[components/admin/LandPriceManager.tsx] Line 389 restored:
+  OLD:                                 <h4 className="text-[10px] font-black text-blue-500 uppercase tracking-widest border-l-2 border-blue-500 pl-2">V? trí hành chính</h4>
+  NEW:                                 <h4 className="text-[10px] font-black text-blue-500 uppercase tracking-widest border-l-2 border-blue-500 pl-2">Vị trí hành chính</h4>
+[components/admin/LandPriceManager.tsx] Line 391 restored:
+  OLD:                                     <label className="text-[10px] text-gray-500 font-bold uppercase">Tên du?ng *</label>
+  NEW:                                     <label className="text-[10px] text-gray-500 font-bold uppercase">Tên đường *</label>
+[components/admin/LandPriceManager.tsx] Line 395 restored:
+  OLD:                                     <label className="text-[10px] text-gray-500 font-bold uppercase">Phu?ng / Xă *</label>
+  NEW:                                     <label className="text-[10px] text-gray-500 font-bold uppercase">Phường / Xã *</label>
+[components/admin/LandPriceManager.tsx] Line 399 restored:
+  OLD:                                     <label className="text-[10px] text-gray-500 font-bold uppercase">Qu?n / Huy?n / T?nh cu</label>
+  NEW:                                     <label className="text-[10px] text-gray-500 font-bold uppercase">Quận / Huyện / Tỉnh cũ</label>
+[components/admin/LandPriceManager.tsx] Line 404 restored:
+  OLD:                                         <label className="text-[10px] text-gray-500 font-bold uppercase">T? di?m</label>
+  NEW:                                         <label className="text-[10px] text-gray-500 font-bold uppercase">Từ điểm</label>
+[components/admin/LandPriceManager.tsx] Line 408 restored:
+  OLD:                                         <label className="text-[10px] text-gray-500 font-bold uppercase">Đ?n di?m</label>
+  NEW:                                         <label className="text-[10px] text-gray-500 font-bold uppercase">Đến điểm</label>
+[components/admin/LandPriceManager.tsx] Line 415 restored:
+  OLD:                                 <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-widest border-l-2 border-emerald-500 pl-2">Giá quy d?nh (x1000 VNĐ)</h4>
+  NEW:                                 <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-widest border-l-2 border-emerald-500 pl-2">Giá quy định (x1000 VNĐ)</h4>
+[components/admin/LandPriceManager.tsx] Line 417 restored:
+  OLD:                                     <label className="text-[10px] text-emerald-500 font-bold uppercase">Giá d?t ? (ODT) *</label>
+  NEW:                                     <label className="text-[10px] text-emerald-500 font-bold uppercase">Giá đất Ở (ODT) *</label>
+[components/admin/LandPriceManager.tsx] Line 421 restored:
+  OLD:                                     <label className="text-[10px] text-blue-400 font-bold uppercase">Giá d?t TMDV</label>
+  NEW:                                     <label className="text-[10px] text-blue-400 font-bold uppercase">Giá đất TMDV</label>
+[components/admin/LandPriceManager.tsx] Line 425 restored:
+  OLD:                                     <label className="text-[10px] text-orange-400 font-bold uppercase">Giá d?t SXKD</label>
+  NEW:                                     <label className="text-[10px] text-orange-400 font-bold uppercase">Giá đất SXKD</label>
+[components/admin/LandPriceManager.tsx] Line 436 restored:
+  OLD:                             <button onClick={() => setIsModalOpen(false)} className="px-6 py-3 text-gray-500 hover:text-white font-black uppercase text-xs tracking-widest transition-all">H?Y B?</button>
+  NEW:                             <button onClick={() => setIsModalOpen(false)} className="px-6 py-3 text-gray-500 hover:text-white font-black uppercase text-xs tracking-widest transition-all">HỦY BỎ</button>
+[components/admin/LandPriceManager.tsx] Line 443 restored:
+  OLD:                                 {editingId ? 'LUU THAY Đ?I' : 'XÁC NH?N THÊM'}
+  NEW:                                 {editingId ? 'LƯU THAY ĐỔI' : 'XÁC NHẬN THÊM'}
+[pages/LandPriceLookup.tsx] Line 189 restored:
+  OLD:                 title="Tra C?u B?ng Giá Đ?t 2026" 
+  NEW:                 title="Tra Cứu Bảng Giá Đất 2026" 
+[pages/LandPriceLookup.tsx] Line 190 restored:
+  OLD:                 description="Công c? tra c?u b?ng giá d?t m?i nh?t nam 2026 t?i TP.HCM và B́nh Duong. H? tr? tính giá d?t theo v? trí m?t ti?n, h?m chính xác."
+  NEW:                 description="Công cụ tra cứu bảng giá đất mới nhất năm 2026 tại TP.HCM và Bình Dương. Hỗ trợ tính giá đất theo vị trí mặt tiền, hẻm chính xác."
+[pages/LandPriceLookup.tsx] Line 191 restored:
+  OLD:                 keywords="b?ng giá d?t 2026, giá d?t hcm, giá d?t b́nh duong, tra c?u giá d?t, h? s? di?u ch?nh giá d?t"
+  NEW:                 keywords="bảng giá đất 2026, giá đất hcm, giá đất bình dương, tra cứu giá đất, hệ số điều chỉnh giá đất"
+[pages/LandPriceLookup.tsx] Line 203 restored:
+  OLD:                             <h1 className="text-3xl font-black text-white uppercase tracking-tight">Tra c?u B?ng Giá Đ?t 2026 - Thành ph? H? Chi Minh</h1>
+  NEW:                             <h1 className="text-3xl font-black text-white uppercase tracking-tight">Tra cứu Bảng Giá Đất 2026 - Thành phố Hồ Chi Minh</h1>
+[pages/LandPriceLookup.tsx] Line 204 restored:
+  OLD:                             <p className="text-slate-500 text-sm font-bold uppercase tracking-widest">H? th?ng thông tin giá d?t nhà nu?c</p>
+  NEW:                             <p className="text-slate-500 text-sm font-bold uppercase tracking-widest">Hệ thống thông tin giá đất nhà nước</p>
+[pages/LandPriceLookup.tsx] Line 213 restored:
+  OLD:                                     label="Phu?ng / Xă (T?nh cu)" 
+  NEW:                                     label="Phường / Xã (Tỉnh cũ)" 
+[pages/LandPriceLookup.tsx] Line 218 restored:
+  OLD:                                     placeholder="Ch?n phu?ng/xă..."
+  NEW:                                     placeholder="Chọn phường/xã..."
+[pages/LandPriceLookup.tsx] Line 222 restored:
+  OLD:                                     label="Tên du?ng" 
+  NEW:                                     label="Tên đường" 
+[pages/LandPriceLookup.tsx] Line 227 restored:
+  OLD:                                     placeholder="Nh?p tên du?ng..."
+  NEW:                                     placeholder="Nhập tên đường..."
+[pages/LandPriceLookup.tsx] Line 231 restored:
+  OLD:                                     label="T? (Đi?m d?u)" 
+  NEW:                                     label="Từ (Điểm đầu)" 
+[pages/LandPriceLookup.tsx] Line 236 restored:
+  OLD:                                     placeholder="Giao l? / C?t m?c..."
+  NEW:                                     placeholder="Giao lộ / Cột mốc..."
+[pages/LandPriceLookup.tsx] Line 240 restored:
+  OLD:                                     label="Đ?n (Đi?m cu?i)" 
+  NEW:                                     label="Đến (Điểm cuối)" 
+[pages/LandPriceLookup.tsx] Line 245 restored:
+  OLD:                                     placeholder="Giao l? / C?t m?c..."
+  NEW:                                     placeholder="Giao lộ / Cột mốc..."
+[pages/LandPriceLookup.tsx] Line 254 restored:
+  OLD:                                 B?T Đ?U TRA C?U
+  NEW:                                 BẮT ĐẦU TRA CỨU
+[pages/LandPriceLookup.tsx] Line 271 restored:
+  OLD:                                 <p className="text-xs font-black uppercase tracking-widest">Đang truy xu?t d? li?u...</p>
+  NEW:                                 <p className="text-xs font-black uppercase tracking-widest">Đang truy xuất dữ liệu...</p>
+[pages/LandPriceLookup.tsx] Line 276 restored:
+  OLD:                                 <p className="text-slate-500 font-bold uppercase text-xs tracking-widest">Không t́m th?y k?t qu? nào phù h?p.</p>
+  NEW:                                 <p className="text-slate-500 font-bold uppercase text-xs tracking-widest">Không tìm thấy kết quả nào phù hợp.</p>
+[pages/LandPriceLookup.tsx] Line 284 restored:
+  OLD:                                             K?t qu? t́m ki?m ({pagination.total})
+  NEW:                                             Kết quả tìm kiếm ({pagination.total})
+[pages/LandPriceLookup.tsx] Line 288 restored:
+  OLD:                                             <span className="text-[10px] font-black uppercase tracking-widest">Đon v? tính: 1.000 d?ng/m²</span>
+  NEW:                                             <span className="text-[10px] font-black uppercase tracking-widest">Đơn vị tính: 1.000 đồng/m²</span>
+[pages/LandPriceLookup.tsx] Line 291 restored:
+  OLD:                                     <span className="text-[10px] bg-slate-800 text-slate-400 px-3 py-1.5 rounded-xl border border-slate-700 font-mono self-start md:self-center">Nam áp d?ng: {results[0].nam_ap_dung}</span>
+  NEW:                                     <span className="text-[10px] bg-slate-800 text-slate-400 px-3 py-1.5 rounded-xl border border-slate-700 font-mono self-start md:self-center">Năm áp dụng: {results[0].nam_ap_dung}</span>
+[pages/LandPriceLookup.tsx] Line 299 restored:
+  OLD:                                                     <th className="p-5 whitespace-nowrap">Đu?ng / Phu?ng xă</th>
+  NEW:                                                     <th className="p-5 whitespace-nowrap">Đường / Phường xã</th>
+[pages/LandPriceLookup.tsx] Line 300 restored:
+  OLD:                                                     <th className="p-5 whitespace-nowrap">Đo?n (T? - Đ?n)</th>
+  NEW:                                                     <th className="p-5 whitespace-nowrap">Đoạn (Từ - Đến)</th>
+[pages/LandPriceLookup.tsx] Line 301 restored:
+  OLD:                                                     <th className="p-5 text-right whitespace-nowrap">Đ?t ? (ODT)</th>
+  NEW:                                                     <th className="p-5 text-right whitespace-nowrap">Đất Ở (ODT)</th>
+[pages/LandPriceLookup.tsx] Line 320 restored:
+  OLD:                                                                     <Landmark size={10} className="text-blue-500"/> T?nh cu: {r.tinhcu}
+  NEW:                                                                     <Landmark size={10} className="text-blue-500"/> Tỉnh cũ: {r.tinhcu}
+[pages/LandPriceLookup.tsx] Line 326 restored:
+  OLD:                                                                 <span className="flex gap-2"><b>T?:</b> {r.tu || 'Đ?u du?ng'}</span>
+  NEW:                                                                 <span className="flex gap-2"><b>Từ:</b> {r.tu || 'Đầu đường'}</span>
+[pages/LandPriceLookup.tsx] Line 327 restored:
+  OLD:                                                                 <span className="flex gap-2"><b>Đ?n:</b> {r.den || 'Cu?i du?ng'}</span>
+  NEW:                                                                 <span className="flex gap-2"><b>Đến:</b> {r.den || 'Cuối đường'}</span>
+[pages/LandPriceLookup.tsx] Line 418 restored:
+  OLD:                                 <p className="text-[10px] text-slate-600 italic mt-2 px-2">* Nh?p vào t?ng ḍng d? xem chi ti?t tính toán giá d?t cho các v? trí h?m.</p>
+  NEW:                                 <p className="text-[10px] text-slate-600 italic mt-2 px-2">* Nhấp vào từng dòng để xem chi tiết tính toán giá đất cho các vị trí hẻm.</p>
+[utils/editorDataUtils.ts] Line 20 restored:
+  OLD:     if (geoJson.type === 'FeatureCollection' && geoJson.features?.length > 0) {
+  NEW:         if (geoJson.type === 'FeatureCollection' && geoJson.features?.length > 0) {
+[utils/editorDataUtils.ts] Line 38 restored:
+  OLD:     if (!geometry) return 'H́nh v? không h?p l?';
+  NEW:     if (!geometry) return 'Hình vẽ không hợp lệ';
+[utils/editorDataUtils.ts] Line 50 restored:
+  OLD:         return 'Lo?i h́nh h?c không h? tr?';
+  NEW:         return 'Loại hình học không hỗ trợ';
+[utils/editorDataUtils.ts] Line 53 restored:
+  OLD:     if (coords.length < 4) return 'Polygon c?n t?i thi?u 3 d?nh (=4 khi tính di?m khép)';
+  NEW:     if (coords.length < 4) return 'Polygon cần tối thiểu 3 đỉnh (≥4 khi tính điểm khóp)';
+[utils/editorDataUtils.ts] Line 56 restored:
+  OLD:     if (area === 0) return 'Polygon có di?n tích b?ng 0';
+  NEW:         if (area === 0) return 'Polygon có diện tích bằng 0';
+[utils/editorDataUtils.ts] Line 57 restored:
+  OLD:     if (area < 1) return `Di?n tích quá nh? (${area.toFixed(2)}m²). Ki?m tra l?i t?a d?.`;
+  NEW:         if (area < 1) return `Diện tích quá nhỏ (${area.toFixed(2)}m²). Kiểm tra lại tọa độ.`;
+[utils/editorDataUtils.ts] Line 83 restored:
+  OLD:     let content = `DANH SÁCH T?A Đ? TH?A Đ?T - H?: ${coordSystem}\n`;
+  NEW:         let content = `DANH SÁCH TỌA ĐỘ THỬA ĐẤT - HỆ: ${coordSystem}\n`;
+[utils/layerManagerHelpers.ts] Line 22 restored:
+  OLD:     return cleaned ? `${cleaned} ${TIFF_MARKER}` : TIFF_MARKER;
+  NEW:         return cleaned ? `${cleaned} ${TIFF_MARKER}` : TIFF_MARKER;
+[utils/layerManagerHelpers.ts] Line 36 restored:
+  OLD:     const marker = mapScope === 'SHARED' ? '[map:shared]' : mapScope === 'ADMIN' ? '[map:admin]' : '[map:main]';
+  NEW:         const marker = mapScope === 'SHARED' ? '[map:shared]' : mapScope === 'ADMIN' ? '[map:admin]' : '[map:main]';
+[utils/layerManagerHelpers.ts] Line 37 restored:
+  OLD:     return cleaned ? `${cleaned} ${marker}` : marker;
+  NEW:         return cleaned ? `${cleaned} ${marker}` : marker;
+[utils/layerManagerHelpers.ts] Line 41 restored:
+  OLD:     if (scope === 'ADMIN') return { label: 'Map hành chính', badge: 'bg-indigo-900/40 text-indigo-300 border-indigo-700/60' };
+  NEW:         if (scope === 'ADMIN') return { label: 'Map hành chính', badge: 'bg-indigo-900/40 text-indigo-300 border-indigo-700/60' };
+[utils/layerManagerHelpers.ts] Line 42 restored:
+  OLD:     if (scope === 'SHARED') return { label: 'Dùng chung', badge: 'bg-emerald-900/40 text-emerald-300 border-emerald-700/60' };
+  NEW:         if (scope === 'SHARED') return { label: 'Dùng chung', badge: 'bg-emerald-900/40 text-emerald-300 border-emerald-700/60' };
+[utils/layerManagerHelpers.ts] Line 43 restored:
+  OLD:     return { label: 'Map chính', badge: 'bg-cyan-900/40 text-cyan-300 border-cyan-700/60' };
+  NEW:         return { label: 'Map chính', badge: 'bg-cyan-900/40 text-cyan-300 border-cyan-700/60' };
+[utils/layerManagerHelpers.ts] Line 47 restored:
+  OLD:     { key: 'osm-standard', name: 'OpenStreetMap', type: 'OSM', url: '', useProxy: false, description: 'N?n b?n d? OSM chu?n, nh? và ?n d?nh.' },
+  NEW:         { key: 'osm-standard', name: 'OpenStreetMap', type: 'OSM', url: '', useProxy: false, description: 'Nền bản đồ OSM chuẩn, nhẹ và ổn định.' },
+[utils/layerManagerHelpers.ts] Line 48 restored:
+  OLD:     { key: 'google-road', name: 'Google Road', type: 'XYZ', url: 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', useProxy: true, description: 'B?n d? du?ng ph? Google.' },
+  NEW:         { key: 'google-road', name: 'Google Road', type: 'XYZ', url: 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', useProxy: true, description: 'Bản đồ đường phố Google.' },
+[utils/layerManagerHelpers.ts] Line 49 restored:
+  OLD:     { key: 'google-satellite', name: 'Google Satellite', type: 'XYZ', url: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', useProxy: true, description: '?nh v? tinh Google.' },
+  NEW:         { key: 'google-satellite', name: 'Google Satellite', type: 'XYZ', url: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', useProxy: true, description: 'Ảnh vệ tinh Google.' },
+[utils/layerManagerHelpers.ts] Line 50 restored:
+  OLD:     { key: 'google-hybrid', name: 'Google Hybrid', type: 'XYZ', url: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', useProxy: true, description: '?nh v? tinh kèm nhăn du?ng.' },
+  NEW:         { key: 'google-hybrid', name: 'Google Hybrid', type: 'XYZ', url: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', useProxy: true, description: 'Ảnh vệ tinh kèm nhãn đường.' },
+[utils/layerManagerHelpers.ts] Line 51 restored:
+  OLD:     { key: 'google-terrain', name: 'Google Terrain', type: 'XYZ', url: 'https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', useProxy: true, description: 'Đ?a h́nh Google.' },
+  NEW:         { key: 'google-terrain', name: 'Google Terrain', type: 'XYZ', url: 'https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', useProxy: true, description: 'Địa hình Google.' },
+[utils/layerManagerHelpers.ts] Line 52 restored:
+  OLD:     { key: 'carto-light', name: 'Carto Light', type: 'XYZ', url: 'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', useProxy: false, description: 'N?n sáng, s?ch cho l?p chuyên d?.' },
+  NEW:         { key: 'carto-light', name: 'Carto Light', type: 'XYZ', url: 'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', useProxy: false, description: 'Nền sáng, sạch cho lớp chuyên đề.' },
+[utils/layerManagerHelpers.ts] Line 53 restored:
+  OLD:     { key: 'carto-dark', name: 'Carto Dark', type: 'XYZ', url: 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', useProxy: false, description: 'N?n t?i phù h?p dashboard.' },
+  NEW:         { key: 'carto-dark', name: 'Carto Dark', type: 'XYZ', url: 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', useProxy: false, description: 'Nền tối phù hợp dashboard.' },
+[utils/layerManagerHelpers.ts] Line 54 restored:
+  OLD:     { key: 'esri-imagery', name: 'Esri World Imagery', type: 'XYZ', url: 'https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', useProxy: false, description: '?nh v? tinh Esri.' },
+  NEW:         { key: 'esri-imagery', name: 'Esri World Imagery', type: 'XYZ', url: 'https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', useProxy: false, description: 'Ảnh vệ tinh Esri.' },
+[utils/layerManagerHelpers.ts] Line 55 restored:
+  OLD:     { key: 'esri-topo', name: 'Esri Topographic', type: 'XYZ', url: 'https://services.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', useProxy: false, description: 'B?n d? d?a h́nh Esri.' }
+  NEW:         { key: 'esri-topo', name: 'Esri Topographic', type: 'XYZ', url: 'https://services.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', useProxy: false, description: 'Bản đồ địa hình Esri.' }
+[utils/layerManagerHelpers.ts] Line 60 restored:
+  OLD:     return Number.isFinite(normalized) && normalized > 0 ? normalized : fallback;
+  NEW:         return Number.isFinite(normalized) && normalized > 0 ? normalized : fallback;
+[utils/layerManagerHelpers.ts] Line 63 restored:
+  OLD: export const reindexSortOrder = <T extends { sortOrder?: number }>(items: T[]): T[] => {
+  NEW:     const reindexSortOrder = <T extends { sortOrder?: number }>(items: T[]): T[] => {
+[services/apiClient.ts] Line 277 restored:
+  OLD:             ? payload
+  NEW:                 ? payload
+[services/apiClient.ts] Line 278 restored:
+  OLD:             : (Array.isArray(payload?.data) ? payload.data : []);
+  NEW:                 : (Array.isArray(payload?.data) ? payload.data : []);
+[services/apiClient.ts] Line 290 restored:
+  OLD:             const geometry = typeof item.geometry === 'string' ? JSON.parse(item.geometry) : item.geometry;
+  NEW:                  const geometry = typeof item.geometry === 'string' ? JSON.parse(item.geometry) : item.geometry;
+[services/apiClient.ts] Line 306 restored:
+  OLD:                     landType: landType || 'Chưa cập nhật',
+  NEW:                          landType: landType || 'Chưa cập nhật',
+[services/apiClient.ts] Line 365 restored:
+  OLD:         let qs = `?t=${Date.now()}`;
+  NEW:              let qs = `?t=${Date.now()}`;
+[services/apiClient.ts] Line 402 restored:
+  OLD:         let qs = `?t=${Date.now()}`;
+  NEW:              let qs = `?t=${Date.now()}`;
+[services/apiClient.ts] Line 630 restored:
+  OLD:             return Array.isArray(data) ? data : [];
+  NEW:         return Array.isArray(data) ? data : [];
+
+Translation dictionary size: 45

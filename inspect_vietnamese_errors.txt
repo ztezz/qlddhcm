@@ -1,0 +1,136 @@
+
+=================== LandPriceManager.tsx ===================
+Line 10:     permissions?: string[];
+Line 45:     // 1. Load danh sách phu?ng ban d?u
+Line 56:     // 2. T? d?ng c?p nh?t g?i ư du?ng khi Phu?ng/Xă thay d?i
+Line 64:                 // Tách tên phu?ng n?u label có d?ng "Tên Phu?ng (T?nh Cu)"
+Line 68:                 // N?u phu?ng thay d?i, có th? xóa tên du?ng cu n?u nó không thu?c phu?ng m?i (tùy ch?n)
+Line 71:                 console.error("L?i l?y g?i ư du?ng:", e);
+Line 77:         }, 300); // Debounce nh? d? tránh g?i API liên t?c khi gơ
+Line 82:     const runSearch = async (page = 1, overridePageSize?: number, options?: { preserveTable?: boolean }) => {
+Line 84:         const preserveTable = !!options?.preserveTable;
+Line 132:         if (editingId ? !canEditLandPrice : !canCreateLandPrice) {
+Line 133:             alert(editingId ? 'B?n không có quy?n c?p nh?t giá d?t.' : 'B?n không có quy?n thêm giá d?t m?i.');
+Line 137:             alert("Vui ḷng nh?p d?y d? các tru?ng b?t bu?c (*)");
+Line 151:             alert("L?i: " + e.message);
+Line 159:             alert('B?n không có quy?n xóa giá d?t.');
+Line 162:         if (confirm(`Xóa ḍng giá d?t t?i du?ng ${name}?`)) {
+Line 174:             alert('B?n không có quy?n ch?nh s?a giá d?t.');
+Line 184:             alert('B?n không có quy?n thêm giá d?t m?i.');
+Line 198:             {/* Toolbar T́m ki?m thông minh */}
+Line 202:                     <h3 className="text-xs font-black text-white uppercase tracking-widest">B? l?c qu?n lư</h3>
+Line 207:                         label="Phu?ng / Xă"
+Line 212:                         placeholder="Ch?n ho?c gơ tên phu?ng..."
+Line 216:                         label="Tên du?ng"
+Line 221:                         placeholder={phuongxa ? `Đu?ng t?i ${phuongxa}...` : "Nh?p tên tuy?n du?ng..."}
+Line 231:                             {loading ? <Loader2 className="animate-spin" size={16}/> : <Search size={16}/>} L?C D? LI?U
+Line 237:                             title="Thêm tuy?n du?ng m?i"
+Line 245:             {/* Vùng hi?n th? k?t qu? */}
+Line 246:             {!hasSearched ? (
+Line 252:                         <p className="text-sm font-black text-gray-500 uppercase tracking-widest mb-2">Ch? d? ch? truy v?n</p>
+Line 253:                         <p className="text-xs text-gray-600 font-bold leading-relaxed">Nh?p thông tin Phu?ng ho?c Đu?ng ? trên d? b?t d?u qu?n tr? d? li?u giá d?t.</p>
+Line 262:                                 <span className="font-bold text-gray-200 block leading-none">K?t qu? l?c d? li?u</span>
+Line 279:                         <div className={`flex flex-wrap items-center gap-2 ${disablePaging ? 'opacity-60' : ''}`}>
+Line 317:                                     <th className="p-4">Khu v?c / Tên du?ng</th>
+Line 318:                                     <th className="p-4">Đo?n du?ng</th>
+Line 319:                                     <th className="p-4 text-right text-emerald-400">Đ?t ?</th>
+Line 322:                                     <th className="p-4 text-right">Qu?n lư</th>
+Line 326:                                 {loading ? (
+Line 327:                                     <tr><td colSpan={6} className="p-20 text-center"><Loader2 className="animate-spin mx-auto mb-2 text-blue-500" size={32}/> Đang truy xu?t...</td></tr>
+Line 328:                                 ) : data.length === 0 ? (
+Line 333:                                                 <p className="font-bold italic">Không t́m th?y d? li?u giá d?t nào phù h?p.</p>
+Line 347:                                                 <span className="truncate max-w-[120px]">{item.tu || 'Đ?u du?ng'}</span>
+Line 349:                                                 <span className="truncate max-w-[120px]">{item.den || 'Cu?i du?ng'}</span>
+Line 363:                                                 <button onClick={() => openEdit(item)} disabled={!canEditLandPrice} className="p-2 text-blue-400 hover:bg-blue-400/10 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed" title="S?a"><Edit2 size={16}/></button>
+Line 364:                                                 <button onClick={() => handleDelete(item.id, item.tenduong)} disabled={!canDeleteLandPrice} className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed" title="Xóa"><Trash2 size={16}/></button>
+Line 382:                                 {editingId ? 'C?p nh?t giá d?t' : 'Thêm tuy?n du?ng m?i'}
+Line 389:                                 <h4 className="text-[10px] font-black text-blue-500 uppercase tracking-widest border-l-2 border-blue-500 pl-2">V? trí hành chính</h4>
+Line 391:                                     <label className="text-[10px] text-gray-500 font-bold uppercase">Tên du?ng *</label>
+Line 395:                                     <label className="text-[10px] text-gray-500 font-bold uppercase">Phu?ng / Xă *</label>
+Line 399:                                     <label className="text-[10px] text-gray-500 font-bold uppercase">Qu?n / Huy?n / T?nh cu</label>
+Line 404:                                         <label className="text-[10px] text-gray-500 font-bold uppercase">T? di?m</label>
+Line 408:                                         <label className="text-[10px] text-gray-500 font-bold uppercase">Đ?n di?m</label>
+Line 415:                                 <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-widest border-l-2 border-emerald-500 pl-2">Giá quy d?nh (x1000 VNĐ)</h4>
+Line 417:                                     <label className="text-[10px] text-emerald-500 font-bold uppercase">Giá d?t ? (ODT) *</label>
+Line 421:                                     <label className="text-[10px] text-blue-400 font-bold uppercase">Giá d?t TMDV</label>
+Line 425:                                     <label className="text-[10px] text-orange-400 font-bold uppercase">Giá d?t SXKD</label>
+Line 429:                                     <label className="text-[10px] text-gray-500 font-bold uppercase mb-2 block">Ghi chú</label>
+Line 436:                             <button onClick={() => setIsModalOpen(false)} className="px-6 py-3 text-gray-500 hover:text-white font-black uppercase text-xs tracking-widest transition-all">H?Y B?</button>
+Line 439:                                 disabled={loading || (editingId ? !canEditLandPrice : !canCreateLandPrice)}
+Line 442:                                 {loading ? <Loader2 className="animate-spin" size={18}/> : <Save size={18}/>} 
+Line 443:                                 {editingId ? 'LUU THAY Đ?I' : 'XÁC NH?N THÊM'}
+
+=================== useEditorMeasure.ts ===================
+Line 31:             const drawType = measureType === 'length' ? 'LineString' : 'Polygon';
+Line 49:                 setMeasureValue(measureType === 'length' ? '0.00 m' : '0.00 m²');
+Line 51:                 geometry?.on('change', (changeEvent) => {
+Line 59:                         result = `${area.toFixed(2)} m²`;
+
+=================== LandPriceLookup.tsx ===================
+Line 12:     user?: User | null;
+Line 13:     systemSettings?: Record<string, string>;
+Line 89:         overridePageSize?: number,
+Line 90:         options?: { preserveTable?: boolean }
+Line 93:         const preserveTable = !!options?.preserveTable;
+Line 118:             setError(err.message || "L?i khi tra c?u d? li?u.");
+Line 142:             setError('Vui l?ng nh?p ?t nh?t m?t ?i?u ki?n tra c?u.');
+Line 189:                 title="Tra C?u B?ng Giá Đ?t 2026" 
+Line 190:                 description="Công c? tra c?u b?ng giá d?t m?i nh?t nam 2026 t?i TP.HCM và B́nh Duong. H? tr? tính giá d?t theo v? trí m?t ti?n, h?m chính xác."
+Line 191:                 keywords="b?ng giá d?t 2026, giá d?t hcm, giá d?t b́nh duong, tra c?u giá d?t, h? s? di?u ch?nh giá d?t"
+Line 203:                             <h1 className="text-3xl font-black text-white uppercase tracking-tight">Tra c?u B?ng Giá Đ?t 2026 - Thành ph? H? Chi Minh</h1>
+Line 204:                             <p className="text-slate-500 text-sm font-bold uppercase tracking-widest">H? th?ng thông tin giá d?t nhà nu?c</p>
+Line 213:                                     label="Phu?ng / Xă (T?nh cu)" 
+Line 218:                                     placeholder="Ch?n phu?ng/xă..."
+Line 222:                                     label="Tên du?ng" 
+Line 227:                                     placeholder="Nh?p tên du?ng..."
+Line 231:                                     label="T? (Đi?m d?u)" 
+Line 236:                                     placeholder="Giao l? / C?t m?c..."
+Line 240:                                     label="Đ?n (Đi?m cu?i)" 
+Line 245:                                     placeholder="Giao l? / C?t m?c..."
+Line 253:                                 {loading ? <RefreshCw className="animate-spin" size={18}/> : <Search size={18}/>}
+Line 254:                                 B?T Đ?U TRA C?U
+Line 268:                         {loading ? (
+Line 271:                                 <p className="text-xs font-black uppercase tracking-widest">Đang truy xu?t d? li?u...</p>
+Line 273:                         ) : hasSearched && results.length === 0 ? (
+Line 276:                                 <p className="text-slate-500 font-bold uppercase text-xs tracking-widest">Không t́m th?y k?t qu? nào phù h?p.</p>
+Line 278:                         ) : results.length > 0 ? (
+Line 284:                                             K?t qu? t́m ki?m ({pagination.total})
+Line 288:                                             <span className="text-[10px] font-black uppercase tracking-widest">Đon v? tính: 1.000 d?ng/m²</span>
+Line 291:                                     <span className="text-[10px] bg-slate-800 text-slate-400 px-3 py-1.5 rounded-xl border border-slate-700 font-mono self-start md:self-center">Nam áp d?ng: {results[0].nam_ap_dung}</span>
+Line 299:                                                     <th className="p-5 whitespace-nowrap">Đu?ng / Phu?ng xă</th>
+Line 300:                                                     <th className="p-5 whitespace-nowrap">Đo?n (T? - Đ?n)</th>
+Line 301:                                                     <th className="p-5 text-right whitespace-nowrap">Đ?t ? (ODT)</th>
+Line 320:                                                                     <Landmark size={10} className="text-blue-500"/> T?nh cu: {r.tinhcu}
+Line 326:                                                                 <span className="flex gap-2"><b>T?:</b> {r.tu || 'Đ?u du?ng'}</span>
+Line 327:                                                                 <span className="flex gap-2"><b>Đ?n:</b> {r.den || 'Cu?i du?ng'}</span>
+Line 355:                                     <div className={`flex flex-wrap items-center gap-2 ${disablePaging ? 'opacity-60' : ''}`}>
+Line 418:                                 <p className="text-[10px] text-slate-600 italic mt-2 px-2">* Nh?p vào t?ng ḍng d? xem chi ti?t tính toán giá d?t cho các v? trí h?m.</p>
+
+=================== editorDataUtils.ts ===================
+Line 20:     if (geoJson.type === 'FeatureCollection' && geoJson.features?.length > 0) {
+Line 38:     if (!geometry) return 'H́nh v? không h?p l?';
+Line 50:         return 'Lo?i h́nh h?c không h? tr?';
+Line 53:     if (coords.length < 4) return 'Polygon c?n t?i thi?u 3 d?nh (=4 khi tính di?m khép)';
+Line 56:     if (area === 0) return 'Polygon có di?n tích b?ng 0';
+Line 57:     if (area < 1) return `Di?n tích quá nh? (${area.toFixed(2)}m²). Ki?m tra l?i t?a d?.`;
+Line 72:                     return `Polygon t? c?t t?i do?n ${i + 1}-${i + 2} và ${j + 1}-${j + 2}`;
+Line 83:     let content = `DANH SÁCH T?A Đ? TH?A Đ?T - H?: ${coordSystem}\n`;
+
+=================== layerManagerHelpers.ts ===================
+Line 22:     return cleaned ? `${cleaned} ${TIFF_MARKER}` : TIFF_MARKER;
+Line 36:     const marker = mapScope === 'SHARED' ? '[map:shared]' : mapScope === 'ADMIN' ? '[map:admin]' : '[map:main]';
+Line 37:     return cleaned ? `${cleaned} ${marker}` : marker;
+Line 41:     if (scope === 'ADMIN') return { label: 'Map hành chính', badge: 'bg-indigo-900/40 text-indigo-300 border-indigo-700/60' };
+Line 42:     if (scope === 'SHARED') return { label: 'Dùng chung', badge: 'bg-emerald-900/40 text-emerald-300 border-emerald-700/60' };
+Line 43:     return { label: 'Map chính', badge: 'bg-cyan-900/40 text-cyan-300 border-cyan-700/60' };
+Line 47:     { key: 'osm-standard', name: 'OpenStreetMap', type: 'OSM', url: '', useProxy: false, description: 'N?n b?n d? OSM chu?n, nh? và ?n d?nh.' },
+Line 48:     { key: 'google-road', name: 'Google Road', type: 'XYZ', url: 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', useProxy: true, description: 'B?n d? du?ng ph? Google.' },
+Line 49:     { key: 'google-satellite', name: 'Google Satellite', type: 'XYZ', url: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', useProxy: true, description: '?nh v? tinh Google.' },
+Line 50:     { key: 'google-hybrid', name: 'Google Hybrid', type: 'XYZ', url: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', useProxy: true, description: '?nh v? tinh kèm nhăn du?ng.' },
+Line 51:     { key: 'google-terrain', name: 'Google Terrain', type: 'XYZ', url: 'https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', useProxy: true, description: 'Đ?a h́nh Google.' },
+Line 52:     { key: 'carto-light', name: 'Carto Light', type: 'XYZ', url: 'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', useProxy: false, description: 'N?n sáng, s?ch cho l?p chuyên d?.' },
+Line 53:     { key: 'carto-dark', name: 'Carto Dark', type: 'XYZ', url: 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', useProxy: false, description: 'N?n t?i phù h?p dashboard.' },
+Line 54:     { key: 'esri-imagery', name: 'Esri World Imagery', type: 'XYZ', url: 'https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', useProxy: false, description: '?nh v? tinh Esri.' },
+Line 55:     { key: 'esri-topo', name: 'Esri Topographic', type: 'XYZ', url: 'https://services.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', useProxy: false, description: 'B?n d? d?a h́nh Esri.' }
+Line 60:     return Number.isFinite(normalized) && normalized > 0 ? normalized : fallback;
+Line 63: export const reindexSortOrder = <T extends { sortOrder?: number }>(items: T[]): T[] => {

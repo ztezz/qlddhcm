@@ -1,0 +1,23 @@
+
+Scanning: LandPriceManager.tsx
+  Line 19: permissions?: string[];
+  Line 163: const runSearch = async (page = 1, overridePageSize?: number, options?: { preserveTable?: boolean }) => {
+  Line 167: const preserveTable = !!options?.preserveTable;
+
+Scanning: useEditorMeasure.ts
+  Line 101: geometry?.on('change', (changeEvent) => {
+
+Scanning: LandPriceLookup.tsx
+  Line 23: user?: User | null;
+  Line 25: systemSettings?: Record<string, string>;
+  Line 177: overridePageSize?: number,
+  Line 179: options?: { preserveTable?: boolean }
+  Line 185: const preserveTable = !!options?.preserveTable;
+  Line 651: <span className="flex gap-2"><b>T?:</b> {r.tu || 'Đ?u du?ng'}</span>
+  Line 653: <span className="flex gap-2"><b>Đ?n:</b> {r.den || 'Cu?i du?ng'}</span>
+
+Scanning: editorDataUtils.ts
+  Line 20: if (geoJson.type === 'FeatureCollection' && geoJson.features?.length > 0) {
+
+Scanning: layerManagerHelpers.ts
+  Line 63: export const reindexSortOrder = <T extends { sortOrder?: number }>(items: T[]): T[] => {

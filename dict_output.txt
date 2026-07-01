@@ -1,0 +1,6 @@
+Translation dict items:
+  'Giao l? / C?t m?c...' -> 'Giao lộ / Cột mốc...'
+  'L?i: ' -> 'Lỗi: '
+  'S?a' -> 'Sửa'
+  'Tra C?u B?ng Giá Đ?t 2026' -> 'Tra Cứu Bảng Giá Đất 2026'
+  'Đ?n (Đi?m cu?i)' -> 'Đến (Điểm cuối)'

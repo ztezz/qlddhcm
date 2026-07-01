@@ -1,0 +1,668 @@
+biên -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\services\apiClient.ts
+biến -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\SystemSettingsManager.tsx
+biết -> D:\code\qlddhcm\components\admin\LayerManager.tsx
+biểu -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+biệt -> D:\code\qlddhcm\pages\UserProfile.tsx
+buộc -> D:\code\qlddhcm\components\admin\LandPriceManager.tsx, D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\ParcelGeoJsonImportModal.tsx
+bà -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+bàn -> D:\code\qlddhcm\pages\About.tsx
+bái -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+bán -> D:\code\qlddhcm\hooks\useEditorParcelSearch.ts, D:\code\qlddhcm\components\editor\ParcelLookupDialogs.tsx
+báo -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\pages\Notifications.tsx
+bây -> D:\code\qlddhcm\pages\UserProfile.tsx
+bên -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\hooks\useEditorSplitMerge.ts
+bình -> D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\components\tools\CoordinateConverter.tsx, D:\code\qlddhcm\pages\LandPriceLookup.tsx
+bạc -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+bại -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\components\admin\BranchManager.tsx
+bạn -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\pages\Messaging.tsx
+bản -> D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\components\editor\EditorLayoutShell.tsx
+bảng -> D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx, D:\code\qlddhcm\components\land-price\LandPricePrintTemplate.tsx
+bảo -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\index.tsx
+bấm -> D:\code\qlddhcm\components\admin\SystemSettingsManager.tsx, D:\code\qlddhcm\components\tools\CoordinateConverter.tsx, D:\code\qlddhcm\hooks\useMap.ts
+bật -> D:\code\qlddhcm\components\map\LayerControl.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+bắc -> D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+bắt -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\LandPriceManager.tsx, D:\code\qlddhcm\components\admin\ParcelGeoJsonImportModal.tsx
+bằng -> D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\utils\editorDataUtils.ts, D:\code\qlddhcm\components\admin\MenuManager.tsx
+bến -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+bị -> D:\code\qlddhcm\pages\NotFound.tsx, D:\code\qlddhcm\services\parcelApi.ts, D:\code\qlddhcm\public\404.html
+bỏ -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\SystemSettingsManager.tsx, D:\code\qlddhcm\pages\EditorPage.tsx
+bổ -> D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+bộ -> D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\pages\Messaging.tsx
+bởi -> D:\code\qlddhcm\components\admin\PermissionManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+chiếm -> D:\code\qlddhcm\pages\Dashboard.tsx
+chiếu -> D:\code\qlddhcm\components\editor\EditorSidebar.tsx
+chiều -> D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+chuyên -> D:\code\qlddhcm\components\map\LayerControl.tsx, D:\code\qlddhcm\components\map\admin\AdminMapPanel.tsx, D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx
+chuyển -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\components\admin\ParcelGeoJsonImportModal.tsx
+chuyện -> D:\code\qlddhcm\pages\UserProfile.tsx
+chuẩn -> D:\code\qlddhcm\utils\layerManagerHelpers.ts, D:\code\qlddhcm\components\admin\LayerManager.tsx, D:\code\qlddhcm\components\map\PdfTemplateEditor.tsx
+chuột -> D:\code\qlddhcm\hooks\useEditorSplitMerge.ts, D:\code\qlddhcm\components\admin\parcel\QuickView.tsx, D:\code\qlddhcm\components\editor\EditorToolbar.tsx
+chân -> D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\components\map\PdfTemplateEditor.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+châu -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+chèn -> D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\pages\Messaging.tsx
+chép -> D:\code\qlddhcm\pages\MapPage.tsx, D:\code\qlddhcm\components\map\SearchPanel.tsx, D:\code\qlddhcm\pages\UserProfile.tsx
+chí -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\components\admin\BranchManager.tsx
+chính -> D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx, D:\code\qlddhcm\components\map\admin\AdminInfoCard.tsx, D:\code\qlddhcm\utils\layerManagerHelpers.ts
+chóng -> D:\code\qlddhcm\components\editor\ParcelLookupDialogs.tsx, D:\code\qlddhcm\pages\About.tsx
+chú -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\LandPriceManager.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+chúng -> D:\code\qlddhcm\App.tsx, D:\code\qlddhcm\pages\Login.tsx, D:\code\qlddhcm\pages\About.tsx
+chưa -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+chấm -> D:\code\qlddhcm\pages\UserProfile.tsx
+chắc -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\pages\ParcelManager.tsx, D:\code\qlddhcm\components\admin\BranchManager.tsx
+chắn -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\BranchManager.tsx, D:\code\qlddhcm\components\admin\UserManager.tsx
+chặn -> D:\code\qlddhcm\services\parcelApi.ts, D:\code\qlddhcm\components\admin\LayerManager.tsx
+chế -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\LandPriceManager.tsx, D:\code\qlddhcm\pages\Dashboard.tsx
+chỉ -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelList.tsx
+chỉnh -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\map\ParcelPopup.tsx, D:\code\qlddhcm\components\admin\MenuManager.tsx
+chọn -> D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\components\map\SearchPanel.tsx, D:\code\qlddhcm\hooks\useEditorSplitMerge.ts
+chồng -> D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\pages\About.tsx, D:\code\qlddhcm\pages\EditorPage.tsx
+chờ -> D:\code\qlddhcm\components\admin\LandPriceManager.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelList.tsx, D:\code\qlddhcm\components\admin\UserManager.tsx
+chủ -> D:\code\qlddhcm\components\map\ParcelPopup.tsx, D:\code\qlddhcm\pages\NotFound.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+chứa -> D:\code\qlddhcm\pages\Login.tsx
+chức -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\services\apiClient.ts
+chữ -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\pages\Login.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+cuối -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\utils\editorValidation.ts, D:\code\qlddhcm\components\admin\LandPriceManager.tsx
+cà -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+cài -> D:\code\qlddhcm\hooks\useMap.ts, D:\code\qlddhcm\components\admin\LogViewer.tsx
+cá -> D:\code\qlddhcm\pages\UserProfile.tsx
+các -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\LandPriceManager.tsx, D:\code\qlddhcm\services\apiClient.ts
+cách -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\map\MeasureTools.tsx, D:\code\qlddhcm\pages\About.tsx
+cán -> D:\code\qlddhcm\pages\About.tsx, D:\code\qlddhcm\pages\Messaging.tsx
+cáo -> D:\code\qlddhcm\components\admin\PermissionManager.tsx, D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\pages\Dashboard.tsx
+cây -> D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\components\map\MapLegend.tsx
+còn -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\LayerManager.tsx, D:\code\qlddhcm\components\admin\parcel\BulkImportModal.tsx
+có -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\index.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+công -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\map\SearchPanel.tsx, D:\code\qlddhcm\services\apiClient.ts
+cùng -> D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+căn -> D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx
+cũ -> D:\code\qlddhcm\components\admin\LandPriceManager.tsx, D:\code\qlddhcm\components\admin\LayerManager.tsx, D:\code\qlddhcm\pages\LandPriceLookup.tsx
+cơ -> D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\pages\About.tsx
+cường -> D:\code\qlddhcm\pages\Dashboard.tsx
+cạnh -> D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\components\map\PrintTemplate.tsx
+cả -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\map\LayerControl.tsx, D:\code\qlddhcm\pages\Dashboard.tsx
+cảm -> D:\code\qlddhcm\pages\Messaging.tsx
+cảnh -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\App.tsx
+cấp -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\pages\About.tsx, D:\code\qlddhcm\components\admin\SystemSettingsManager.tsx
+cấu -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+cần -> D:\code\qlddhcm\utils\editorDataUtils.ts, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\utils\editorValidation.ts
+cầu -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx, D:\code\qlddhcm\components\admin\LayerManager.tsx, D:\code\qlddhcm\pages\UserProfile.tsx
+cận -> D:\code\qlddhcm\hooks\useEditorParcelSearch.ts, D:\code\qlddhcm\components\editor\ParcelLookupDialogs.tsx, D:\code\qlddhcm\pages\About.tsx
+cập -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\services\apiClient.ts
+cắt -> D:\code\qlddhcm\hooks\useEditorSplitMerge.ts, D:\code\qlddhcm\utils\editorDataUtils.ts, D:\code\qlddhcm\pages\UserProfile.tsx
+cổng -> D:\code\qlddhcm\components\map\PrintTemplate.tsx, D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\utils\pdfTemplatePresets.ts
+cộng -> D:\code\qlddhcm\pages\Dashboard.tsx
+cột -> D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\components\admin\ParcelGeoJsonImportModal.tsx, D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+cụ -> D:\code\qlddhcm\components\map\SearchPanel.tsx, D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\components\tools\QRGenerator.tsx
+của -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+cứ -> D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx
+cứu -> D:\code\qlddhcm\pages\NotFound.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\editor\EditorSidebar.tsx
+diện -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\map\MeasureTools.tsx
+duyệt -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\components\land-price\LandPricePrintTemplate.tsx
+dàng -> D:\code\qlddhcm\pages\About.tsx
+dành -> D:\code\qlddhcm\App.tsx
+dán -> D:\code\qlddhcm\components\map\SearchPanel.tsx, D:\code\qlddhcm\components\editor\EditorModals.tsx
+dáng -> D:\code\qlddhcm\components\admin\parcel\BulkImportModal.tsx
+dân -> D:\code\qlddhcm\components\map\admin\AdminInfoCard.tsx, D:\code\qlddhcm\pages\About.tsx
+dòng -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\LandPriceManager.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+dõi -> D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\LogViewer.tsx
+dùng -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+dương -> D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\components\tools\CoordinateConverter.tsx, D:\code\qlddhcm\pages\LandPriceLookup.tsx
+dưới -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+dạng -> D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\admin\SystemSettingsManager.tsx, D:\code\qlddhcm\components\tools\QRGenerator.tsx
+dấu -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+dần -> D:\code\qlddhcm\pages\Dashboard.tsx
+dẫn -> D:\code\qlddhcm\components\admin\LayerManager.tsx, D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\hooks\useEditorSplitMerge.ts
+dễ -> D:\code\qlddhcm\pages\About.tsx
+dịch -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\pages\About.tsx
+dụ -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+dục -> D:\code\qlddhcm\components\map\MapLegend.tsx
+dụng -> D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\components\map\SearchPanel.tsx
+dữ -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\map\SearchPanel.tsx
+dựng -> D:\code\qlddhcm\pages\About.tsx
+ghé -> D:\code\qlddhcm\pages\NotFound.tsx
+ghép -> D:\code\qlddhcm\components\editor\EditorToolbar.tsx
+giá -> D:\code\qlddhcm\pages\NotFound.tsx, D:\code\qlddhcm\components\admin\LandPriceManager.tsx, D:\code\qlddhcm\services\apiClient.ts
+giác -> D:\code\qlddhcm\pages\EditorPage.tsx, D:\code\qlddhcm\components\editor\EditorToolbar.tsx
+giám -> D:\code\qlddhcm\services\apiClient.ts
+gián -> D:\code\qlddhcm\pages\Dashboard.tsx
+giáo -> D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\components\map\MapLegend.tsx
+giáp -> D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx
+giây -> D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\components\admin\ParcelGeoJsonImportModal.tsx
+giải -> D:\code\qlddhcm\components\map\MapLegend.tsx, D:\code\qlddhcm\components\map\MapControls.tsx, D:\code\qlddhcm\components\admin\parcel\BulkImportModal.tsx
+giảm -> D:\code\qlddhcm\pages\Dashboard.tsx
+giới -> D:\code\qlddhcm\pages\NotFound.tsx, D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\pages\About.tsx
+giờ -> D:\code\qlddhcm\pages\UserProfile.tsx, D:\code\qlddhcm\pages\Messaging.tsx
+giữ -> D:\code\qlddhcm\components\admin\LayerManager.tsx, D:\code\qlddhcm\components\admin\ParcelGeoJsonImportModal.tsx, D:\code\qlddhcm\hooks\useEditorSplitMerge.ts
+giữa -> D:\code\qlddhcm\pages\EditorPage.tsx
+gõ -> D:\code\qlddhcm\components\admin\LandPriceManager.tsx, D:\code\qlddhcm\components\admin\LayerManager.tsx
+gạch -> D:\code\qlddhcm\components\admin\BranchManager.tsx, D:\code\qlddhcm\pages\UserProfile.tsx
+gần -> D:\code\qlddhcm\pages\Dashboard.tsx
+gắn -> D:\code\qlddhcm\index.tsx
+gặp -> D:\code\qlddhcm\App.tsx
+gọn -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\map\SearchPanel.tsx, D:\code\qlddhcm\utils\pdfTemplatePresets.ts
+gốc -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx, D:\code\qlddhcm\components\editor\EditorModals.tsx, D:\code\qlddhcm\components\admin\ParcelGeoJsonImportModal.tsx
+gồm -> D:\code\qlddhcm\components\admin\BranchManager.tsx
+gộp -> D:\code\qlddhcm\hooks\useEditorSplitMerge.ts, D:\code\qlddhcm\utils\geometryUtils.ts, D:\code\qlddhcm\components\editor\EditorToolbar.tsx
+gỡ -> D:\code\qlddhcm\components\admin\UserManager.tsx, D:\code\qlddhcm\components\admin\MenuManager.tsx
+gợi -> D:\code\qlddhcm\components\admin\LandPriceManager.tsx, D:\code\qlddhcm\components\tools\CoordinateConverter.tsx, D:\code\qlddhcm\components\admin\ParcelGeoJsonImportModal.tsx
+gửi -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\SystemSettingsManager.tsx
+hiểm -> D:\code\qlddhcm\pages\Notifications.tsx
+hiển -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\services\apiClient.ts
+hiểu -> D:\code\qlddhcm\components\editor\EditorModals.tsx
+hiện -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\BranchManager.tsx, D:\code\qlddhcm\services\apiClient.ts
+hiệp -> D:\code\qlddhcm\pages\Dashboard.tsx
+hiệu -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\components\map\MapLegend.tsx
+hoàn -> D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\pages\UserProfile.tsx, D:\code\qlddhcm\components\editor\EditorToolbar.tsx
+hoán -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+hoạch -> D:\code\qlddhcm\components\map\LayerControl.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\pages\About.tsx
+hoạt -> D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\components\admin\LogViewer.tsx
+hoặc -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\components\map\SearchPanel.tsx
+huyện -> D:\code\qlddhcm\components\admin\LandPriceManager.tsx, D:\code\qlddhcm\pages\administrativemap.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx
+huế -> D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+hà -> D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+hàng -> D:\code\qlddhcm\components\admin\LayerManager.tsx, D:\code\qlddhcm\index.html, D:\code\qlddhcm\services\apiClient.ts
+hành -> D:\code\qlddhcm\components\map\LayerControl.tsx, D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+hãy -> D:\code\qlddhcm\pages\AdminPage.tsx, D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+hình -> D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\services\apiClient.ts
+hòa -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx, D:\code\qlddhcm\pages\Dashboard.tsx
+hóa -> D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\pages\About.tsx, D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+hôm -> D:\code\qlddhcm\components\admin\LogViewer.tsx
+hơn -> D:\code\qlddhcm\components\admin\LayerManager.tsx, D:\code\qlddhcm\App.tsx, D:\code\qlddhcm\pages\UserProfile.tsx
+hưng -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+hướng -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\services\apiClient.ts
+hưởng -> D:\code\qlddhcm\components\admin\PermissionManager.tsx
+hạn -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\services\parcelApi.ts, D:\code\qlddhcm\services\apiClient.ts
+hạnh -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\components\land-price\LandPricePrintTemplate.tsx
+hải -> D:\code\qlddhcm\components\editor\EditorSidebar.tsx
+hẻm -> D:\code\qlddhcm\pages\LandPriceLookup.tsx, D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx, D:\code\qlddhcm\components\land-price\LandPricePrintTemplate.tsx
+hết -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\services\parcelApi.ts, D:\code\qlddhcm\services\apiClient.ts
+hệ -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+họ -> D:\code\qlddhcm\components\map\SearchPanel.tsx, D:\code\qlddhcm\components\admin\UserManager.tsx, D:\code\qlddhcm\pages\Dashboard.tsx
+học -> D:\code\qlddhcm\utils\editorDataUtils.ts, D:\code\qlddhcm\pages\ParcelManager.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx
+hồ -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\pages\Dashboard.tsx
+hồi -> D:\code\qlddhcm\components\admin\PermissionManager.tsx, D:\code\qlddhcm\hooks\useMap.ts, D:\code\qlddhcm\App.tsx
+hỗ -> D:\code\qlddhcm\utils\editorDataUtils.ts, D:\code\qlddhcm\index.html, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+hộ -> D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx
+hội -> D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\SystemSettingsManager.tsx
+hộp -> D:\code\qlddhcm\pages\Messaging.tsx
+hợp -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\map\SearchPanel.tsx
+hủy -> D:\code\qlddhcm\pages\UserProfile.tsx, D:\code\qlddhcm\components\admin\BranchManager.tsx, D:\code\qlddhcm\services\apiClient.ts
+hữu -> D:\code\qlddhcm\components\map\mapUtils.ts, D:\code\qlddhcm\components\admin\parcel\QuickView.tsx, D:\code\qlddhcm\components\map\ParcelPopup.tsx
+khiển -> D:\code\qlddhcm\components\map\admin\AdminMapPanel.tsx, D:\code\qlddhcm\components\editor\EditorLayoutShell.tsx
+khoản -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\BranchManager.tsx, D:\code\qlddhcm\services\apiClient.ts
+khoảng -> D:\code\qlddhcm\components\editor\EditorToolbar.tsx, D:\code\qlddhcm\components\map\PrintTemplate.tsx, D:\code\qlddhcm\components\map\MeasureTools.tsx
+khuyên -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+khá -> D:\code\qlddhcm\pages\Login.tsx
+khác -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\editor\EditorToolbar.tsx, D:\code\qlddhcm\components\admin\MenuManager.tsx
+khách -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\types.ts
+khánh -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+khép -> D:\code\qlddhcm\utils\editorDataUtils.ts, D:\code\qlddhcm\utils\editorValidation.ts
+khóa -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\pages\administrativemap.tsx
+khôi -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\pages\Login.tsx, D:\code\qlddhcm\services\apiClient.ts
+không -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\index.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+khả -> D:\code\qlddhcm\components\map\admin\AdminMapPanel.tsx, D:\code\qlddhcm\pages\administrativemap.tsx
+khảo -> D:\code\qlddhcm\utils\pdfTemplatePresets.ts, D:\code\qlddhcm\components\land-price\LandPricePrintTemplate.tsx
+khẩu -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\components\tools\QRGenerator.tsx
+khỏi -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\pages\ParcelManager.tsx
+khối -> D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\components\map\PdfTemplateEditor.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+khớp -> D:\code\qlddhcm\pages\administrativemap.tsx, D:\code\qlddhcm\components\admin\LayerManager.tsx, D:\code\qlddhcm\components\admin\UserManager.tsx
+khởi -> D:\code\qlddhcm\components\admin\UserManager.tsx, D:\code\qlddhcm\App.tsx
+kiên -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+kiếm -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\map\SearchPanel.tsx
+kiểm -> D:\code\qlddhcm\utils\editorDataUtils.ts, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\utils\editorValidation.ts
+kiểu -> D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+kiện -> D:\code\qlddhcm\hooks\useEditorParcelSearch.ts, D:\code\qlddhcm\components\admin\LayerManager.tsx, D:\code\qlddhcm\pages\LandPriceLookup.tsx
+kèm -> D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx
+kéo -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\components\editor\EditorToolbar.tsx
+kê -> D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\components\map\PrintTemplate.tsx, D:\code\qlddhcm\components\admin\LogViewer.tsx
+kênh -> D:\code\qlddhcm\components\map\MapLegend.tsx
+kích -> D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\components\admin\UserManager.tsx, D:\code\qlddhcm\pages\Login.tsx
+kính -> D:\code\qlddhcm\hooks\useEditorParcelSearch.ts, D:\code\qlddhcm\components\editor\ParcelLookupDialogs.tsx, D:\code\qlddhcm\pages\Messaging.tsx
+ký -> D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\services\apiClient.ts
+kết -> D:\code\qlddhcm\index.tsx, D:\code\qlddhcm\components\map\SearchPanel.tsx, D:\code\qlddhcm\services\apiClient.ts
+kể -> D:\code\qlddhcm\components\admin\SystemSettingsManager.tsx
+kịp -> D:\code\qlddhcm\App.tsx
+kỳ -> D:\code\qlddhcm\pages\Dashboard.tsx
+kỹ -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx, D:\code\qlddhcm\pages\About.tsx
+liên -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\map\SearchPanel.tsx
+liêu -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+liệu -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+loại -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelList.tsx
+loạt -> D:\code\qlddhcm\services\apiClient.ts
+luôn -> D:\code\qlddhcm\components\admin\PermissionManager.tsx
+là -> D:\code\qlddhcm\components\map\admin\AdminMapPanel.tsx, D:\code\qlddhcm\components\admin\ParcelGeoJsonImportModal.tsx, D:\code\qlddhcm\hooks\useEditorSplitMerge.ts
+làm -> D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\services\parcelApi.ts, D:\code\qlddhcm\services\apiClient.ts
+lào -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+lâm -> D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+lân -> D:\code\qlddhcm\hooks\useEditorParcelSearch.ts, D:\code\qlddhcm\components\editor\ParcelLookupDialogs.tsx
+lâu -> D:\code\qlddhcm\hooks\useMap.ts, D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\components\map\MapLegend.tsx
+lên -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+lòng -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\index.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+lô -> D:\code\qlddhcm\components\editor\EditorSidebar.tsx
+lúa -> D:\code\qlddhcm\components\map\MapLegend.tsx
+lúc -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\pages\administrativemap.tsx
+lý -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\services\apiClient.ts
+lũy -> D:\code\qlddhcm\pages\Dashboard.tsx
+lưu -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+lưới -> D:\code\qlddhcm\components\editor\EditorToolbar.tsx
+lượng -> D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\components\admin\SystemSettingsManager.tsx
+lạc -> D:\code\qlddhcm\components\tools\QRGenerator.tsx
+lại -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx
+lấn -> D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\pages\EditorPage.tsx
+lấy -> D:\code\qlddhcm\components\admin\LandPriceManager.tsx, D:\code\qlddhcm\hooks\useMap.ts, D:\code\qlddhcm\components\map\MapStatusIndicators.tsx
+lần -> D:\code\qlddhcm\pages\Dashboard.tsx
+lập -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\services\apiClient.ts
+lắk -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+lẻ -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+lề -> D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx
+lệ -> D:\code\qlddhcm\utils\editorDataUtils.ts, D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+lịch -> D:\code\qlddhcm\components\admin\SystemSettingsManager.tsx
+lọc -> D:\code\qlddhcm\components\admin\LandPriceManager.tsx, D:\code\qlddhcm\components\map\SearchPanel.tsx, D:\code\qlddhcm\components\admin\BranchManager.tsx
+lỗi -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+lộ -> D:\code\qlddhcm\pages\LandPriceLookup.tsx
+lớn -> D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\components\map\PdfTemplateEditor.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+lớp -> D:\code\qlddhcm\components\map\LayerControl.tsx, D:\code\qlddhcm\components\map\MapControls.tsx, D:\code\qlddhcm\pages\ParcelManager.tsx
+lời -> D:\code\qlddhcm\pages\Messaging.tsx
+lợi -> D:\code\qlddhcm\pages\Dashboard.tsx
+lục -> D:\code\qlddhcm\components\map\ParcelPopup.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+lực -> D:\code\qlddhcm\components\admin\NotificationManager.tsx
+miền -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+miễn -> D:\code\qlddhcm\components\admin\LayerManager.tsx
+muốn -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\pages\ParcelManager.tsx
+mà -> D:\code\qlddhcm\components\admin\PermissionManager.tsx
+màu -> D:\code\qlddhcm\components\tools\QRGenerator.tsx, D:\code\qlddhcm\components\admin\parcel\BulkImportModal.tsx
+máy -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\map\SearchPanel.tsx, D:\code\qlddhcm\services\parcelApi.ts
+mâ -> D:\code\qlddhcm\hooks\useEditorMeasure.ts
+mã -> D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\components\map\SearchPanel.tsx
+mét -> D:\code\qlddhcm\components\map\MeasureTools.tsx
+mô -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx
+môi -> D:\code\qlddhcm\pages\Dashboard.tsx
+múi -> D:\code\qlddhcm\components\editor\EditorSidebar.tsx
+mại -> D:\code\qlddhcm\components\map\MapLegend.tsx, D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx, D:\code\qlddhcm\components\land-price\LandPricePrintTemplate.tsx
+mạng -> D:\code\qlddhcm\components\tools\QRGenerator.tsx, D:\code\qlddhcm\services\parcelApi.ts, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+mạnh -> D:\code\qlddhcm\pages\Login.tsx, D:\code\qlddhcm\pages\UserProfile.tsx
+mất -> D:\code\qlddhcm\pages\UserProfile.tsx
+mẫu -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\pages\Dashboard.tsx
+mật -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\services\apiClient.ts
+mặc -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\components\admin\ParcelGeoJsonImportModal.tsx
+mặt -> D:\code\qlddhcm\pages\LandPriceLookup.tsx, D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx, D:\code\qlddhcm\components\land-price\LandPricePrintTemplate.tsx
+mẹo -> D:\code\qlddhcm\components\admin\LayerManager.tsx
+mềm -> D:\code\qlddhcm\components\admin\LayerManager.tsx
+mọi -> D:\code\qlddhcm\components\admin\PermissionManager.tsx, D:\code\qlddhcm\pages\About.tsx
+mốc -> D:\code\qlddhcm\pages\LandPriceLookup.tsx, D:\code\qlddhcm\pages\Dashboard.tsx
+mối -> D:\code\qlddhcm\pages\About.tsx
+mỗi -> D:\code\qlddhcm\pages\Dashboard.tsx
+mộc -> D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+một -> D:\code\qlddhcm\index.tsx, D:\code\qlddhcm\components\map\SearchPanel.tsx, D:\code\qlddhcm\pages\About.tsx
+mới -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+mờ -> D:\code\qlddhcm\components\admin\LayerManager.tsx, D:\code\qlddhcm\components\map\admin\AdminMapPanel.tsx
+mở -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\map\SearchPanel.tsx, D:\code\qlddhcm\services\apiClient.ts
+mục -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx
+mức -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+mỹ -> D:\code\qlddhcm\pages\Dashboard.tsx
+nghiêng -> D:\code\qlddhcm\pages\Messaging.tsx
+nghiệp -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\components\AdminMenu.tsx
+nghĩa -> D:\code\qlddhcm\pages\Dashboard.tsx
+nghệ -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx, D:\code\qlddhcm\pages\About.tsx
+ngoài -> D:\code\qlddhcm\components\admin\MenuManager.tsx
+nguyên -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\ParcelGeoJsonImportModal.tsx, D:\code\qlddhcm\components\admin\SystemSettingsManager.tsx
+nguyễn -> D:\code\qlddhcm\components\admin\UserManager.tsx, D:\code\qlddhcm\pages\Login.tsx
+nguồn -> D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx, D:\code\qlddhcm\components\admin\ParcelGeoJsonImportModal.tsx
+ngày -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+ngãi -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+ngòi -> D:\code\qlddhcm\components\map\MapLegend.tsx
+ngôn -> D:\code\qlddhcm\pages\About.tsx
+người -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+ngẫu -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+ngắn -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\LayerManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+ngữ -> D:\code\qlddhcm\pages\About.tsx
+nhiên -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+nhiều -> D:\code\qlddhcm\hooks\useEditorSplitMerge.ts, D:\code\qlddhcm\components\admin\LayerManager.tsx, D:\code\qlddhcm\pages\About.tsx
+nhà -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\pages\About.tsx, D:\code\qlddhcm\components\admin\SystemSettingsManager.tsx
+nhánh -> D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\components\admin\BranchManager.tsx, D:\code\qlddhcm\components\AdminMenu.tsx
+nháp -> D:\code\qlddhcm\pages\UserProfile.tsx, D:\code\qlddhcm\pages\EditorPage.tsx
+nhân -> D:\code\qlddhcm\components\admin\PermissionManager.tsx, D:\code\qlddhcm\components\admin\LayerManager.tsx, D:\code\qlddhcm\pages\UserProfile.tsx
+nhãn -> D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\components\admin\LayerManager.tsx, D:\code\qlddhcm\components\admin\MenuManager.tsx
+nhóm -> D:\code\qlddhcm\components\admin\PermissionManager.tsx, D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+như -> D:\code\qlddhcm\components\admin\LayerManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\SystemSettingsManager.tsx
+nhưng -> D:\code\qlddhcm\components\admin\LayerManager.tsx, D:\code\qlddhcm\components\map\admin\AdminMapPanel.tsx
+nhảy -> D:\code\qlddhcm\components\admin\parcel\ParcelList.tsx
+nhấn -> D:\code\qlddhcm\hooks\useEditorSplitMerge.ts
+nhấp -> D:\code\qlddhcm\pages\LandPriceLookup.tsx
+nhất -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\map\SearchPanel.tsx, D:\code\qlddhcm\components\admin\BranchManager.tsx
+nhận -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\components\land-price\LandPricePrintTemplate.tsx
+nhập -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\map\SearchPanel.tsx
+nhật -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\services\apiClient.ts
+nhắn -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\components\admin\UserManager.tsx
+nhằm -> D:\code\qlddhcm\pages\About.tsx
+nhẹ -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\utils\layerManagerHelpers.ts
+nhỏ -> D:\code\qlddhcm\pages\UserProfile.tsx, D:\code\qlddhcm\utils\editorValidation.ts, D:\code\qlddhcm\utils\editorDataUtils.ts
+nhớ -> D:\code\qlddhcm\pages\Login.tsx, D:\code\qlddhcm\pages\UserProfile.tsx
+nmẹo -> D:\code\qlddhcm\hooks\useEditorSplitMerge.ts
+nthửa -> D:\code\qlddhcm\utils\editorStyles.ts
+nào -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\LandPriceManager.tsx
+này -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\pages\ParcelManager.tsx
+nâng -> D:\code\qlddhcm\App.tsx
+nên -> D:\code\qlddhcm\components\admin\LayerManager.tsx
+nông -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx, D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\components\map\MapLegend.tsx
+nút -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\SystemSettingsManager.tsx
+năm -> D:\code\qlddhcm\pages\About.tsx, D:\code\qlddhcm\components\map\MapLegend.tsx, D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx
+năng -> D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\pages\About.tsx, D:\code\qlddhcm\components\admin\ParcelGeoJsonImportModal.tsx
+nơi -> D:\code\qlddhcm\components\admin\LayerManager.tsx
+nước -> D:\code\qlddhcm\pages\LandPriceLookup.tsx, D:\code\qlddhcm\components\map\MapLegend.tsx
+nạp -> D:\code\qlddhcm\pages\ParcelManager.tsx, D:\code\qlddhcm\components\admin\ParcelGeoJsonImportModal.tsx, D:\code\qlddhcm\App.tsx
+nằm -> D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx
+nẵng -> D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+nếu -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx, D:\code\qlddhcm\components\admin\LayerManager.tsx, D:\code\qlddhcm\pages\UserProfile.tsx
+nền -> D:\code\qlddhcm\components\map\LayerControl.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+nối -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\map\SearchPanel.tsx, D:\code\qlddhcm\services\apiClient.ts
+nội -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+nữa -> D:\code\qlddhcm\components\admin\LayerManager.tsx
+phiên -> D:\code\qlddhcm\services\parcelApi.ts, D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\pages\EditorPage.tsx
+phiếu -> D:\code\qlddhcm\components\map\PdfTemplateEditor.tsx, D:\code\qlddhcm\utils\pdfTemplatePresets.ts
+pháp -> D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx, D:\code\qlddhcm\utils\pdfTemplatePresets.ts
+phát -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\pages\AdminPage.tsx, D:\code\qlddhcm\pages\About.tsx
+phân -> D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\components\AdminMenu.tsx, D:\code\qlddhcm\pages\About.tsx
+phép -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\services\apiClient.ts
+phím -> D:\code\qlddhcm\hooks\useEditorSplitMerge.ts
+phóng -> D:\code\qlddhcm\pages\UserProfile.tsx, D:\code\qlddhcm\pages\EditorPage.tsx
+phù -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\map\LayerControl.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+phú -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx, D:\code\qlddhcm\pages\Dashboard.tsx
+phúc -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\components\land-price\LandPricePrintTemplate.tsx
+phút -> D:\code\qlddhcm\pages\Messaging.tsx
+phương -> D:\code\qlddhcm\components\admin\PermissionManager.tsx, D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+phước -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+phường -> D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\admin\LandPriceManager.tsx, D:\code\qlddhcm\components\map\SearchPanel.tsx
+phạm -> D:\code\qlddhcm\components\admin\LayerManager.tsx, D:\code\qlddhcm\components\admin\ParcelGeoJsonImportModal.tsx, D:\code\qlddhcm\components\admin\SystemSettingsManager.tsx
+phải -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\BranchManager.tsx
+phản -> D:\code\qlddhcm\hooks\useMap.ts, D:\code\qlddhcm\App.tsx
+phần -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\index.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+phẩy -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+phố -> D:\code\qlddhcm\pages\LandPriceLookup.tsx, D:\code\qlddhcm\pages\administrativemap.tsx
+phổ -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx, D:\code\qlddhcm\components\admin\SystemSettingsManager.tsx
+phục -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\pages\Login.tsx, D:\code\qlddhcm\services\apiClient.ts
+phủ -> D:\code\qlddhcm\index.html
+quyết -> D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx
+quyền -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+quá -> D:\code\qlddhcm\utils\editorDataUtils.ts, D:\code\qlddhcm\utils\editorValidation.ts, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+quét -> D:\code\qlddhcm\components\map\ParcelPopup.tsx, D:\code\qlddhcm\components\map\PrintTemplate.tsx, D:\code\qlddhcm\components\tools\QRGenerator.tsx
+quên -> D:\code\qlddhcm\pages\Login.tsx
+quả -> D:\code\qlddhcm\components\admin\LandPriceManager.tsx, D:\code\qlddhcm\components\map\SearchPanel.tsx, D:\code\qlddhcm\components\admin\BranchManager.tsx
+quản -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\services\apiClient.ts
+quảng -> D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+quận -> D:\code\qlddhcm\components\admin\LandPriceManager.tsx, D:\code\qlddhcm\pages\administrativemap.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx
+riêng -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+rác -> D:\code\qlddhcm\pages\Messaging.tsx
+rõ -> D:\code\qlddhcm\pages\Dashboard.tsx
+rút -> D:\code\qlddhcm\components\map\SearchPanel.tsx
+rạch -> D:\code\qlddhcm\components\map\MapLegend.tsx
+rất -> D:\code\qlddhcm\pages\Login.tsx
+rằng -> D:\code\qlddhcm\index.tsx
+rịa -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+rồi -> D:\code\qlddhcm\components\map\SearchPanel.tsx, D:\code\qlddhcm\components\tools\CoordinateConverter.tsx, D:\code\qlddhcm\hooks\useMap.ts
+rỗng -> D:\code\qlddhcm\pages\EditorPage.tsx
+rộng -> D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+rời -> D:\code\qlddhcm\pages\UserProfile.tsx
+rừng -> D:\code\qlddhcm\components\map\MapLegend.tsx
+soát -> D:\code\qlddhcm\components\admin\parcel\BulkImportModal.tsx
+soạn -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\pages\Messaging.tsx
+suốt -> D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+sàng -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx, D:\code\qlddhcm\pages\Login.tsx
+sách -> D:\code\qlddhcm\pages\ParcelManager.tsx, D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\components\admin\BranchManager.tsx
+sáp -> D:\code\qlddhcm\components\map\admin\AdminInfoCard.tsx
+sát -> D:\code\qlddhcm\services\apiClient.ts
+sâu -> D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx
+sóc -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+sông -> D:\code\qlddhcm\components\map\MapLegend.tsx
+sđt -> D:\code\qlddhcm\components\tools\QRGenerator.tsx
+sơ -> D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\services\apiClient.ts
+sơn -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+sản -> D:\code\qlddhcm\components\map\MapLegend.tsx, D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx
+sắc -> D:\code\qlddhcm\components\tools\QRGenerator.tsx
+sắp -> D:\code\qlddhcm\services\apiClient.ts
+sẵn -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx, D:\code\qlddhcm\components\admin\LayerManager.tsx, D:\code\qlddhcm\pages\Login.tsx
+sẻ -> D:\code\qlddhcm\components\map\MapControls.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\SystemSettingsManager.tsx
+sẽ -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx
+số -> D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\map\SearchPanel.tsx, D:\code\qlddhcm\services\apiClient.ts
+sở -> D:\code\qlddhcm\components\map\ParcelPopup.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\pages\Dashboard.tsx
+sử -> D:\code\qlddhcm\components\map\ParcelPopup.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx
+sửa -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\editor\EditorToolbar.tsx, D:\code\qlddhcm\components\map\ParcelPopup.tsx
+thiên -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+thiết -> D:\code\qlddhcm\components\admin\PermissionManager.tsx, D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+thiếu -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\parcel\BulkImportModal.tsx, D:\code\qlddhcm\components\admin\LayerManager.tsx
+thiểu -> D:\code\qlddhcm\utils\editorDataUtils.ts, D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+thiệu -> D:\code\qlddhcm\pages\NotFound.tsx, D:\code\qlddhcm\pages\About.tsx
+thoại -> D:\code\qlddhcm\components\map\ParcelPopup.tsx, D:\code\qlddhcm\components\tools\QRGenerator.tsx
+thuần -> D:\code\qlddhcm\components\admin\SystemSettingsManager.tsx
+thuận -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+thuật -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx, D:\code\qlddhcm\pages\About.tsx
+thuộc -> D:\code\qlddhcm\components\admin\PermissionManager.tsx, D:\code\qlddhcm\components\map\SearchPanel.tsx, D:\code\qlddhcm\components\admin\LayerManager.tsx
+thành -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\pages\Messaging.tsx, D:\code\qlddhcm\components\editor\EditorToolbar.tsx
+thác -> D:\code\qlddhcm\pages\Dashboard.tsx
+thái -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\services\apiClient.ts
+tháng -> D:\code\qlddhcm\components\map\PrintTemplate.tsx, D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\components\map\PdfTemplateEditor.tsx
+tháp -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+thêm -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\pages\ParcelManager.tsx, D:\code\qlddhcm\components\admin\LandPriceManager.tsx
+thích -> D:\code\qlddhcm\components\tools\QRGenerator.tsx
+thôn -> D:\code\qlddhcm\components\map\MapLegend.tsx
+thông -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\components\map\SearchPanel.tsx
+thùng -> D:\code\qlddhcm\pages\Messaging.tsx
+thăm -> D:\code\qlddhcm\pages\NotFound.tsx
+thơ -> D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+thư -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\SystemSettingsManager.tsx, D:\code\qlddhcm\components\tools\QRGenerator.tsx
+thương -> D:\code\qlddhcm\components\map\MapLegend.tsx, D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx, D:\code\qlddhcm\components\land-price\LandPricePrintTemplate.tsx
+thường -> D:\code\qlddhcm\pages\UserProfile.tsx, D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\pages\Login.tsx
+thả -> D:\code\qlddhcm\components\admin\LayerManager.tsx, D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\pages\UserProfile.tsx
+thảo -> D:\code\qlddhcm\pages\Messaging.tsx
+thất -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\components\admin\BranchManager.tsx
+thấy -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\index.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx
+thận -> D:\code\qlddhcm\components\admin\SystemSettingsManager.tsx
+thế -> D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\components\admin\UserManager.tsx, D:\code\qlddhcm\pages\UserProfile.tsx
+thể -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\hooks\useEditorSplitMerge.ts, D:\code\qlddhcm\pages\Messaging.tsx
+thị -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\services\apiClient.ts
+thống -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+thời -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\land-price\LandPricePrintTemplate.tsx, D:\code\qlddhcm\pages\Notifications.tsx
+thủ -> D:\code\qlddhcm\components\editor\EditorModals.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\SystemSettingsManager.tsx
+thứ -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\services\apiClient.ts
+thừa -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+thử -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx, D:\code\qlddhcm\components\admin\SystemSettingsManager.tsx
+thửa -> D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\components\map\SearchPanel.tsx
+thực -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\pages\Login.tsx
+tiên -> D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\pages\About.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+tiêu -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+tiến -> D:\code\qlddhcm\pages\About.tsx, D:\code\qlddhcm\components\admin\ParcelGeoJsonImportModal.tsx
+tiếp -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\map\SearchPanel.tsx
+tiết -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\map\ParcelPopup.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx
+tiền -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx, D:\code\qlddhcm\pages\LandPriceLookup.tsx, D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx
+tiện -> D:\code\qlddhcm\components\Sidebar.tsx, D:\code\qlddhcm\components\admin\MenuManager.tsx
+toàn -> D:\code\qlddhcm\components\editor\EditorToolbar.tsx, D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+toán -> D:\code\qlddhcm\pages\LandPriceLookup.tsx
+triển -> D:\code\qlddhcm\pages\AdminPage.tsx, D:\code\qlddhcm\pages\About.tsx
+truyền -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+trà -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+tránh -> D:\code\qlddhcm\index.html
+trên -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\LandPriceManager.tsx
+trì -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\PermissionManager.tsx, D:\code\qlddhcm\App.tsx
+trình -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\pages\About.tsx, D:\code\qlddhcm\components\admin\ParcelGeoJsonImportModal.tsx
+trí -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\LandPriceManager.tsx, D:\code\qlddhcm\components\map\SearchPanel.tsx
+trích -> D:\code\qlddhcm\components\map\ParcelPopup.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+trò -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\pages\About.tsx
+tròn -> D:\code\qlddhcm\components\editor\EditorToolbar.tsx
+trùng -> D:\code\qlddhcm\components\admin\UserManager.tsx, D:\code\qlddhcm\components\admin\MenuManager.tsx
+trúc -> D:\code\qlddhcm\components\admin\LayerManager.tsx, D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+trăng -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+trước -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\SystemSettingsManager.tsx, D:\code\qlddhcm\components\tools\QRGenerator.tsx
+trường -> D:\code\qlddhcm\components\admin\LandPriceManager.tsx, D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\components\admin\SystemSettingsManager.tsx
+trạng -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\services\apiClient.ts
+trả -> D:\code\qlddhcm\pages\Messaging.tsx
+trận -> D:\code\qlddhcm\components\admin\PermissionManager.tsx, D:\code\qlddhcm\services\apiClient.ts
+trị -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\pages\ParcelManager.tsx
+trọng -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\components\admin\SystemSettingsManager.tsx
+trống -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\components\admin\BranchManager.tsx
+trồng -> D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\components\map\MapLegend.tsx
+trở -> D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx, D:\code\qlddhcm\pages\Messaging.tsx
+trợ -> D:\code\qlddhcm\utils\editorDataUtils.ts, D:\code\qlddhcm\index.html, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+trụ -> D:\code\qlddhcm\components\admin\BranchManager.tsx, D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\components\map\admin\AdminInfoCard.tsx
+trục -> D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+trữ -> D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\pages\ParcelManager.tsx, D:\code\qlddhcm\components\admin\SystemSettingsManager.tsx
+trực -> D:\code\qlddhcm\index.html, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\map\SearchPanel.tsx
+tuyến -> D:\code\qlddhcm\components\admin\LandPriceManager.tsx, D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx
+tuyệt -> D:\code\qlddhcm\pages\EditorPage.tsx
+tài -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\pages\Dashboard.tsx
+tàu -> D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+tác -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\editor\EditorToolbar.tsx, D:\code\qlddhcm\components\map\LayerControl.tsx
+tách -> D:\code\qlddhcm\components\admin\PermissionManager.tsx, D:\code\qlddhcm\hooks\useEditorSplitMerge.ts, D:\code\qlddhcm\components\editor\EditorModals.tsx
+tâm -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\pages\About.tsx, D:\code\qlddhcm\components\land-price\LandPricePrintTemplate.tsx
+tây -> D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+tên -> D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\components\map\SearchPanel.tsx
+tìm -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\index.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx
+tình -> D:\code\qlddhcm\App.tsx
+tích -> D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\map\MeasureTools.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelList.tsx
+tín -> D:\code\qlddhcm\pages\Messaging.tsx
+tính -> D:\code\qlddhcm\utils\editorDataUtils.ts, D:\code\qlddhcm\utils\editorValidation.ts, D:\code\qlddhcm\components\map\SearchPanel.tsx
+tôi -> D:\code\qlddhcm\App.tsx, D:\code\qlddhcm\pages\Login.tsx, D:\code\qlddhcm\pages\About.tsx
+tôn -> D:\code\qlddhcm\pages\Dashboard.tsx
+tùy -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\pages\Dashboard.tsx
+tăng -> D:\code\qlddhcm\pages\Dashboard.tsx
+tĩnh -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+tư -> D:\code\qlddhcm\pages\About.tsx, D:\code\qlddhcm\components\map\MapLegend.tsx
+tương -> D:\code\qlddhcm\components\map\LayerControl.tsx, D:\code\qlddhcm\components\tools\QRGenerator.tsx
+tượng -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+tại -> D:\code\qlddhcm\pages\NotFound.tsx, D:\code\qlddhcm\utils\editorDataUtils.ts, D:\code\qlddhcm\components\admin\MenuManager.tsx
+tạm -> D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\pages\UserProfile.tsx
+tạo -> D:\code\qlddhcm\components\map\ParcelPopup.tsx, D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+tả -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx
+tải -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+tảng -> D:\code\qlddhcm\pages\About.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+tất -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\map\LayerControl.tsx, D:\code\qlddhcm\pages\Dashboard.tsx
+tập -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\services\apiClient.ts
+tắc -> D:\code\qlddhcm\components\admin\PermissionManager.tsx
+tắt -> D:\code\qlddhcm\components\map\LayerControl.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+tế -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\pages\Dashboard.tsx
+tệp -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\pages\ParcelManager.tsx
+tỉnh -> D:\code\qlddhcm\components\admin\LandPriceManager.tsx, D:\code\qlddhcm\pages\About.tsx, D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx
+tọa -> D:\code\qlddhcm\utils\editorDataUtils.ts, D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\utils\editorValidation.ts
+tối -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\utils\editorDataUtils.ts, D:\code\qlddhcm\components\admin\MenuManager.tsx
+tốt -> D:\code\qlddhcm\App.tsx
+tồn -> D:\code\qlddhcm\pages\NotFound.tsx, D:\code\qlddhcm\components\admin\BranchManager.tsx, D:\code\qlddhcm\components\admin\MenuManager.tsx
+tổng -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\components\admin\BranchManager.tsx
+tới -> D:\code\qlddhcm\components\admin\SystemSettingsManager.tsx
+tờ -> D:\code\qlddhcm\components\map\ParcelPopup.tsx, D:\code\qlddhcm\utils\editorStyles.ts, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx
+tục -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\pages\About.tsx, D:\code\qlddhcm\pages\Messaging.tsx
+tức -> D:\code\qlddhcm\components\admin\PermissionManager.tsx
+từ -> D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx, D:\code\qlddhcm\components\land-price\LandPricePrintTemplate.tsx
+từng -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\pages\About.tsx, D:\code\qlddhcm\components\admin\SystemSettingsManager.tsx
+tử -> D:\code\qlddhcm\index.tsx
+tự -> D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\services\apiClient.ts
+tỷ -> D:\code\qlddhcm\pages\Dashboard.tsx
+viên -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\App.tsx, D:\code\qlddhcm\components\AdminMenu.tsx
+viễn -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\LayerManager.tsx, D:\code\qlddhcm\components\admin\UserManager.tsx
+việc -> D:\code\qlddhcm\services\parcelApi.ts, D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\pages\EditorPage.tsx
+viện -> D:\code\qlddhcm\components\admin\LayerManager.tsx
+việt -> D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\pages\About.tsx
+vnđ -> D:\code\qlddhcm\components\admin\LandPriceManager.tsx, D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx, D:\code\qlddhcm\components\land-price\LandPricePrintTemplate.tsx
+và -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\components\map\SearchPanel.tsx
+vào -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+ví -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+vô -> D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\components\admin\UserManager.tsx
+vùng -> D:\code\qlddhcm\hooks\useEditorSplitMerge.ts, D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\pages\EditorPage.tsx
+văn -> D:\code\qlddhcm\components\tools\QRGenerator.tsx, D:\code\qlddhcm\components\admin\UserManager.tsx, D:\code\qlddhcm\pages\Login.tsx
+vĩ -> D:\code\qlddhcm\components\map\SearchPanel.tsx, D:\code\qlddhcm\components\tools\CoordinateConverter.tsx, D:\code\qlddhcm\components\editor\EditorModals.tsx
+vĩnh -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\tools\CoordinateConverter.tsx, D:\code\qlddhcm\pages\Messaging.tsx
+vũng -> D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+vấn -> D:\code\qlddhcm\components\admin\LandPriceManager.tsx, D:\code\qlddhcm\components\map\SearchPanel.tsx, D:\code\qlddhcm\components\admin\LayerManager.tsx
+vẫn -> D:\code\qlddhcm\components\admin\LayerManager.tsx, D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\map\admin\AdminMapPanel.tsx
+vận -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+vật -> D:\code\qlddhcm\components\admin\LayerManager.tsx
+vẽ -> D:\code\qlddhcm\utils\editorDataUtils.ts, D:\code\qlddhcm\utils\editorValidation.ts, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx
+về -> D:\code\qlddhcm\pages\NotFound.tsx, D:\code\qlddhcm\pages\About.tsx, D:\code\qlddhcm\pages\administrativemap.tsx
+vệ -> D:\code\qlddhcm\pages\About.tsx, D:\code\qlddhcm\index.html, D:\code\qlddhcm\components\editor\EditorToolbar.tsx
+vị -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\map\MapControls.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+với -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\pages\About.tsx
+vời -> D:\code\qlddhcm\pages\EditorPage.tsx
+vụ -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\services\apiClient.ts
+vừa -> D:\code\qlddhcm\pages\Messaging.tsx
+vực -> D:\code\qlddhcm\components\admin\LandPriceManager.tsx, D:\code\qlddhcm\components\map\SearchPanel.tsx, D:\code\qlddhcm\pages\About.tsx
+xuyên -> D:\code\qlddhcm\hooks\useEditorSplitMerge.ts
+xuất -> D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx
+xuống -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx, D:\code\qlddhcm\pages\ParcelManager.tsx, D:\code\qlddhcm\components\admin\SystemSettingsManager.tsx
+xác -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\components\map\SearchPanel.tsx
+xây -> D:\code\qlddhcm\pages\About.tsx
+xã -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\admin\LandPriceManager.tsx
+xóa -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\editor\EditorToolbar.tsx, D:\code\qlddhcm\pages\NotFound.tsx
+xúc -> D:\code\qlddhcm\pages\Messaging.tsx
+xạ -> D:\code\qlddhcm\components\admin\ParcelGeoJsonImportModal.tsx
+xảy -> D:\code\qlddhcm\hooks\useMap.ts, D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx
+xếp -> D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\pages\About.tsx
+xử -> D:\code\qlddhcm\components\editor\EditorLayoutShell.tsx, D:\code\qlddhcm\components\tools\CoordinateConverter.tsx, D:\code\qlddhcm\pages\UserProfile.tsx
+yên -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+yêu -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx, D:\code\qlddhcm\components\admin\LayerManager.tsx, D:\code\qlddhcm\pages\UserProfile.tsx
+yếu -> D:\code\qlddhcm\pages\Login.tsx, D:\code\qlddhcm\pages\UserProfile.tsx
+ánh -> D:\code\qlddhcm\components\admin\ParcelGeoJsonImportModal.tsx
+áp -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx
+ích -> D:\code\qlddhcm\components\Sidebar.tsx, D:\code\qlddhcm\components\admin\MenuManager.tsx
+ít -> D:\code\qlddhcm\components\map\SearchPanel.tsx, D:\code\qlddhcm\components\admin\BranchManager.tsx, D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx
+ô -> D:\code\qlddhcm\components\editor\ParcelLookupDialogs.tsx
+ý -> D:\code\qlddhcm\components\admin\LandPriceManager.tsx, D:\code\qlddhcm\components\tools\CoordinateConverter.tsx, D:\code\qlddhcm\components\admin\ParcelGeoJsonImportModal.tsx
+đ -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\map\ParcelPopup.tsx, D:\code\qlddhcm\utils\editorDataUtils.ts
+đa -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\pages\About.tsx, D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+đai -> D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\components\AdminMenu.tsx, D:\code\qlddhcm\pages\About.tsx
+đang -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\map\SearchPanel.tsx
+đi -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\hooks\useEditorSplitMerge.ts
+điền -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\LayerManager.tsx, D:\code\qlddhcm\components\admin\SystemSettingsManager.tsx
+điều -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\services\apiClient.ts
+điểm -> D:\code\qlddhcm\utils\editorDataUtils.ts, D:\code\qlddhcm\utils\editorValidation.ts, D:\code\qlddhcm\components\admin\LandPriceManager.tsx
+điện -> D:\code\qlddhcm\components\map\ParcelPopup.tsx, D:\code\qlddhcm\components\tools\CoordinateConverter.tsx, D:\code\qlddhcm\components\tools\QRGenerator.tsx
+đo -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx, D:\code\qlddhcm\components\map\MeasureTools.tsx, D:\code\qlddhcm\components\editor\EditorToolbar.tsx
+đoạn -> D:\code\qlddhcm\utils\editorDataUtils.ts, D:\code\qlddhcm\components\admin\LandPriceManager.tsx, D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx
+đà -> D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+đào -> D:\code\qlddhcm\components\map\MapLegend.tsx
+đánh -> D:\code\qlddhcm\components\admin\LayerManager.tsx
+đây -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\index.html, D:\code\qlddhcm\components\admin\SystemSettingsManager.tsx
+đã -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\services\apiClient.ts
+đè -> D:\code\qlddhcm\components\admin\LayerManager.tsx, D:\code\qlddhcm\pages\EditorPage.tsx, D:\code\qlddhcm\components\admin\SystemSettingsManager.tsx
+đích -> D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\components\admin\ParcelGeoJsonImportModal.tsx
+đó -> D:\code\qlddhcm\components\admin\PermissionManager.tsx, D:\code\qlddhcm\components\admin\LayerManager.tsx
+đóng -> D:\code\qlddhcm\components\map\LayerControl.tsx, D:\code\qlddhcm\components\map\ParcelPopup.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+đô -> D:\code\qlddhcm\components\admin\PriceManager.tsx, D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\components\map\MapLegend.tsx
+đông -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+đúng -> D:\code\qlddhcm\pages\MapPage.tsx, D:\code\qlddhcm\components\tools\CoordinateConverter.tsx, D:\code\qlddhcm\hooks\useMap.ts
+đăng -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\pages\Login.tsx
+đơn -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\services\apiClient.ts
+đư -> D:\code\qlddhcm\components\editor\EditorModals.tsx
+đưa -> D:\code\qlddhcm\pages\Messaging.tsx
+đường -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\LandPriceManager.tsx, D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx
+được -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+đạc -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx, D:\code\qlddhcm\components\editor\EditorToolbar.tsx
+đại -> D:\code\qlddhcm\pages\About.tsx, D:\code\qlddhcm\pages\UserProfile.tsx
+đạt -> D:\code\qlddhcm\pages\UserProfile.tsx
+đảm -> D:\code\qlddhcm\pages\About.tsx, D:\code\qlddhcm\index.tsx
+đất -> D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\components\map\SearchPanel.tsx
+đầu -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\index.html, D:\code\qlddhcm\utils\editorValidation.ts
+đầy -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\LandPriceManager.tsx
+đậm -> D:\code\qlddhcm\pages\Messaging.tsx
+đắk -> D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+đặc -> D:\code\qlddhcm\pages\UserProfile.tsx
+đặt -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+đến -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\LandPriceManager.tsx, D:\code\qlddhcm\components\land-price\LandPriceDetailModal.tsx
+đề -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\map\LayerControl.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+để -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\index.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+đỉnh -> D:\code\qlddhcm\utils\editorDataUtils.ts, D:\code\qlddhcm\utils\editorValidation.ts, D:\code\qlddhcm\components\editor\EditorSidebar.tsx
+địa -> D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelList.tsx
+định -> D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\components\map\SearchPanel.tsx
+đọc -> D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\map\SearchPanel.tsx, D:\code\qlddhcm\components\admin\ParcelGeoJsonImportModal.tsx
+đỏ -> D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\components\admin\parcel\BulkImportModal.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+đối -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\pages\EditorPage.tsx, D:\code\qlddhcm\components\admin\parcel\BulkImportModal.tsx
+đồ -> D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\components\editor\EditorLayoutShell.tsx
+đồng -> D:\code\qlddhcm\components\editor\EditorSidebar.tsx, D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\components\tools\CoordinateConverter.tsx
+đổi -> D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+độ -> D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx, D:\code\qlddhcm\components\map\SearchPanel.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelList.tsx
+độc -> D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx, D:\code\qlddhcm\components\land-price\LandPricePrintTemplate.tsx
+động -> D:\code\qlddhcm\pages\NotFound.tsx, D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\components\admin\parcel\ParcelForm.tsx
+đủ -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\MenuManager.tsx, D:\code\qlddhcm\pages\ParcelManager.tsx
+ưu -> D:\code\qlddhcm\services\apiClient.ts, D:\code\qlddhcm\pages\Dashboard.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
+ảnh -> D:\code\qlddhcm\components\map\ParcelPopup.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\PdfSettingsManager.tsx
+ẩn -> D:\code\qlddhcm\components\admin\LayerManager.tsx, D:\code\qlddhcm\components\admin\MenuManager.tsx
+ổn -> D:\code\qlddhcm\utils\layerManagerHelpers.ts, D:\code\qlddhcm\services\parcelApi.ts, D:\code\qlddhcm\App.tsx
+ở -> D:\code\qlddhcm\components\admin\NotificationManager.tsx, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts, D:\code\qlddhcm\components\admin\LandPriceManager.tsx
+ứng -> D:\code\qlddhcm\components\tools\QRGenerator.tsx, D:\code\qlddhcm\hooks\useMap.ts, D:\code\qlddhcm\components\admin\systemSettingsConfig.ts
