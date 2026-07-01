@@ -256,6 +256,40 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
         setPoints(parsedPoints);
     };
 
+    // Preprocess image to paint transparent background with solid white
+    const preprocessImage = (src: string): Promise<string> => {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    resolve(src);
+                    return;
+                }
+                
+                canvas.width = img.width;
+                canvas.height = img.height;
+                
+                // Solid white background
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw image on top
+                ctx.drawImage(img, 0, 0);
+                
+                // Output as JPEG (retaining white background)
+                const jpegData = canvas.toDataURL('image/jpeg', 0.95);
+                resolve(jpegData);
+            };
+            img.onerror = () => {
+                resolve(src);
+            };
+            img.src = src;
+        });
+    };
+
     // Run OCR using Tesseract.js
     const handleStartScan = async () => {
         if (!imageSrc) return;
@@ -263,14 +297,18 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
         setIsScanning(true);
         setStep('scanning');
         setProgress(0);
-        setProgressStatus('Đang tải thư viện OCR Tesseract...');
+        setProgressStatus('Đang tiền xử lý hình ảnh (loại bỏ độ trong suốt)...');
 
         try {
+            // Remove transparency by rendering on solid white canvas
+            const cleanImageSrc = await preprocessImage(imageSrc);
+
+            setProgressStatus('Đang tải thư viện OCR Tesseract...');
             const Tesseract = await loadTesseract();
             setProgressStatus('Đang khởi chạy bộ máy nhận diện...');
             
             const result = await Tesseract.recognize(
-                imageSrc,
+                cleanImageSrc,
                 'vie+eng', // Load Vietnamese and English
                 {
                     logger: (m: any) => {
@@ -740,6 +778,16 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
                                     </>
                                 )}
                             </div>
+
+                            <details className="bg-slate-950 p-4 rounded-3xl border border-slate-800 text-[9px] font-bold text-slate-500 uppercase tracking-widest cursor-pointer select-none">
+                                <summary className="outline-none hover:text-white">Xem văn bản quét thô (Raw OCR)</summary>
+                                <textarea
+                                    readOnly
+                                    value={rawText}
+                                    className="w-full mt-2 bg-slate-900 border border-slate-800 text-slate-300 p-2 rounded-xl h-24 font-mono text-[9px] outline-none resize-none cursor-text select-text"
+                                    onClick={e => e.stopPropagation()}
+                                />
+                            </details>
 
                             <div className="flex gap-2">
                                 <button

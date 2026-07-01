@@ -46,6 +46,7 @@
     "recharts": "^2.12.7",
     "shpjs": "^6.1.0",
     "tailwindcss": "^4.2.2",
+    "tesseract.js": "^7.0.0",
     "three": "^0.160.0",
     "xlsx": "^0.18.5"
   },
