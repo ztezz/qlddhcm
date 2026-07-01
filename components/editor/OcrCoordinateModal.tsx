@@ -324,6 +324,21 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
                         }
                     }
 
+                    // Validate geographical range bounds (Vietnam coordinates check) to filter out garbage noise
+                    if (coordSystem === 'VN2000') {
+                        const valX = parseFloat(xStr);
+                        const valY = parseFloat(yStr);
+                        if (isNaN(valX) || isNaN(valY) || valX < 900000 || valX > 3000000 || valY < 100000 || valY > 900000) {
+                            return; // Skip this garbage noise row
+                        }
+                    } else {
+                        const valX = parseFloat(xStr);
+                        const valY = parseFloat(yStr);
+                        if (isNaN(valX) || isNaN(valY) || valX < 8 || valX > 30 || valY < 95 || valY > 115) {
+                            return; // Skip WGS84 noise
+                        }
+                    }
+
                     // Validate guessed index (must be a small positive number < 100)
                     let finalIndex = '';
                     if (indexStr) {
