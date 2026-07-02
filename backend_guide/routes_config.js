@@ -399,22 +399,25 @@ export default function(pool, logSystemAction) {
             }
             const model = modelName || 'microsoft/trocr-large-handwritten';
             const url = customUrl ? customUrl : `https://router.huggingface.co/hf-inference/models/${model}`;
-            const headers = {};
+            const headers = { 'Content-Type': 'application/json' };
             if (token) {
                 headers['Authorization'] = `Bearer ${token}`;
             }
             const response = await fetch(url, {
-                method: 'GET',
-                headers
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ inputs: "Ping" })
             });
-            if (response.ok || response.status === 405 || response.status === 401) {
-                if (response.status === 401) {
-                    res.status(400).json({ error: 'Kết nối bị từ chối: Token Hugging Face không hợp lệ.' });
-                } else {
-                    res.json({ status: 'ok', message: `Kết nối thành công! Trạng thái hoạt động (HTTP ${response.status}).` });
-                }
+
+            const json = await response.json().catch(() => ({}));
+
+            if (response.ok || response.status === 503) {
+                res.json({ status: 'ok', message: `Kết nối thành công! Mô hình đang hoạt động (HTTP ${response.status}).` });
+            } else if (response.status === 401) {
+                res.status(400).json({ error: 'Kết nối bị từ chối: Token Hugging Face không hợp lệ.' });
+            } else if (response.status === 400 && json?.error?.includes('not supported by provider')) {
+                res.json({ status: 'ok', message: `Kết nối thành công! Token hợp lệ, nhưng mô hình "${model}" không được hỗ trợ bởi Serverless API (Cần dùng Endpoint riêng).` });
             } else {
-                const json = await response.json().catch(() => ({}));
                 const errMsg = json?.error || `Lỗi HTTP ${response.status}: ${response.statusText}`;
                 res.status(400).json({ error: errMsg });
             }
