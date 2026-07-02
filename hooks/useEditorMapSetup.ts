@@ -3,7 +3,7 @@ import Feature from 'ol/Feature';
 import Map from 'ol/Map';
 import View from 'ol/View';
 import { LineString } from 'ol/geom';
-import { Draw, DragBox, Modify, Select, Snap } from 'ol/interaction';
+import { Draw, DragBox, Modify, Select, Snap, DragPan } from 'ol/interaction';
 import { Vector as VectorLayer } from 'ol/layer';
 import { Graticule, Tile as TileLayer } from 'ol/layer';
 import * as proj from 'ol/proj';
@@ -202,6 +202,24 @@ export const useEditorMapSetup = ({
         snap.setActive(isSnapping);
         map.addInteraction(snap);
         snapInteraction.current = snap;
+
+        // Middle-click scroll wheel DragPan interaction
+        const middleDragPan = new DragPan({
+            condition: (mapBrowserEvent: any) => {
+                const originalEvent = mapBrowserEvent.originalEvent;
+                // button === 1 is middle click pointerdown; buttons === 4 is middle click dragging
+                return originalEvent.button === 1 || originalEvent.buttons === 4;
+            }
+        });
+        map.addInteraction(middleDragPan);
+
+        // Prevent browser autoscroll on middle click inside map viewport
+        const viewport = map.getViewport();
+        viewport.addEventListener('mousedown', (e: MouseEvent) => {
+            if (e.button === 1) {
+                e.preventDefault();
+            }
+        });
 
         editSource.current.on(['addfeature', 'removefeature', 'changefeature'], () => {
             updateFeatureListState();
