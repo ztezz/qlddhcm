@@ -526,23 +526,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         return () => clearTimeout(t);
     }, [loadDraft]);
 
-    useEffect(() => {
-        const onKeyDown = (e: KeyboardEvent) => {
-            const key = e.key.toLowerCase();
-            if ((e.ctrlKey || e.metaKey) && key === 'z' && !e.shiftKey) {
-                e.preventDefault();
-                handleUndo();
-                return;
-            }
-            if ((e.ctrlKey || e.metaKey) && (key === 'y' || (key === 'z' && e.shiftKey))) {
-                e.preventDefault();
-                handleRedo();
-            }
-        };
 
-        window.addEventListener('keydown', onKeyDown);
-        return () => window.removeEventListener('keydown', onKeyDown);
-    }, [handleUndo, handleRedo]);
 
    const handleProcessManualInput = (inputText: string) => {
         try {
@@ -960,6 +944,49 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
             updateFeatureListState();
         }
     };
+
+    useEffect(() => {
+        const onKeyDown = (e: KeyboardEvent) => {
+            const key = e.key.toLowerCase();
+            
+            // Undo
+            if ((e.ctrlKey || e.metaKey) && key === 'z' && !e.shiftKey) {
+                e.preventDefault();
+                handleUndo();
+                return;
+            }
+            
+            // Redo
+            if ((e.ctrlKey || e.metaKey) && (key === 'y' || (key === 'z' && e.shiftKey))) {
+                e.preventDefault();
+                handleRedo();
+                return;
+            }
+
+            // Delete selected feature(s)
+            if (key === 'delete' || key === 'backspace') {
+                const activeEl = document.activeElement;
+                if (activeEl && (
+                    activeEl.tagName === 'INPUT' || 
+                    activeEl.tagName === 'TEXTAREA' || 
+                    activeEl.getAttribute('contenteditable') === 'true'
+                )) {
+                    return;
+                }
+
+                e.preventDefault();
+                if (selectedFeatureUids.length > 0) {
+                    const uids = [...selectedFeatureUids];
+                    uids.forEach(uid => handleDeleteFeature(uid));
+                } else if (selectedFeature) {
+                    handleDeleteFeature(getUid(selectedFeature));
+                }
+            }
+        };
+
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [handleUndo, handleRedo, selectedFeature, selectedFeatureUids, handleDeleteFeature]);
 
     const handleSelectFeatureFromList = (uid: string, isMultiSelect?: boolean) => {
         const feature = editSource.current.getFeatures().find(f => getUid(f) === uid);
