@@ -347,16 +347,11 @@ export const adminService = {
         apiCall('/settings/test-mail', { method: 'POST', body: JSON.stringify(payload) }),
     testGemini: async (payload: { apiKey: string; modelName: string }) =>
         apiCall('/settings/test-gemini', { method: 'POST', body: JSON.stringify(payload) }),
-    testHf: async (payload: { token: string; modelName: string; customUrl: string }) =>
-        apiCall('/settings/test-hf', { method: 'POST', body: JSON.stringify(payload) }),
     runOcr: async (payload: {
-        engine: 'gemini' | 'hf';
+        engine: 'gemini';
         image: string;
         geminiKey?: string;
         geminiModel?: string;
-        hfToken?: string;
-        hfModel?: string;
-        hfEndpoint?: string;
     }) => apiCall('/settings/ocr', { method: 'POST', body: JSON.stringify(payload) }),
     getWmsLayers: async () => {
         const data = await apiCall('/wms-layers');

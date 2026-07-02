@@ -44,11 +44,7 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
     const [geminiKey, setGeminiKey] = useState<string>('');
     const [geminiModel, setGeminiModel] = useState<string>('gemini-flash-latest');
 
-    // Hugging Face API settings (loaded from global system settings)
-    const [useHf, setUseHf] = useState<boolean>(false);
-    const [hfToken, setHfToken] = useState<string>('');
-    const [hfModel, setHfModel] = useState<string>('microsoft/trocr-large-handwritten');
-    const [hfEndpoint, setHfEndpoint] = useState<string>('');
+
 
     // Parsed points
     const [points, setPoints] = useState<ParsedPoint[]>([]);
@@ -77,10 +73,7 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
                     const keySetting = settingsList.find(s => s.key === 'ocr_gemini_key');
                     const modelSetting = settingsList.find(s => s.key === 'ocr_gemini_model');
                     
-                    const useHfSetting = settingsList.find(s => s.key === 'ocr_use_hf');
-                    const hfTokenSetting = settingsList.find(s => s.key === 'ocr_hf_token');
-                    const hfModelSetting = settingsList.find(s => s.key === 'ocr_hf_model');
-                    const hfEndpointSetting = settingsList.find(s => s.key === 'ocr_hf_endpoint');
+
 
                     if (useGeminiSetting) {
                         setUseGemini(useGeminiSetting.value === 'true');
@@ -92,18 +85,7 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
                         setGeminiModel(modelSetting.value);
                     }
 
-                    if (useHfSetting) {
-                        setUseHf(useHfSetting.value === 'true');
-                    }
-                    if (hfTokenSetting && hfTokenSetting.value) {
-                        setHfToken(hfTokenSetting.value);
-                    }
-                    if (hfModelSetting && hfModelSetting.value) {
-                        setHfModel(hfModelSetting.value);
-                    }
-                    if (hfEndpointSetting && hfEndpointSetting.value) {
-                        setHfEndpoint(hfEndpointSetting.value);
-                    }
+
                 } catch (e) {
                     console.error("Failed to load global OCR settings from server:", e);
                 }
@@ -604,40 +586,8 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
                 setProgressStatus('Gemini API lỗi. Tự động chuyển sang Tesseract offline...');
                 await new Promise(r => setTimeout(r, 1200));
             }
-        } else if (useHf && hfToken) {
-            setProgressStatus('Đang gửi hình ảnh lên Hugging Face API (qua server)...');
-            try {
-                const cleanImageSrc = await preprocessImage(imageSrc);
-                setProgress(30);
-                
-                setProgressStatus('Hugging Face đang phân tích và trích xuất dữ liệu...');
-                const result = await adminService.runOcr({
-                    engine: 'hf',
-                    image: cleanImageSrc,
-                    hfToken,
-                    hfModel,
-                    hfEndpoint
-                });
-                setProgress(90);
-                
-                const extractedText = result.text || '';
-                setRawText(extractedText);
-                parseOcrText(extractedText);
-                
-                setProgressStatus('Hoàn tất quét ảnh!');
-                setProgress(100);
-                
-                setTimeout(() => {
-                    setStep('edit');
-                    setIsScanning(false);
-                }, 600);
-                return;
-            } catch (e: any) {
-                console.error("Hugging Face OCR error, falling back to Tesseract:", e);
-                setProgressStatus('Hugging Face API lỗi. Tự động chuyển sang Tesseract offline...');
-                await new Promise(r => setTimeout(r, 1200));
-            }
         }
+
 
         setProgressStatus('Đang tiền xử lý hình ảnh (loại bỏ độ trong suốt)...');
 
@@ -932,8 +882,6 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
                                             <span className="text-slate-400">Động cơ OCR:</span>
                                             {useGemini && geminiKey ? (
                                                 <span className="text-purple-400 bg-purple-950/40 border border-purple-500/20 px-1.5 py-0.5 rounded font-black">Google Gemini</span>
-                                            ) : useHf && hfToken ? (
-                                                <span className="text-orange-400 bg-orange-950/40 border border-orange-500/20 px-1.5 py-0.5 rounded font-black">Hugging Face</span>
                                             ) : (
                                                 <span className="text-emerald-400 bg-emerald-950/40 border border-emerald-500/20 px-1.5 py-0.5 rounded font-black">Tesseract Offline</span>
                                             )}
