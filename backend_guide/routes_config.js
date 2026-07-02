@@ -416,16 +416,44 @@ export default function(pool, logSystemAction) {
                 },
                 body: JSON.stringify({
                     model: model,
-                    messages: [{ role: 'user', content: 'Ping' }]
+                    messages: [{ role: 'user', content: 'Ping' }],
+                    stream: false
                 })
             });
-            const json = await response.json().catch(() => ({}));
+            
+            const resText = await response.text();
+            
             if (response.ok) {
-                const reply = json?.choices?.[0]?.message?.content?.trim() || 'Thành công';
-                res.json({ status: 'ok', reply });
+                let reply = '';
+                if (resText.includes('data:')) {
+                    const lines = resText.split('\n');
+                    for (const line of lines) {
+                        const trimmed = line.trim();
+                        if (trimmed.startsWith('data:')) {
+                            const dataStr = trimmed.slice(5).trim();
+                            if (dataStr === '[DONE]') continue;
+                            try {
+                                const parsedChunk = JSON.parse(dataStr);
+                                reply += parsedChunk?.choices?.[0]?.delta?.content || '';
+                            } catch (e) {}
+                        }
+                    }
+                } else {
+                    try {
+                        const json = JSON.parse(resText);
+                        reply = json?.choices?.[0]?.message?.content?.trim() || 'Thành công';
+                    } catch (e) {
+                        reply = resText;
+                    }
+                }
+                res.json({ status: 'ok', reply: reply || 'Thành công' });
             } else {
-                const errMsg = json?.error?.message || `Lỗi HTTP ${response.status}: ${response.statusText}`;
-                res.status(400).json({ error: errMsg });
+                let errMsg = response.statusText;
+                try {
+                    const json = JSON.parse(resText);
+                    errMsg = json?.error?.message || errMsg;
+                } catch (e) {}
+                res.status(400).json({ error: `Lỗi HTTP ${response.status}: ${errMsg}` });
             }
         } catch (e) {
             res.status(500).json({ error: `Lỗi kết nối tới 9router: ${e.message}` });
@@ -537,18 +565,46 @@ Example format:
                                     }
                                 ]
                             }
-                        ]
+                        ],
+                        stream: false
                     })
                 });
 
+                const resText = await response.text();
+
                 if (!response.ok) {
-                    const errData = await response.json().catch(() => ({}));
-                    console.error("9router OCR API error status:", response.status, "message:", errData?.error?.message || response.statusText);
-                    return res.status(response.status).json({ error: errData?.error?.message || response.statusText });
+                    let errMsg = response.statusText;
+                    try {
+                        const errJson = JSON.parse(resText);
+                        errMsg = errJson?.error?.message || errMsg;
+                    } catch (e) {}
+                    console.error("9router OCR API error status:", response.status, "message:", errMsg);
+                    return res.status(response.status).json({ error: errMsg });
                 }
 
-                const resData = await response.json();
-                let jsonText = resData?.choices?.[0]?.message?.content;
+                let jsonText = '';
+                if (resText.includes('data:')) {
+                    const lines = resText.split('\n');
+                    for (const line of lines) {
+                        const trimmed = line.trim();
+                        if (trimmed.startsWith('data:')) {
+                            const dataStr = trimmed.slice(5).trim();
+                            if (dataStr === '[DONE]') continue;
+                            try {
+                                const parsedChunk = JSON.parse(dataStr);
+                                jsonText += parsedChunk?.choices?.[0]?.delta?.content || '';
+                            } catch (e) {}
+                        }
+                    }
+                } else {
+                    try {
+                        const resData = JSON.parse(resText);
+                        jsonText = resData?.choices?.[0]?.message?.content || '';
+                    } catch (e) {
+                        jsonText = resText;
+                    }
+                }
+
                 if (!jsonText) {
                     return res.status(400).json({ error: 'Không có phản hồi từ 9router.' });
                 }
