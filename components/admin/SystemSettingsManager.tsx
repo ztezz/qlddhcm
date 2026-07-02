@@ -39,6 +39,10 @@ const SystemSettingsManager: React.FC<SystemSettingsManagerProps> = ({ permissio
     const [geminiTestStatus, setGeminiTestStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle');
     const [geminiTestMsg, setGeminiTestMsg] = useState('');
 
+    // Hugging Face API test
+    const [hfTestStatus, setHfTestStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle');
+    const [hfTestMsg, setHfTestMsg] = useState('');
+
     // Backup
     const [backupTables, setBackupTables] = useState<{system: string[], spatial: string[]}>({ system: [], spatial: [] });
     const [selectedTables, setSelectedTables] = useState<string[]>([]);
@@ -338,38 +342,42 @@ const SystemSettingsManager: React.FC<SystemSettingsManagerProps> = ({ permissio
         }
 
         setGeminiTestStatus('testing');
-        setGeminiTestMsg('Đang gửi truy vấn thử nghiệm (Ping) tới Gemini API...');
+        setGeminiTestMsg('Đang gửi truy vấn thử nghiệm (Ping) tới Gemini API thông qua backend...');
 
         try {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName || 'gemini-flash-latest'}:generateContent?key=${apiKey}`;
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    contents: [
-                        { parts: [{ text: 'Ping' }] }
-                    ]
-                })
-            });
-
-            const json = await res.json().catch(() => ({}));
-            
-            if (res.ok) {
-                setGeminiTestStatus('ok');
-                const reply = json?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || 'Thành công';
-                setGeminiTestMsg(`Kết nối thành công! Phản hồi từ mô hình: "${reply}"`);
-            } else {
-                setGeminiTestStatus('error');
-                const errMsg = json?.error?.message || `Lỗi HTTP ${res.status}: ${res.statusText}`;
-                setGeminiTestMsg(`Kết nối thất bại: ${errMsg}`);
-            }
+            const result = await adminService.testGemini({ apiKey, modelName });
+            setGeminiTestStatus('ok');
+            setGeminiTestMsg(`Kết nối thành công! Phản hồi từ mô hình: "${result.reply || 'Thành công'}"`);
         } catch (e: any) {
             setGeminiTestStatus('error');
-            setGeminiTestMsg(`Lỗi mạng: ${e.message}`);
+            setGeminiTestMsg(`Kết nối thất bại: ${e.message || e}`);
         }
         setTimeout(() => setGeminiTestStatus('idle'), 8000);
+    };
+
+    const handleHfTest = async () => {
+        const token = settings.find(s => s.key === 'ocr_hf_token')?.value || '';
+        const modelName = settings.find(s => s.key === 'ocr_hf_model')?.value || 'microsoft/trocr-large-handwritten';
+        const customUrl = settings.find(s => s.key === 'ocr_hf_endpoint')?.value || '';
+
+        if (!token && !customUrl) {
+            setHfTestStatus('error');
+            setHfTestMsg('Vui lòng nhập API Token hoặc Endpoint trước khi thử nghiệm.');
+            return;
+        }
+
+        setHfTestStatus('testing');
+        setHfTestMsg('Đang gửi truy vấn thử nghiệm tới Hugging Face thông qua backend...');
+
+        try {
+            const result = await adminService.testHf({ token, modelName, customUrl });
+            setHfTestStatus('ok');
+            setHfTestMsg(result.message || 'Kết nối thành công!');
+        } catch (e: any) {
+            setHfTestStatus('error');
+            setHfTestMsg(`Kết nối thất bại: ${e.message || e}`);
+        }
+        setTimeout(() => setHfTestStatus('idle'), 8000);
     };
 
     const handleFileChange = (key: string, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -534,7 +542,7 @@ const SystemSettingsManager: React.FC<SystemSettingsManagerProps> = ({ permissio
         }
 
         // Password field with toggle
-        if (key === 'mail_pass') {
+        if (key === 'mail_pass' || key === 'ocr_gemini_key' || key === 'ocr_hf_token') {
             return (
                 <div className="space-y-1">
                     <div className="relative">
@@ -717,6 +725,7 @@ const SystemSettingsManager: React.FC<SystemSettingsManagerProps> = ({ permissio
 
                 {subTab === 'AI' && (
                     <div className="space-y-6 animate-in fade-in duration-300">
+                        <div className="text-[11px] font-black uppercase tracking-wider text-purple-400">Cấu hình Google Gemini API</div>
                         {/* Gemini status card / test interface */}
                         <div className="bg-gray-950/40 p-5 rounded-xl border border-gray-700 space-y-4">
                             <div className="flex items-center justify-between">
@@ -745,6 +754,44 @@ const SystemSettingsManager: React.FC<SystemSettingsManagerProps> = ({ permissio
                         </div>
 
                         {['ocr_use_gemini', 'ocr_gemini_key', 'ocr_gemini_model'].map(key => (
+                            <div key={key} className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-gray-700/50 pb-6 last:border-0 last:pb-0">
+                                <div className="col-span-1">
+                                    <label className="text-sm font-bold text-gray-200 block mb-1">{SETTING_METADATA[key]?.label || key}</label>
+                                    <span className="text-xs text-gray-500 italic">{SETTING_METADATA[key]?.description}</span>
+                                </div>
+                                <div className="col-span-2">{renderSettingInput(key)}</div>
+                            </div>
+                        ))}
+
+                        <div className="text-[11px] font-black uppercase tracking-wider text-orange-400 pt-4 border-t border-gray-700/60">Cấu hình Hugging Face OCR</div>
+                        {/* Hugging Face status card / test interface */}
+                        <div className="bg-gray-950/40 p-5 rounded-xl border border-gray-700 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3 text-orange-400">
+                                    <Cpu size={20}/> 
+                                    <h4 className="font-black uppercase tracking-tight text-sm">Kiểm tra kết nối Hugging Face</h4>
+                                </div>
+                                <button onClick={handleHfTest} disabled={hfTestStatus === 'testing'}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] rounded bg-orange-800/40 border border-orange-700/50 text-orange-300 hover:bg-orange-700/50 transition-colors disabled:opacity-50 font-bold uppercase tracking-wider">
+                                    {hfTestStatus === 'testing' ? <RefreshCw size={11} className="animate-spin" /> : <Zap size={11} />}
+                                    Kiểm tra kết nối
+                                </button>
+                            </div>
+
+                            {hfTestStatus !== 'idle' && (
+                                <div className={`flex items-start gap-2 p-3 rounded-lg text-xs border
+                                    ${hfTestStatus === 'testing' ? 'bg-orange-900/20 border-orange-800 text-orange-300'
+                                    : hfTestStatus === 'ok' ? 'bg-emerald-900/20 border-emerald-800 text-emerald-300'
+                                    : 'bg-red-900/20 border-red-800 text-red-300'}`}>
+                                    {hfTestStatus === 'testing' && <RefreshCw size={13} className="animate-spin shrink-0 mt-0.5" />}
+                                    {hfTestStatus === 'ok' && <Check size={13} className="shrink-0 mt-0.5" />}
+                                    {hfTestStatus === 'error' && <X size={13} className="shrink-0 mt-0.5" />}
+                                    <span className="font-medium">{hfTestMsg}</span>
+                                </div>
+                            )}
+                        </div>
+
+                        {['ocr_use_hf', 'ocr_hf_token', 'ocr_hf_model', 'ocr_hf_endpoint'].map(key => (
                             <div key={key} className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-gray-700/50 pb-6 last:border-0 last:pb-0">
                                 <div className="col-span-1">
                                     <label className="text-sm font-bold text-gray-200 block mb-1">{SETTING_METADATA[key]?.label || key}</label>

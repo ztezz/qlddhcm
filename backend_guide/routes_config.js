@@ -360,5 +360,172 @@ export default function(pool, logSystemAction) {
         }
     });
 
+    // --- TEST GEMINI ---
+    router.post('/settings/test-gemini', authenticateToken, requireAdmin, async (req, res) => {
+        try {
+            const { apiKey, modelName } = req.body || {};
+            if (!apiKey) {
+                return res.status(400).json({ error: 'Thiếu API Key của Gemini.' });
+            }
+            const model = modelName || 'gemini-flash-latest';
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+            
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: 'Ping' }] }]
+                })
+            });
+            const json = await response.json().catch(() => ({}));
+            if (response.ok) {
+                const reply = json?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || 'Thành công';
+                res.json({ status: 'ok', reply });
+            } else {
+                const errMsg = json?.error?.message || `Lỗi HTTP ${response.status}: ${response.statusText}`;
+                res.status(400).json({ error: errMsg });
+            }
+        } catch (e) {
+            res.status(500).json({ error: `Lỗi kết nối tới Gemini: ${e.message}` });
+        }
+    });
+
+    // --- TEST HUGGING FACE ---
+    router.post('/settings/test-hf', authenticateToken, requireAdmin, async (req, res) => {
+        try {
+            const { token, modelName, customUrl } = req.body || {};
+            if (!token && !customUrl) {
+                return res.status(400).json({ error: 'Thiếu Token hoặc Endpoint của Hugging Face.' });
+            }
+            const model = modelName || 'microsoft/trocr-large-handwritten';
+            const url = customUrl ? customUrl : `https://api-inference.huggingface.co/models/${model}`;
+            const headers = {};
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            const response = await fetch(url, {
+                method: 'GET',
+                headers
+            });
+            if (response.ok || response.status === 405 || response.status === 401) {
+                if (response.status === 401) {
+                    res.status(400).json({ error: 'Kết nối bị từ chối: Token Hugging Face không hợp lệ.' });
+                } else {
+                    res.json({ status: 'ok', message: `Kết nối thành công! Trạng thái hoạt động (HTTP ${response.status}).` });
+                }
+            } else {
+                const json = await response.json().catch(() => ({}));
+                const errMsg = json?.error || `Lỗi HTTP ${response.status}: ${response.statusText}`;
+                res.status(400).json({ error: errMsg });
+            }
+        } catch (e) {
+            res.status(500).json({ error: `Lỗi kết nối tới Hugging Face: ${e.message}` });
+        }
+    });
+
+    // --- RUN BACKEND OCR PROXY ---
+    router.post('/settings/ocr', authenticateToken, async (req, res) => {
+        try {
+            const { engine, image, geminiKey, geminiModel, hfToken, hfModel, hfEndpoint } = req.body || {};
+            if (!image) {
+                return res.status(400).json({ error: 'Thiếu hình ảnh quét.' });
+            }
+
+            const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
+            const buffer = Buffer.from(base64Data, 'base64');
+
+            if (engine === 'gemini') {
+                if (!geminiKey) return res.status(400).json({ error: 'Thiếu Gemini API Key.' });
+                const model = geminiModel || 'gemini-flash-latest';
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
+                const prompt = `Analyze this image of a land coordinate table. Extract the coordinates (vertices) of the parcel. 
+For each row, identify the vertex index (Đỉnh), coordinate X (Northing, e.g. 1237xxx), and coordinate Y (Easting, e.g. 587xxx). 
+If it is a VN2000 coordinate system, Northing X is usually 7 digits before decimal, Easting Y is usually 6 digits.
+Output ONLY a raw JSON array of objects without markdown formatting, code blocks, or HTML.
+Example format:
+[
+  {"index": "1", "x": "1237601.079", "y": "587324.518"},
+  {"index": "2", "x": "1237582.096", "y": "587325.328"}
+]`;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [
+                            {
+                                parts: [
+                                    { text: prompt },
+                                    {
+                                        inlineData: {
+                                            mimeType: "image/jpeg",
+                                            data: base64Data
+                                        }
+                                    }
+                                ]
+                            }
+                        ],
+                        generationConfig: {
+                            responseMimeType: "application/json"
+                        }
+                    })
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    return res.status(response.status).json({ error: errData?.error?.message || response.statusText });
+                }
+
+                const resData = await response.json();
+                const jsonText = resData?.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!jsonText) {
+                    return res.status(400).json({ error: 'Không có phản hồi từ Gemini.' });
+                }
+                const parsed = JSON.parse(jsonText.trim());
+                return res.json({ status: 'ok', data: parsed });
+
+            } else if (engine === 'hf') {
+                if (!hfToken && !hfEndpoint) {
+                    return res.status(400).json({ error: 'Thiếu API Token hoặc Endpoint của Hugging Face.' });
+                }
+                const model = hfModel || 'microsoft/trocr-large-handwritten';
+                const url = hfEndpoint ? hfEndpoint : `https://api-inference.huggingface.co/models/${model}`;
+                const headers = {
+                    'Content-Type': 'application/octet-stream'
+                };
+                if (hfToken) {
+                    headers['Authorization'] = `Bearer ${hfToken}`;
+                }
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers,
+                    body: buffer
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    return res.status(response.status).json({ error: errData?.error || response.statusText });
+                }
+
+                const resData = await response.json();
+                let text = '';
+                if (Array.isArray(resData) && resData[0]?.generated_text) {
+                    text = resData[0].generated_text;
+                } else if (typeof resData === 'string') {
+                    text = resData;
+                } else if (resData?.text) {
+                    text = resData.text;
+                } else {
+                    text = JSON.stringify(resData);
+                }
+                return res.json({ status: 'ok', text });
+            } else {
+                return res.status(400).json({ error: 'Động cơ OCR không được hỗ trợ.' });
+            }
+        } catch (e) {
+            res.status(500).json({ error: `Lỗi xử lý OCR trên server: ${e.message}` });
+        }
+    });
+
     return router;
 }

@@ -44,6 +44,12 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
     const [geminiKey, setGeminiKey] = useState<string>('');
     const [geminiModel, setGeminiModel] = useState<string>('gemini-flash-latest');
 
+    // Hugging Face API settings (loaded from global system settings)
+    const [useHf, setUseHf] = useState<boolean>(false);
+    const [hfToken, setHfToken] = useState<string>('');
+    const [hfModel, setHfModel] = useState<string>('microsoft/trocr-large-handwritten');
+    const [hfEndpoint, setHfEndpoint] = useState<string>('');
+
     // Parsed points
     const [points, setPoints] = useState<ParsedPoint[]>([]);
     
@@ -71,6 +77,11 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
                     const keySetting = settingsList.find(s => s.key === 'ocr_gemini_key');
                     const modelSetting = settingsList.find(s => s.key === 'ocr_gemini_model');
                     
+                    const useHfSetting = settingsList.find(s => s.key === 'ocr_use_hf');
+                    const hfTokenSetting = settingsList.find(s => s.key === 'ocr_hf_token');
+                    const hfModelSetting = settingsList.find(s => s.key === 'ocr_hf_model');
+                    const hfEndpointSetting = settingsList.find(s => s.key === 'ocr_hf_endpoint');
+
                     if (useGeminiSetting) {
                         setUseGemini(useGeminiSetting.value === 'true');
                     }
@@ -79,6 +90,19 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
                     }
                     if (modelSetting && modelSetting.value) {
                         setGeminiModel(modelSetting.value);
+                    }
+
+                    if (useHfSetting) {
+                        setUseHf(useHfSetting.value === 'true');
+                    }
+                    if (hfTokenSetting && hfTokenSetting.value) {
+                        setHfToken(hfTokenSetting.value);
+                    }
+                    if (hfModelSetting && hfModelSetting.value) {
+                        setHfModel(hfModelSetting.value);
+                    }
+                    if (hfEndpointSetting && hfEndpointSetting.value) {
+                        setHfEndpoint(hfEndpointSetting.value);
                     }
                 } catch (e) {
                     console.error("Failed to load global OCR settings from server:", e);
@@ -530,71 +554,7 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
         });
     };
 
-    // Run OCR using Google Gemini Vision API directly from the client side
-    const runGeminiOcr = async (base64Image: string, apiKey: string, modelName: string): Promise<ParsedPoint[]> => {
-        const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '');
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName || 'gemini-flash-latest'}:generateContent?key=${apiKey}`;
-        
-        const prompt = `Analyze this image of a land coordinate table. Extract the coordinates (vertices) of the parcel. 
-For each row, identify the vertex index (Đỉnh), coordinate X (Northing, e.g. 1237xxx), and coordinate Y (Easting, e.g. 587xxx). 
-If it is a VN2000 coordinate system, Northing X is usually 7 digits before decimal, Easting Y is usually 6 digits.
-Output ONLY a raw JSON array of objects without markdown formatting, code blocks, or HTML.
-Example format:
-[
-  {"index": "1", "x": "1237601.079", "y": "587324.518"},
-  {"index": "2", "x": "1237582.096", "y": "587325.328"}
-]`;
-
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                contents: [
-                    {
-                        parts: [
-                            { text: prompt },
-                            {
-                                inlineData: {
-                                    mimeType: "image/jpeg",
-                                    data: base64Data
-                                }
-                            }
-                        ]
-                    }
-                ],
-                generationConfig: {
-                    responseMimeType: "application/json"
-                }
-            })
-        });
-
-        if (!response.ok) {
-            const errData = await response.json().catch(() => ({}));
-            throw new Error(errData?.error?.message || `API error: ${response.statusText}`);
-        }
-
-        const resData = await response.json();
-        const jsonText = resData?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!jsonText) {
-            throw new Error("Không có phản hồi từ Gemini.");
-        }
-
-        const parsed = JSON.parse(jsonText.trim());
-        if (!Array.isArray(parsed)) {
-            throw new Error("Phản hồi không khớp định dạng danh sách.");
-        }
-
-        return parsed.map((item: any, idx: number) => ({
-            id: 'pt-' + Math.random().toString(36).substr(2, 9),
-            indexStr: (item.index || item.Đỉnh || item.id || (idx + 1)).toString(),
-            xStr: (item.x || item.X || '').toString(),
-            yStr: (item.y || item.Y || '').toString()
-        }));
-    };
-
-    // Run OCR using Tesseract.js
+    // Run OCR using Tesseract.js or backend proxy
     const handleStartScan = async () => {
         if (!imageSrc) return;
         
@@ -603,15 +563,27 @@ Example format:
         setProgress(0);
         
         if (useGemini && geminiKey) {
-            setProgressStatus('Đang gửi hình ảnh lên Google Gemini API...');
+            setProgressStatus('Đang gửi hình ảnh lên Google Gemini API (qua server)...');
             try {
                 const cleanImageSrc = await preprocessImage(imageSrc);
                 setProgress(30);
                 
                 setProgressStatus('Gemini đang phân tích và trích xuất dữ liệu...');
-                const parsedPoints = await runGeminiOcr(cleanImageSrc, geminiKey, geminiModel);
+                const result = await adminService.runOcr({
+                    engine: 'gemini',
+                    image: cleanImageSrc,
+                    geminiKey,
+                    geminiModel
+                });
                 setProgress(90);
                 
+                const parsedPoints = (result.data || []).map((item: any, idx: number) => ({
+                    id: 'pt-' + Math.random().toString(36).substr(2, 9),
+                    indexStr: (item.index || item.Đỉnh || item.id || (idx + 1)).toString(),
+                    xStr: (item.x || item.X || '').toString(),
+                    yStr: (item.y || item.Y || '').toString()
+                }));
+
                 setPoints(parsedPoints);
                 setRawText('Dữ liệu phản hồi dạng JSON từ Google Gemini:\n\n' + JSON.stringify(parsedPoints.map(p => ({
                     đỉnh: p.indexStr,
@@ -630,6 +602,39 @@ Example format:
             } catch (e: any) {
                 console.error("Gemini OCR error, falling back to Tesseract:", e);
                 setProgressStatus('Gemini API lỗi. Tự động chuyển sang Tesseract offline...');
+                await new Promise(r => setTimeout(r, 1200));
+            }
+        } else if (useHf && hfToken) {
+            setProgressStatus('Đang gửi hình ảnh lên Hugging Face API (qua server)...');
+            try {
+                const cleanImageSrc = await preprocessImage(imageSrc);
+                setProgress(30);
+                
+                setProgressStatus('Hugging Face đang phân tích và trích xuất dữ liệu...');
+                const result = await adminService.runOcr({
+                    engine: 'hf',
+                    image: cleanImageSrc,
+                    hfToken,
+                    hfModel,
+                    hfEndpoint
+                });
+                setProgress(90);
+                
+                const extractedText = result.text || '';
+                setRawText(extractedText);
+                parseOcrText(extractedText);
+                
+                setProgressStatus('Hoàn tất quét ảnh!');
+                setProgress(100);
+                
+                setTimeout(() => {
+                    setStep('edit');
+                    setIsScanning(false);
+                }, 600);
+                return;
+            } catch (e: any) {
+                console.error("Hugging Face OCR error, falling back to Tesseract:", e);
+                setProgressStatus('Hugging Face API lỗi. Tự động chuyển sang Tesseract offline...');
                 await new Promise(r => setTimeout(r, 1200));
             }
         }
@@ -923,6 +928,16 @@ Example format:
                                     <HelpCircle size={16} className="shrink-0 text-blue-400 mt-0.5" />
                                     <div>
                                         <p className="font-black uppercase tracking-wider mb-1">Mẹo quét ảnh tối ưu:</p>
+                                        <div className="flex items-center gap-1.5 font-bold mb-2 text-[9px] uppercase tracking-wider">
+                                            <span className="text-slate-400">Động cơ OCR:</span>
+                                            {useGemini && geminiKey ? (
+                                                <span className="text-purple-400 bg-purple-950/40 border border-purple-500/20 px-1.5 py-0.5 rounded font-black">Google Gemini</span>
+                                            ) : useHf && hfToken ? (
+                                                <span className="text-orange-400 bg-orange-950/40 border border-orange-500/20 px-1.5 py-0.5 rounded font-black">Hugging Face</span>
+                                            ) : (
+                                                <span className="text-emerald-400 bg-emerald-950/40 border border-emerald-500/20 px-1.5 py-0.5 rounded font-black">Tesseract Offline</span>
+                                            )}
+                                        </div>
                                         <ul className="list-disc pl-4 space-y-1 font-bold">
                                             <li className="text-emerald-400 font-extrabold">Cắt (Crop) sát bảng tọa độ: Hãy cắt ảnh chỉ lấy vùng chứa các cột số (Đỉnh, X, Y) để tránh chữ thừa xung quanh gây nhiễu AI.</li>
                                             <li>Chụp ảnh bảng tọa độ vuông góc, rõ nét và không bị bóng mờ.</li>

@@ -345,6 +345,19 @@ export const adminService = {
     saveSettings: async (settings: SystemSetting[]) => apiCall('/settings', { method: 'POST', body: JSON.stringify({ settings }) }),
     testMail: async (payload: { to?: string; smtp?: Record<string, string> }) =>
         apiCall('/settings/test-mail', { method: 'POST', body: JSON.stringify(payload) }),
+    testGemini: async (payload: { apiKey: string; modelName: string }) =>
+        apiCall('/settings/test-gemini', { method: 'POST', body: JSON.stringify(payload) }),
+    testHf: async (payload: { token: string; modelName: string; customUrl: string }) =>
+        apiCall('/settings/test-hf', { method: 'POST', body: JSON.stringify(payload) }),
+    runOcr: async (payload: {
+        engine: 'gemini' | 'hf';
+        image: string;
+        geminiKey?: string;
+        geminiModel?: string;
+        hfToken?: string;
+        hfModel?: string;
+        hfEndpoint?: string;
+    }) => apiCall('/settings/ocr', { method: 'POST', body: JSON.stringify(payload) }),
     getWmsLayers: async () => {
         const data = await apiCall('/wms-layers');
         return Array.isArray(data) ? data : [];
