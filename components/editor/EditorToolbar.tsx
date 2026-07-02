@@ -161,22 +161,21 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
             </ToolbarGroup>
 
             {/* Measurement Tools */}
-            <ToolbarGroup id="measure" icon={<Ruler size={20}/>} title="Đo đạc bản đồ" accentClass="text-rose-400">
-                <ToolbarButton onClick={() => setMeasureType('length')} className={measureType === 'length' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'} title="Đo khoảng cách (Ruler)"><Ruler size={20}/></ToolbarButton>
-                <ToolbarButton onClick={() => setMeasureType('area')} className={measureType === 'area' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'} title="Đo diện tích (Area)"><Square size={20}/></ToolbarButton>
-                <ToolbarButton onClick={() => setMeasureType(null)} className="text-slate-500 hover:bg-slate-800 hover:text-red-400" title="Xóa kết quả đo"><X size={20}/></ToolbarButton>
-                {measureValue && (
-                    <div className="px-2 py-1 text-[9px] bg-slate-800 text-slate-300 font-bold rounded-lg border border-slate-700 whitespace-nowrap">
-                        {measureValue}
-                    </div>
-                )}
-            </ToolbarGroup>
+            <ToolbarButton onClick={() => setMeasureType(measureType === 'length' ? null : 'length')} className={measureType === 'length' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800 hover:text-rose-400'} title="Đo khoảng cách (Ruler)"><Ruler size={20}/></ToolbarButton>
+            <ToolbarButton onClick={() => setMeasureType(measureType === 'area' ? null : 'area')} className={measureType === 'area' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800 hover:text-rose-400'} title="Đo diện tích (Area)"><Square size={20}/></ToolbarButton>
+            {measureValue && (
+                <div className="px-1.5 py-0.5 text-[8px] bg-slate-800 text-rose-300 font-bold rounded border border-slate-700 whitespace-nowrap text-center" title={measureValue}>
+                    {measureValue}
+                </div>
+            )}
+
+            {/* Quét tọa độ OCR */}
+            <ToolbarButton onClick={onOpenOcr} className="text-slate-500 hover:bg-slate-800 hover:text-blue-400" title="Quét tọa độ OCR"><Scan size={20}/></ToolbarButton>
 
             {/* Extra Tools */}
             <ToolbarGroup id="tools" icon={<Keyboard size={20}/>} title="Công cụ khác" accentClass="text-emerald-400">
                 <ToolbarButton onClick={onOpenSearch} className="text-slate-500 hover:bg-slate-800 hover:text-blue-400" title="Tìm tọa độ (Go to)"><Search size={20}/></ToolbarButton>
                 <ToolbarButton onClick={onOpenManual} className="text-slate-500 hover:bg-slate-800 hover:text-blue-400" title="Nhập tọa độ tay"><Keyboard size={20}/></ToolbarButton>
-                <ToolbarButton onClick={onOpenOcr} className="text-slate-500 hover:bg-slate-800 hover:text-blue-400" title="Quét tọa độ OCR"><Scan size={20}/></ToolbarButton>
                 <ToolbarButton onClick={onClearSelection} className="text-slate-500 hover:bg-slate-800 hover:text-rose-300" title="Hủy chọn"><X size={20}/></ToolbarButton>
                 <ToolbarButton onClick={() => setIsSnapping(!isSnapping)} className={isSnapping ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30' : 'text-slate-500 hover:bg-slate-800'} title="Chế độ bắt điểm (Snap)"><Magnet size={20}/></ToolbarButton>
                 <ToolbarButton disabled={!canUndo} onClick={onUndo} className={canUndo ? 'text-slate-400 hover:bg-slate-800 hover:text-amber-300' : 'text-slate-700 cursor-not-allowed'} title="Hoàn tác (Ctrl+Z)"><Undo2 size={20}/></ToolbarButton>

@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "qlddhcmapi",
+  "name": "qlddhcm",
   "compatibility_date": "2026-04-20",
   "observability": {
     "enabled": true
