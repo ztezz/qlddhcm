@@ -753,17 +753,33 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
                     return;
                 }
 
-                if (coordSystem === 'VN2000') {
-                    // OpenLayers expects coordinates in [Easting, Northing] or [Y, X] order!
-                    // X in land certificate = Northing
-                    // Y in land certificate = Easting
-                    // So we pass [Y, X] to projection transform
-                    const geomPoint = proj.transform([y, x], vnProj!, 'EPSG:3857');
-                    transformedCoords.push(geomPoint as [number, number]);
+                const isProjected3857 = (x > 3000000 || y > 3000000);
+
+                if (isProjected3857) {
+                    // Already in EPSG:3857 (Web Mercator meters)
+                    // OpenLayers expects [Easting (x), Northing (y)]
+                    transformedCoords.push([x, y]);
                 } else {
-                    // WGS84: standard [Lon, Lat] or [Y, X]
-                    const geomPoint = proj.fromLonLat([y, x]);
-                    transformedCoords.push(geomPoint as [number, number]);
+                    if (coordSystem === 'WGS84') {
+                        if (x < -90 || x > 90 || y < -180 || y > 180) {
+                            alert(`Tọa độ WGS84 tại điểm thứ ${p.indexStr} không hợp lệ. Vĩ độ (X) phải từ -90 đến 90, Kinh độ (Y) phải từ -180 đến 180.`);
+                            return;
+                        }
+                        // WGS84: standard [Lon, Lat] or [Y, X]
+                        const geomPoint = proj.fromLonLat([y, x]);
+                        transformedCoords.push(geomPoint as [number, number]);
+                    } else if (coordSystem === 'VN2000') {
+                        if (x < 900000 || x > 3000000 || y < 100000 || y > 900000) {
+                            alert(`Tọa độ VN-2000 tại điểm thứ ${p.indexStr} không nằm trong phạm vi hợp lệ (X phải từ 900,000 đến 3,000,000; Y phải từ 100,000 đến 900,000).`);
+                            return;
+                        }
+                        // OpenLayers expects coordinates in [Easting, Northing] or [Y, X] order!
+                        // X in land certificate = Northing
+                        // Y in land certificate = Easting
+                        // So we pass [Y, X] to projection transform
+                        const geomPoint = proj.transform([y, x], vnProj!, 'EPSG:3857');
+                        transformedCoords.push(geomPoint as [number, number]);
+                    }
                 }
             }
 
