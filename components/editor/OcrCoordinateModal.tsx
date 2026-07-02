@@ -47,7 +47,8 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
     // 9router API settings (loaded from global system settings)
     const [useNineRouter, setUseNineRouter] = useState<boolean>(false);
     const [nineRouterKey, setNineRouterKey] = useState<string>('');
-    const [nineRouterModel, setNineRouterModel] = useState<string>('9router/ag/gemini-3.5-flash-extra-low');
+    const [nineRouterModel, setNineRouterModel] = useState<string>('9router/google/gemini-1.5-flash');
+    const [nineRouterEndpoint, setNineRouterEndpoint] = useState<string>('https://thzi-chinraoto.hf.space/v1');
 
 
 
@@ -81,6 +82,7 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
                     const useNineRouterSetting = settingsList.find(s => s.key === 'ocr_use_9router');
                     const nineRouterKeySetting = settingsList.find(s => s.key === 'ocr_9router_key');
                     const nineRouterModelSetting = settingsList.find(s => s.key === 'ocr_9router_model');
+                    const nineRouterEndpointSetting = settingsList.find(s => s.key === 'ocr_9router_endpoint');
 
                     if (useGeminiSetting) {
                         setUseGemini(useGeminiSetting.value === 'true');
@@ -100,6 +102,9 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
                     }
                     if (nineRouterModelSetting && nineRouterModelSetting.value) {
                         setNineRouterModel(nineRouterModelSetting.value);
+                    }
+                    if (nineRouterEndpointSetting && nineRouterEndpointSetting.value) {
+                        setNineRouterEndpoint(nineRouterEndpointSetting.value);
                     }
 
                 } catch (e) {
@@ -571,7 +576,8 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
                     engine: '9router',
                     image: cleanImageSrc,
                     nineRouterKey,
-                    nineRouterModel
+                    nineRouterModel,
+                    nineRouterEndpoint
                 });
                 setProgress(90);
                 

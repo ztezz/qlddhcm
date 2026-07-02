@@ -393,12 +393,20 @@ export default function(pool, logSystemAction) {
     // --- TEST 9ROUTER ---
     router.post('/settings/test-ninerouter', authenticateToken, requireAdmin, async (req, res) => {
         try {
-            const { apiKey, modelName } = req.body || {};
+            const { apiKey, modelName, apiEndpoint } = req.body || {};
             if (!apiKey) {
                 return res.status(400).json({ error: 'Thiếu API Key của 9router.' });
             }
-            const model = modelName || '9router/ag/gemini-3.5-flash-extra-low';
-            const url = 'https://api.9router.com/v1/chat/completions';
+            const model = modelName || '9router/google/gemini-1.5-flash';
+            
+            let url = apiEndpoint ? apiEndpoint.trim() : 'https://thzi-chinraoto.hf.space/v1';
+            if (!url.endsWith('/chat/completions')) {
+                if (url.endsWith('/')) {
+                    url += 'chat/completions';
+                } else {
+                    url += '/chat/completions';
+                }
+            }
             
             const response = await fetch(url, {
                 method: 'POST',
@@ -427,7 +435,7 @@ export default function(pool, logSystemAction) {
     // --- RUN BACKEND OCR PROXY ---
     router.post('/settings/ocr', authenticateToken, async (req, res) => {
         try {
-            const { engine, image, geminiKey, geminiModel, nineRouterKey, nineRouterModel } = req.body || {};
+            const { engine, image, geminiKey, geminiModel, nineRouterKey, nineRouterModel, nineRouterEndpoint } = req.body || {};
             if (!image) {
                 return res.status(400).json({ error: 'Thiếu hình ảnh quét.' });
             }
@@ -488,8 +496,17 @@ Example format:
                 return res.json({ status: 'ok', data: parsed });
             } else if (engine === '9router') {
                 if (!nineRouterKey) return res.status(400).json({ error: 'Thiếu 9router API Key.' });
-                const model = nineRouterModel || '9router/ag/gemini-3.5-flash-extra-low';
-                const url = 'https://api.9router.com/v1/chat/completions';
+                const model = nineRouterModel || '9router/google/gemini-1.5-flash';
+                
+                let url = nineRouterEndpoint ? nineRouterEndpoint.trim() : 'https://thzi-chinraoto.hf.space/v1';
+                if (!url.endsWith('/chat/completions')) {
+                    if (url.endsWith('/')) {
+                        url += 'chat/completions';
+                    } else {
+                        url += '/chat/completions';
+                    }
+                }
+
                 const prompt = `Analyze this image of a land coordinate table. Extract the coordinates (vertices) of the parcel. 
 For each row, identify the vertex index (Đỉnh), coordinate X (Northing, e.g. 1237xxx), and coordinate Y (Easting, e.g. 587xxx). 
 If it is a VN2000 coordinate system, Northing X is usually 7 digits before decimal, Easting Y is usually 6 digits.

@@ -359,7 +359,8 @@ const SystemSettingsManager: React.FC<SystemSettingsManagerProps> = ({ permissio
 
     const handleNineRouterTest = async () => {
         const apiKey = settings.find(s => s.key === 'ocr_9router_key')?.value || '';
-        const modelName = settings.find(s => s.key === 'ocr_9router_model')?.value || '9router/ag/gemini-3.5-flash-extra-low';
+        const modelName = settings.find(s => s.key === 'ocr_9router_model')?.value || '9router/google/gemini-1.5-flash';
+        const apiEndpoint = settings.find(s => s.key === 'ocr_9router_endpoint')?.value || 'https://thzi-chinraoto.hf.space/v1';
         
         if (!apiKey) {
             setNineRouterTestStatus('error');
@@ -371,7 +372,7 @@ const SystemSettingsManager: React.FC<SystemSettingsManagerProps> = ({ permissio
         setNineRouterTestMsg('Đang gửi truy vấn thử nghiệm (Ping) tới 9router API thông qua backend...');
 
         try {
-            const result = await adminService.testNineRouter({ apiKey, modelName });
+            const result = await adminService.testNineRouter({ apiKey, modelName, apiEndpoint });
             setNineRouterTestStatus('ok');
             setNineRouterTestMsg(`Kết nối thành công! Phản hồi từ mô hình: "${result.reply || 'Thành công'}"`);
         } catch (e: any) {
@@ -608,12 +609,12 @@ const SystemSettingsManager: React.FC<SystemSettingsManagerProps> = ({ permissio
         }
 
         if (key === 'ocr_9router_model') {
-            const isCustom = !['9router/ag/gemini-3.5-flash-extra-low', '9router/google/gemini-1.5-flash', '9router/google/gemini-1.5-pro'].includes(setting.value || '9router/ag/gemini-3.5-flash-extra-low');
+            const isCustom = !['9router/google/gemini-1.5-flash', '9router/google/gemini-1.5-pro', '9router/ag/gemini-3.5-flash-extra-low'].includes(setting.value || '9router/google/gemini-1.5-flash');
             return (
                 <div className="space-y-2">
                     <select
                         className={`w-full bg-gray-900 border rounded p-2.5 text-white outline-none font-medium transition-colors ${dirty ? 'border-yellow-500/60 focus:border-yellow-400' : 'border-gray-600 focus:border-blue-500'}`}
-                        value={isCustom ? 'CUSTOM' : (setting.value || '9router/ag/gemini-3.5-flash-extra-low')}
+                        value={isCustom ? 'CUSTOM' : (setting.value || '9router/google/gemini-1.5-flash')}
                         onChange={e => {
                             const val = e.target.value;
                             if (val === 'CUSTOM') {
@@ -623,9 +624,9 @@ const SystemSettingsManager: React.FC<SystemSettingsManagerProps> = ({ permissio
                             }
                         }}
                     >
-                        <option value="9router/ag/gemini-3.5-flash-extra-low">9router/ag/gemini-3.5-flash-extra-low (Mặc định)</option>
-                        <option value="9router/google/gemini-1.5-flash">9router/google/gemini-1.5-flash</option>
+                        <option value="9router/google/gemini-1.5-flash">9router/google/gemini-1.5-flash (Khuyên dùng)</option>
                         <option value="9router/google/gemini-1.5-pro">9router/google/gemini-1.5-pro</option>
+                        <option value="9router/ag/gemini-3.5-flash-extra-low">9router/ag/gemini-3.5-flash-extra-low</option>
                         <option value="CUSTOM">Nhập mã mô hình tùy chỉnh...</option>
                     </select>
                     {isCustom && (
@@ -830,7 +831,7 @@ const SystemSettingsManager: React.FC<SystemSettingsManagerProps> = ({ permissio
                             )}
                         </div>
 
-                        {['ocr_use_9router', 'ocr_9router_key', 'ocr_9router_model'].map(key => (
+                        {['ocr_use_9router', 'ocr_9router_key', 'ocr_9router_model', 'ocr_9router_endpoint'].map(key => (
                             <div key={key} className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-gray-700/50 pb-6 last:border-0 last:pb-0">
                                 <div className="col-span-1">
                                     <label className="text-sm font-bold text-gray-200 block mb-1">{SETTING_METADATA[key]?.label || key}</label>
