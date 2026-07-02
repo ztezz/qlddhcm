@@ -537,13 +537,13 @@ Example format:
                                     }
                                 ]
                             }
-                        ],
-                        response_format: { type: "json_object" }
+                        ]
                     })
                 });
 
                 if (!response.ok) {
                     const errData = await response.json().catch(() => ({}));
+                    console.error("9router OCR API error status:", response.status, "message:", errData?.error?.message || response.statusText);
                     return res.status(response.status).json({ error: errData?.error?.message || response.statusText });
                 }
 
@@ -553,7 +553,12 @@ Example format:
                     return res.status(400).json({ error: 'Không có phản hồi từ 9router.' });
                 }
                 
-                let parsed = JSON.parse(jsonText.trim());
+                let cleanText = jsonText.trim();
+                if (cleanText.startsWith('```')) {
+                    cleanText = cleanText.replace(/^```[a-zA-Z]*\s*/, '').replace(/\s*```$/, '').trim();
+                }
+
+                let parsed = JSON.parse(cleanText);
                 if (!Array.isArray(parsed) && typeof parsed === 'object') {
                     const possibleArray = Object.values(parsed).find(v => Array.isArray(v));
                     if (possibleArray) {
@@ -563,6 +568,7 @@ Example format:
                 return res.json({ status: 'ok', data: parsed });
             }
         } catch (e) {
+            console.error("OCR Exception error:", e);
             res.status(500).json({ error: `Lỗi xử lý OCR trên server: ${e.message}` });
         }
     });

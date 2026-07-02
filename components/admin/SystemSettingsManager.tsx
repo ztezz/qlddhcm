@@ -608,42 +608,6 @@ const SystemSettingsManager: React.FC<SystemSettingsManagerProps> = ({ permissio
             );
         }
 
-        if (key === 'ocr_9router_model') {
-            const isCustom = !['9router/google/gemini-1.5-flash', '9router/google/gemini-1.5-pro', '9router/ag/gemini-3.5-flash-extra-low'].includes(setting.value || '9router/google/gemini-1.5-flash');
-            return (
-                <div className="space-y-2">
-                    <select
-                        className={`w-full bg-gray-900 border rounded p-2.5 text-white outline-none font-medium transition-colors ${dirty ? 'border-yellow-500/60 focus:border-yellow-400' : 'border-gray-600 focus:border-blue-500'}`}
-                        value={isCustom ? 'CUSTOM' : (setting.value || '9router/google/gemini-1.5-flash')}
-                        onChange={e => {
-                            const val = e.target.value;
-                            if (val === 'CUSTOM') {
-                                updateSettingValue(key, '');
-                            } else {
-                                updateSettingValue(key, val);
-                            }
-                        }}
-                    >
-                        <option value="9router/google/gemini-1.5-flash">9router/google/gemini-1.5-flash (Khuyên dùng)</option>
-                        <option value="9router/google/gemini-1.5-pro">9router/google/gemini-1.5-pro</option>
-                        <option value="9router/ag/gemini-3.5-flash-extra-low">9router/ag/gemini-3.5-flash-extra-low</option>
-                        <option value="CUSTOM">Nhập mã mô hình tùy chỉnh...</option>
-                    </select>
-                    {isCustom && (
-                        <div className="animate-in slide-in-from-top-1 duration-200">
-                            <input
-                                className={`w-full bg-gray-900 border rounded p-2.5 text-white outline-none font-mono text-xs transition-colors ${dirty ? 'border-yellow-500/60 focus:border-yellow-400' : 'border-gray-600 focus:border-blue-500'}`}
-                                value={setting.value || ''}
-                                placeholder="Nhập tên mô hình, VD: 9router/google/gemini-1.5-flash"
-                                onChange={e => updateSettingValue(key, e.target.value)}
-                            />
-                        </div>
-                    )}
-                    {dirty && <p className="text-[10px] text-yellow-500">● Chưa lưu</p>}
-                </div>
-            );
-        }
-
         return (
             <div className="space-y-1">
                 <input
