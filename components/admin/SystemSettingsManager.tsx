@@ -39,6 +39,10 @@ const SystemSettingsManager: React.FC<SystemSettingsManagerProps> = ({ permissio
     const [geminiTestStatus, setGeminiTestStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle');
     const [geminiTestMsg, setGeminiTestMsg] = useState('');
 
+    // 9router API test
+    const [nineRouterTestStatus, setNineRouterTestStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle');
+    const [nineRouterTestMsg, setNineRouterTestMsg] = useState('');
+
 
 
     // Backup
@@ -353,6 +357,30 @@ const SystemSettingsManager: React.FC<SystemSettingsManagerProps> = ({ permissio
         setTimeout(() => setGeminiTestStatus('idle'), 8000);
     };
 
+    const handleNineRouterTest = async () => {
+        const apiKey = settings.find(s => s.key === 'ocr_9router_key')?.value || '';
+        const modelName = settings.find(s => s.key === 'ocr_9router_model')?.value || '9router/ag/gemini-3.5-flash-extra-low';
+        
+        if (!apiKey) {
+            setNineRouterTestStatus('error');
+            setNineRouterTestMsg('Vui lòng nhập API Key trước khi thử nghiệm.');
+            return;
+        }
+
+        setNineRouterTestStatus('testing');
+        setNineRouterTestMsg('Đang gửi truy vấn thử nghiệm (Ping) tới 9router API thông qua backend...');
+
+        try {
+            const result = await adminService.testNineRouter({ apiKey, modelName });
+            setNineRouterTestStatus('ok');
+            setNineRouterTestMsg(`Kết nối thành công! Phản hồi từ mô hình: "${result.reply || 'Thành công'}"`);
+        } catch (e: any) {
+            setNineRouterTestStatus('error');
+            setNineRouterTestMsg(`Kết nối thất bại: ${e.message || e}`);
+        }
+        setTimeout(() => setNineRouterTestStatus('idle'), 8000);
+    };
+
 
 
     const handleFileChange = (key: string, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -517,7 +545,7 @@ const SystemSettingsManager: React.FC<SystemSettingsManagerProps> = ({ permissio
         }
 
         // Password field with toggle
-        if (key === 'mail_pass' || key === 'ocr_gemini_key') {
+        if (key === 'mail_pass' || key === 'ocr_gemini_key' || key === 'ocr_9router_key') {
             return (
                 <div className="space-y-1">
                     <div className="relative">
@@ -570,6 +598,42 @@ const SystemSettingsManager: React.FC<SystemSettingsManagerProps> = ({ permissio
                                 className={`w-full bg-gray-900 border rounded p-2.5 text-white outline-none font-mono text-xs transition-colors ${dirty ? 'border-yellow-500/60 focus:border-yellow-400' : 'border-gray-600 focus:border-blue-500'}`}
                                 value={setting.value || ''}
                                 placeholder="Nhập tên mô hình, VD: gemini-3.5-pro"
+                                onChange={e => updateSettingValue(key, e.target.value)}
+                            />
+                        </div>
+                    )}
+                    {dirty && <p className="text-[10px] text-yellow-500">● Chưa lưu</p>}
+                </div>
+            );
+        }
+
+        if (key === 'ocr_9router_model') {
+            const isCustom = !['9router/ag/gemini-3.5-flash-extra-low', '9router/google/gemini-1.5-flash', '9router/google/gemini-1.5-pro'].includes(setting.value || '9router/ag/gemini-3.5-flash-extra-low');
+            return (
+                <div className="space-y-2">
+                    <select
+                        className={`w-full bg-gray-900 border rounded p-2.5 text-white outline-none font-medium transition-colors ${dirty ? 'border-yellow-500/60 focus:border-yellow-400' : 'border-gray-600 focus:border-blue-500'}`}
+                        value={isCustom ? 'CUSTOM' : (setting.value || '9router/ag/gemini-3.5-flash-extra-low')}
+                        onChange={e => {
+                            const val = e.target.value;
+                            if (val === 'CUSTOM') {
+                                updateSettingValue(key, '');
+                            } else {
+                                updateSettingValue(key, val);
+                            }
+                        }}
+                    >
+                        <option value="9router/ag/gemini-3.5-flash-extra-low">9router/ag/gemini-3.5-flash-extra-low (Mặc định)</option>
+                        <option value="9router/google/gemini-1.5-flash">9router/google/gemini-1.5-flash</option>
+                        <option value="9router/google/gemini-1.5-pro">9router/google/gemini-1.5-pro</option>
+                        <option value="CUSTOM">Nhập mã mô hình tùy chỉnh...</option>
+                    </select>
+                    {isCustom && (
+                        <div className="animate-in slide-in-from-top-1 duration-200">
+                            <input
+                                className={`w-full bg-gray-900 border rounded p-2.5 text-white outline-none font-mono text-xs transition-colors ${dirty ? 'border-yellow-500/60 focus:border-yellow-400' : 'border-gray-600 focus:border-blue-500'}`}
+                                value={setting.value || ''}
+                                placeholder="Nhập tên mô hình, VD: 9router/google/gemini-1.5-flash"
                                 onChange={e => updateSettingValue(key, e.target.value)}
                             />
                         </div>
@@ -738,7 +802,43 @@ const SystemSettingsManager: React.FC<SystemSettingsManagerProps> = ({ permissio
                             </div>
                         ))}
 
+                        <div className="text-[11px] font-black uppercase tracking-wider text-blue-400 pt-4 border-t border-gray-700/50">Cấu hình 9router API</div>
+                        {/* 9router status card / test interface */}
+                        <div className="bg-gray-950/40 p-5 rounded-xl border border-gray-700 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3 text-blue-400">
+                                    <Cpu size={20}/> 
+                                    <h4 className="font-black uppercase tracking-tight text-sm">Kiểm tra kết nối 9router</h4>
+                                </div>
+                                <button onClick={handleNineRouterTest} disabled={nineRouterTestStatus === 'testing'}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] rounded bg-blue-800/40 border border-blue-700/50 text-blue-300 hover:bg-blue-700/50 transition-colors disabled:opacity-50 font-bold uppercase tracking-wider">
+                                    {nineRouterTestStatus === 'testing' ? <RefreshCw size={11} className="animate-spin" /> : <Zap size={11} />}
+                                    Kiểm tra kết nối
+                                </button>
+                            </div>
 
+                            {nineRouterTestStatus !== 'idle' && (
+                                <div className={`flex items-start gap-2 p-3 rounded-lg text-xs border
+                                    ${nineRouterTestStatus === 'testing' ? 'bg-blue-900/20 border-blue-800 text-blue-300'
+                                    : nineRouterTestStatus === 'ok' ? 'bg-emerald-900/20 border-emerald-800 text-emerald-300'
+                                    : 'bg-red-900/20 border-red-800 text-red-300'}`}>
+                                    {nineRouterTestStatus === 'testing' && <RefreshCw size={13} className="animate-spin shrink-0 mt-0.5" />}
+                                    {nineRouterTestStatus === 'ok' && <Check size={13} className="shrink-0 mt-0.5" />}
+                                    {nineRouterTestStatus === 'error' && <X size={13} className="shrink-0 mt-0.5" />}
+                                    <span className="font-medium">{nineRouterTestMsg}</span>
+                                </div>
+                            )}
+                        </div>
+
+                        {['ocr_use_9router', 'ocr_9router_key', 'ocr_9router_model'].map(key => (
+                            <div key={key} className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-gray-700/50 pb-6 last:border-0 last:pb-0">
+                                <div className="col-span-1">
+                                    <label className="text-sm font-bold text-gray-200 block mb-1">{SETTING_METADATA[key]?.label || key}</label>
+                                    <span className="text-xs text-gray-500 italic">{SETTING_METADATA[key]?.description}</span>
+                                </div>
+                                <div className="col-span-2">{renderSettingInput(key)}</div>
+                            </div>
+                        ))}
                     </div>
                 )}
 

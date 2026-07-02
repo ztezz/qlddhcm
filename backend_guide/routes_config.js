@@ -390,25 +390,59 @@ export default function(pool, logSystemAction) {
         }
     });
 
+    // --- TEST 9ROUTER ---
+    router.post('/settings/test-ninerouter', authenticateToken, requireAdmin, async (req, res) => {
+        try {
+            const { apiKey, modelName } = req.body || {};
+            if (!apiKey) {
+                return res.status(400).json({ error: 'Thiếu API Key của 9router.' });
+            }
+            const model = modelName || '9router/ag/gemini-3.5-flash-extra-low';
+            const url = 'https://api.9router.com/v1/chat/completions';
+            
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: model,
+                    messages: [{ role: 'user', content: 'Ping' }]
+                })
+            });
+            const json = await response.json().catch(() => ({}));
+            if (response.ok) {
+                const reply = json?.choices?.[0]?.message?.content?.trim() || 'Thành công';
+                res.json({ status: 'ok', reply });
+            } else {
+                const errMsg = json?.error?.message || `Lỗi HTTP ${response.status}: ${response.statusText}`;
+                res.status(400).json({ error: errMsg });
+            }
+        } catch (e) {
+            res.status(500).json({ error: `Lỗi kết nối tới 9router: ${e.message}` });
+        }
+    });
+
     // --- RUN BACKEND OCR PROXY ---
     router.post('/settings/ocr', authenticateToken, async (req, res) => {
         try {
-            const { engine, image, geminiKey, geminiModel } = req.body || {};
+            const { engine, image, geminiKey, geminiModel, nineRouterKey, nineRouterModel } = req.body || {};
             if (!image) {
                 return res.status(400).json({ error: 'Thiếu hình ảnh quét.' });
             }
 
-            if (engine !== 'gemini') {
+            if (engine !== 'gemini' && engine !== '9router') {
                 return res.status(400).json({ error: 'Động cơ OCR không được hỗ trợ hoặc không có trên máy chủ.' });
             }
 
             const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
-            const buffer = Buffer.from(base64Data, 'base64');
 
-            if (!geminiKey) return res.status(400).json({ error: 'Thiếu Gemini API Key.' });
-            const model = geminiModel || 'gemini-flash-latest';
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
-            const prompt = `Analyze this image of a land coordinate table. Extract the coordinates (vertices) of the parcel. 
+            if (engine === 'gemini') {
+                if (!geminiKey) return res.status(400).json({ error: 'Thiếu Gemini API Key.' });
+                const model = geminiModel || 'gemini-flash-latest';
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
+                const prompt = `Analyze this image of a land coordinate table. Extract the coordinates (vertices) of the parcel. 
 For each row, identify the vertex index (Đỉnh), coordinate X (Northing, e.g. 1237xxx), and coordinate Y (Easting, e.g. 587xxx). 
 If it is a VN2000 coordinate system, Northing X is usually 7 digits before decimal, Easting Y is usually 6 digits.
 Output ONLY a raw JSON array of objects without markdown formatting, code blocks, or HTML.
@@ -417,41 +451,100 @@ Example format:
   {"index": "1", "x": "1237601.079", "y": "587324.518"},
   {"index": "2", "x": "1237582.096", "y": "587325.328"}
 ]`;
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [
-                        {
-                            parts: [
-                                { text: prompt },
-                                {
-                                    inlineData: {
-                                        mimeType: "image/jpeg",
-                                        data: base64Data
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [
+                            {
+                                parts: [
+                                    { text: prompt },
+                                    {
+                                        inlineData: {
+                                            mimeType: "image/jpeg",
+                                            data: base64Data
+                                        }
                                     }
-                                }
-                            ]
+                                ]
+                            }
+                        ],
+                        generationConfig: {
+                            responseMimeType: "application/json"
                         }
-                    ],
-                    generationConfig: {
-                        responseMimeType: "application/json"
+                    })
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    return res.status(response.status).json({ error: errData?.error?.message || response.statusText });
+                }
+
+                const resData = await response.json();
+                const jsonText = resData?.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!jsonText) {
+                    return res.status(400).json({ error: 'Không có phản hồi từ Gemini.' });
+                }
+                const parsed = JSON.parse(jsonText.trim());
+                return res.json({ status: 'ok', data: parsed });
+            } else if (engine === '9router') {
+                if (!nineRouterKey) return res.status(400).json({ error: 'Thiếu 9router API Key.' });
+                const model = nineRouterModel || '9router/ag/gemini-3.5-flash-extra-low';
+                const url = 'https://api.9router.com/v1/chat/completions';
+                const prompt = `Analyze this image of a land coordinate table. Extract the coordinates (vertices) of the parcel. 
+For each row, identify the vertex index (Đỉnh), coordinate X (Northing, e.g. 1237xxx), and coordinate Y (Easting, e.g. 587xxx). 
+If it is a VN2000 coordinate system, Northing X is usually 7 digits before decimal, Easting Y is usually 6 digits.
+Output ONLY a raw JSON array of objects without markdown formatting, code blocks, or HTML.
+Example format:
+[
+  {"index": "1", "x": "1237601.079", "y": "587324.518"},
+  {"index": "2", "x": "1237582.096", "y": "587325.328"}
+]`;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${nineRouterKey}`
+                    },
+                    body: JSON.stringify({
+                        model: model,
+                        messages: [
+                            {
+                                role: "user",
+                                content: [
+                                    { type: "text", text: prompt },
+                                    {
+                                        type: "image_url",
+                                        image_url: {
+                                            url: `data:image/jpeg;base64,${base64Data}`
+                                        }
+                                    }
+                                ]
+                            }
+                        ],
+                        response_format: { type: "json_object" }
+                    })
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    return res.status(response.status).json({ error: errData?.error?.message || response.statusText });
+                }
+
+                const resData = await response.json();
+                let jsonText = resData?.choices?.[0]?.message?.content;
+                if (!jsonText) {
+                    return res.status(400).json({ error: 'Không có phản hồi từ 9router.' });
+                }
+                
+                let parsed = JSON.parse(jsonText.trim());
+                if (!Array.isArray(parsed) && typeof parsed === 'object') {
+                    const possibleArray = Object.values(parsed).find(v => Array.isArray(v));
+                    if (possibleArray) {
+                        parsed = possibleArray;
                     }
-                })
-            });
-
-            if (!response.ok) {
-                const errData = await response.json().catch(() => ({}));
-                return res.status(response.status).json({ error: errData?.error?.message || response.statusText });
+                }
+                return res.json({ status: 'ok', data: parsed });
             }
-
-            const resData = await response.json();
-            const jsonText = resData?.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (!jsonText) {
-                return res.status(400).json({ error: 'Không có phản hồi từ Gemini.' });
-            }
-            const parsed = JSON.parse(jsonText.trim());
-            return res.json({ status: 'ok', data: parsed });
         } catch (e) {
             res.status(500).json({ error: `Lỗi xử lý OCR trên server: ${e.message}` });
         }

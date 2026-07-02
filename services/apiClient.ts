@@ -347,11 +347,15 @@ export const adminService = {
         apiCall('/settings/test-mail', { method: 'POST', body: JSON.stringify(payload) }),
     testGemini: async (payload: { apiKey: string; modelName: string }) =>
         apiCall('/settings/test-gemini', { method: 'POST', body: JSON.stringify(payload) }),
+    testNineRouter: async (payload: { apiKey: string; modelName: string }) =>
+        apiCall('/settings/test-ninerouter', { method: 'POST', body: JSON.stringify(payload) }),
     runOcr: async (payload: {
-        engine: 'gemini';
+        engine: 'gemini' | '9router';
         image: string;
         geminiKey?: string;
         geminiModel?: string;
+        nineRouterKey?: string;
+        nineRouterModel?: string;
     }) => apiCall('/settings/ocr', { method: 'POST', body: JSON.stringify(payload) }),
     getWmsLayers: async () => {
         const data = await apiCall('/wms-layers');

@@ -50,7 +50,10 @@ export const SETTING_METADATA: Record<string, { label: string; description: stri
     'pdf_show_signer': { label: 'Hiển thị khối chữ ký', description: 'Bật hoặc tắt phần ngày ký và người ký', type: 'boolean' },
     'ocr_use_gemini': { label: 'Kích hoạt Gemini OCR', description: 'Sử dụng mô hình Google Gemini để nhận diện ranh đất từ ảnh với độ chính xác 99.9%', type: 'boolean' },
     'ocr_gemini_key': { label: 'Gemini API Key', description: 'Khóa API Key miễn phí lấy từ Google AI Studio', type: 'text' },
-    'ocr_gemini_model': { label: 'Mô hình Gemini (Model)', description: 'Tên định danh mô hình sử dụng (Mặc định: gemini-flash-latest)', type: 'text' }
+    'ocr_gemini_model': { label: 'Mô hình Gemini (Model)', description: 'Tên định danh mô hình sử dụng (Mặc định: gemini-flash-latest)', type: 'text' },
+    'ocr_use_9router': { label: 'Kích hoạt 9router OCR', description: 'Sử dụng mô hình 9router để nhận diện ranh đất từ ảnh với độ chính xác cao', type: 'boolean' },
+    'ocr_9router_key': { label: '9router API Key', description: 'Khóa API Key lấy từ 9router.com', type: 'text' },
+    'ocr_9router_model': { label: 'Mô hình 9router (Model)', description: 'Tên định danh mô hình sử dụng (Mặc định: 9router/ag/gemini-3.5-flash-extra-low)', type: 'text' }
 };
 
 // ─── Tab → keys mapping ──────────────────────────────────────────────────────
@@ -59,7 +62,7 @@ export const TAB_KEYS: Record<string, string[]> = {
     MAP:     ['map_center_lat', 'map_center_lng', 'default_zoom', 'map_max_zoom', 'map_min_zoom', 'thematic_map_center_lat', 'thematic_map_center_lng', 'thematic_default_zoom', 'thematic_map_max_zoom', 'thematic_map_min_zoom', 'thematic_default_basemap_id', 'parcel_identifier_format'],
     SEO:     ['seo_title', 'seo_description', 'seo_keywords', 'seo_og_image'],
     MAIL:    ['mail_provider', 'mail_host', 'mail_port', 'mail_user', 'mail_pass', 'mail_from_email', 'mail_from_name'],
-    AI:      ['ocr_use_gemini', 'ocr_gemini_key', 'ocr_gemini_model'],
+    AI:      ['ocr_use_gemini', 'ocr_gemini_key', 'ocr_gemini_model', 'ocr_use_9router', 'ocr_9router_key', 'ocr_9router_model'],
 };
 
 export const SETTINGS_GROUPS = [
@@ -68,7 +71,7 @@ export const SETTINGS_GROUPS = [
         items: [
             { key: 'GENERAL', label: 'Web & bảo mật', Icon: Settings, style: 'text-blue-400 border-blue-500/40 bg-blue-950/20', desc: 'Tên hệ thống, logo, quyền truy cập và chân trang.' },
             { key: 'MAP', label: 'Bản đồ & nền', Icon: MapIcon, style: 'text-cyan-400 border-cyan-500/40 bg-cyan-950/20', desc: 'Tâm bản đồ, zoom và nền mặc định cho từng trang.' },
-            { key: 'AI', label: 'AI & Tiện ích', Icon: Sparkles, style: 'text-purple-400 border-purple-500/40 bg-purple-950/20', desc: 'Cấu hình Google Gemini API Key để quét ảnh bản vẽ.' }
+            { key: 'AI', label: 'AI & Tiện ích', Icon: Sparkles, style: 'text-purple-400 border-purple-500/40 bg-purple-950/20', desc: 'Cấu hình Google Gemini API Key và 9router để quét ảnh bản vẽ.' }
         ]
     },
     {

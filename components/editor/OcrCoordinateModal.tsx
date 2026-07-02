@@ -44,6 +44,11 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
     const [geminiKey, setGeminiKey] = useState<string>('');
     const [geminiModel, setGeminiModel] = useState<string>('gemini-flash-latest');
 
+    // 9router API settings (loaded from global system settings)
+    const [useNineRouter, setUseNineRouter] = useState<boolean>(false);
+    const [nineRouterKey, setNineRouterKey] = useState<string>('');
+    const [nineRouterModel, setNineRouterModel] = useState<string>('9router/ag/gemini-3.5-flash-extra-low');
+
 
 
     // Parsed points
@@ -73,7 +78,9 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
                     const keySetting = settingsList.find(s => s.key === 'ocr_gemini_key');
                     const modelSetting = settingsList.find(s => s.key === 'ocr_gemini_model');
                     
-
+                    const useNineRouterSetting = settingsList.find(s => s.key === 'ocr_use_9router');
+                    const nineRouterKeySetting = settingsList.find(s => s.key === 'ocr_9router_key');
+                    const nineRouterModelSetting = settingsList.find(s => s.key === 'ocr_9router_model');
 
                     if (useGeminiSetting) {
                         setUseGemini(useGeminiSetting.value === 'true');
@@ -85,6 +92,15 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
                         setGeminiModel(modelSetting.value);
                     }
 
+                    if (useNineRouterSetting) {
+                        setUseNineRouter(useNineRouterSetting.value === 'true');
+                    }
+                    if (nineRouterKeySetting && nineRouterKeySetting.value) {
+                        setNineRouterKey(nineRouterKeySetting.value);
+                    }
+                    if (nineRouterModelSetting && nineRouterModelSetting.value) {
+                        setNineRouterModel(nineRouterModelSetting.value);
+                    }
 
                 } catch (e) {
                     console.error("Failed to load global OCR settings from server:", e);
@@ -544,6 +560,50 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
         setStep('scanning');
         setProgress(0);
         
+        if (useNineRouter && nineRouterKey) {
+            setProgressStatus('Đang gửi hình ảnh lên 9router API (qua server)...');
+            try {
+                const cleanImageSrc = await preprocessImage(imageSrc);
+                setProgress(30);
+                
+                setProgressStatus('9router đang phân tích và trích xuất dữ liệu...');
+                const result = await adminService.runOcr({
+                    engine: '9router',
+                    image: cleanImageSrc,
+                    nineRouterKey,
+                    nineRouterModel
+                });
+                setProgress(90);
+                
+                const parsedPoints = (result.data || []).map((item: any, idx: number) => ({
+                    id: 'pt-' + Math.random().toString(36).substr(2, 9),
+                    indexStr: (item.index || item.Đỉnh || item.id || (idx + 1)).toString(),
+                    xStr: (item.x || item.X || '').toString(),
+                    yStr: (item.y || item.Y || '').toString()
+                }));
+
+                setPoints(parsedPoints);
+                setRawText('Dữ liệu phản hồi dạng JSON từ 9router:\n\n' + JSON.stringify(parsedPoints.map(p => ({
+                    đỉnh: p.indexStr,
+                    x: p.xStr,
+                    y: p.yStr
+                })), null, 2));
+                
+                setProgressStatus('Hoàn tất quét ảnh!');
+                setProgress(100);
+                
+                setTimeout(() => {
+                    setStep('edit');
+                    setIsScanning(false);
+                }, 600);
+                return;
+            } catch (e: any) {
+                console.error("9router OCR error, falling back to Tesseract:", e);
+                setProgressStatus('9router API lỗi. Tự động chuyển sang Tesseract offline...');
+                await new Promise(r => setTimeout(r, 1200));
+            }
+        }
+        
         if (useGemini && geminiKey) {
             setProgressStatus('Đang gửi hình ảnh lên Google Gemini API (qua server)...');
             try {
@@ -880,7 +940,9 @@ export const OcrCoordinateModal: React.FC<OcrCoordinateModalProps> = ({
                                         <p className="font-black uppercase tracking-wider mb-1">Mẹo quét ảnh tối ưu:</p>
                                         <div className="flex items-center gap-1.5 font-bold mb-2 text-[9px] uppercase tracking-wider">
                                             <span className="text-slate-400">Động cơ OCR:</span>
-                                            {useGemini && geminiKey ? (
+                                            {useNineRouter && nineRouterKey ? (
+                                                <span className="text-blue-400 bg-blue-950/40 border border-blue-500/20 px-1.5 py-0.5 rounded font-black">9router</span>
+                                            ) : useGemini && geminiKey ? (
                                                 <span className="text-purple-400 bg-purple-950/40 border border-purple-500/20 px-1.5 py-0.5 rounded font-black">Google Gemini</span>
                                             ) : (
                                                 <span className="text-emerald-400 bg-emerald-950/40 border border-emerald-500/20 px-1.5 py-0.5 rounded font-black">Tesseract Offline</span>
