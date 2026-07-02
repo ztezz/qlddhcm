@@ -398,7 +398,7 @@ export default function(pool, logSystemAction) {
                 return res.status(400).json({ error: 'Thiếu Token hoặc Endpoint của Hugging Face.' });
             }
             const model = modelName || 'microsoft/trocr-large-handwritten';
-            const url = customUrl ? customUrl : `https://api-inference.huggingface.co/models/${model}`;
+            const url = customUrl ? customUrl : `https://router.huggingface.co/hf-inference/models/${model}`;
             const headers = {};
             if (token) {
                 headers['Authorization'] = `Bearer ${token}`;
@@ -488,7 +488,7 @@ Example format:
                     return res.status(400).json({ error: 'Thiếu API Token hoặc Endpoint của Hugging Face.' });
                 }
                 const model = hfModel || 'microsoft/trocr-large-handwritten';
-                const url = hfEndpoint ? hfEndpoint : `https://api-inference.huggingface.co/models/${model}`;
+                const url = hfEndpoint ? hfEndpoint : `https://router.huggingface.co/hf-inference/models/${model}`;
                 const headers = {
                     'Content-Type': 'application/octet-stream'
                 };
