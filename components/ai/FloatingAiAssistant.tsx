@@ -65,6 +65,7 @@ const FloatingAiAssistant: React.FC<FloatingAiAssistantProps> = ({ user, page })
 
     const openLandPriceDetail = (row: any) => {
         sessionStorage.setItem('ai_land_price_result', JSON.stringify(row));
+        window.dispatchEvent(new CustomEvent('ai:open-land-price', { detail: row }));
         navigate('/giadata');
         setOpen(false);
     };

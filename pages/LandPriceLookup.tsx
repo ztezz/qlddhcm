@@ -132,12 +132,8 @@ const LandPriceLookup: React.FC<LandPriceLookupProps> = ({ user, systemSettings 
         }
     };
 
-    useEffect(() => {
-        const raw = sessionStorage.getItem('ai_land_price_result');
-        if (!raw) return;
-        sessionStorage.removeItem('ai_land_price_result');
+    const openAiLandPriceResult = (row: LandPrice2026) => {
         try {
-            const row = JSON.parse(raw) as LandPrice2026;
             const wardLabel = row.tinhcu ? `${row.phuongxa} (${row.tinhcu})` : row.phuongxa;
             const filters = {
                 phuongxa: wardLabel || '',
@@ -154,6 +150,25 @@ const LandPriceLookup: React.FC<LandPriceLookupProps> = ({ user, systemSettings 
         } catch (e) {
             console.error('Cannot open AI land price result', e);
         }
+    };
+
+    useEffect(() => {
+        const raw = sessionStorage.getItem('ai_land_price_result');
+        if (raw) {
+            sessionStorage.removeItem('ai_land_price_result');
+            try {
+                openAiLandPriceResult(JSON.parse(raw) as LandPrice2026);
+            } catch (e) {
+                console.error('Cannot parse AI land price result', e);
+            }
+        }
+
+        const onOpenLandPrice = (event: Event) => {
+            const row = (event as CustomEvent).detail as LandPrice2026;
+            if (row) openAiLandPriceResult(row);
+        };
+        window.addEventListener('ai:open-land-price', onOpenLandPrice);
+        return () => window.removeEventListener('ai:open-land-price', onOpenLandPrice);
     }, []);
 
     const handleSearch = async (e: React.FormEvent) => {
