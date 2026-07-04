@@ -521,6 +521,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     // Restore draft after map is ready (slight delay to ensure editSource is ready)
     useEffect(() => {
         const t = setTimeout(() => {
+            if (sessionStorage.getItem('ai_editor_parcel')) return;
             if (loadDraft()) {
                 setDialog({
                     isOpen: true,
@@ -532,6 +533,72 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         }, 800);
         return () => clearTimeout(t);
     }, [loadDraft]);
+
+    // Load parcel sent from AI assistant into editor.
+    useEffect(() => {
+        const t = setTimeout(() => {
+            const raw = sessionStorage.getItem('ai_editor_parcel');
+            if (!raw) return;
+            sessionStorage.removeItem('ai_editor_parcel');
+
+            try {
+                const parcel = JSON.parse(raw);
+                if (!parcel?.geometry) throw new Error('Kết quả AI không có geometry.');
+
+                const format = new GeoJSON();
+                let dataProj = 'EPSG:4326';
+                const coords = parcel.geometry.type === 'Polygon'
+                    ? parcel.geometry.coordinates?.[0]?.[0]
+                    : parcel.geometry.type === 'MultiPolygon'
+                        ? parcel.geometry.coordinates?.[0]?.[0]?.[0]
+                        : parcel.geometry.coordinates;
+                if (coords) {
+                    const x = Math.abs(coords[0]);
+                    const y = Math.abs(coords[1]);
+                    if (x > 2000000 || y > 2000000) dataProj = 'EPSG:3857';
+                    else if ((x > 300000 && x < 900000) || (y > 1000000 && y < 2000000)) dataProj = registerDynamicVn2000(centralMeridian, projectionZone);
+                }
+
+                const geometry = format.readGeometry(parcel.geometry, {
+                    dataProjection: dataProj,
+                    featureProjection: 'EPSG:3857'
+                });
+                const feature = new Feature({ geometry });
+                feature.set('gid', parcel.gid);
+                feature.set('madinhdanh', parcel.madinhdanh || '');
+                feature.set('sodoto', parcel.sodoto || '');
+                feature.set('sothua', parcel.sothua || '');
+                feature.set('loaidat', parcel.loaidat || '');
+                feature.set('dientich', parcel.dientich || 0);
+                feature.set('showVertexNumbers', showVertexNumbers);
+                feature.set('showSegmentLengths', showSegmentLengths);
+                feature.set('showParcelInfo', showParcelInfo);
+
+                editSource.current.clear();
+                editSource.current.addFeature(feature);
+                selectInteraction.current?.getFeatures().clear();
+                selectInteraction.current?.getFeatures().push(feature);
+                if (parcel.table_name) setTargetTable(parcel.table_name);
+                updateSelectionState(feature);
+                updateVerticesFromFeature(feature);
+                updateFeatureListState();
+
+                const extent = geometry.getExtent();
+                if (extent && !isExtentEmpty(extent)) {
+                    mapInstance.current?.getView().fit(extent, { padding: [100, 100, 100, 100], duration: 800, maxZoom: 21 });
+                }
+                setDialog({
+                    isOpen: true,
+                    type: 'success',
+                    title: 'AI đã nạp thửa vào Editor',
+                    message: `Đã nạp thửa ${parcel.sothua || '?'} / tờ ${parcel.sodoto || '?'} từ bảng ${parcel.display_name || parcel.table_name || ''}.`
+                });
+            } catch (e: any) {
+                setDialog({ isOpen: true, type: 'error', title: 'Không thể nạp thửa từ AI', message: e.message });
+            }
+        }, 900);
+        return () => clearTimeout(t);
+    }, [centralMeridian, projectionZone, showVertexNumbers, showSegmentLengths, showParcelInfo, updateSelectionState, updateVerticesFromFeature, updateFeatureListState]);
 
 
 

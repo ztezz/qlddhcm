@@ -89,7 +89,7 @@ const callNineRouter = async ({ apiKey, model, endpoint, prompt }) => {
 const fallbackChat = (message = '', context = {}) => {
     const text = String(message || '').toLowerCase();
     const lines = [];
-    lines.push('Tôi là trợ lý AI của hệ thống WebGIS quản lý đất đai.');
+    lines.push('Tôi là Axis, trợ lý AI của hệ thống WebGIS quản lý đất đai.');
 
     if (text.includes('lịch sử') || text.includes('biến động')) {
         lines.push('Bạn có thể vào Editor hoặc Quản trị → Lịch sử biến động để xem trước/sau, overlay hình thửa và phục hồi biến động.');
@@ -290,7 +290,7 @@ export default function aiRouter(pool, logSystemAction) {
                 }
             }
             const dataLookupFallback = buildDataLookupFallback({ intent, parcels, histories });
-            const systemPrompt = `Bạn là trợ lý AI tiếng Việt cho hệ thống WebGIS quản lý đất đai QLDDHCM.\n\nNhiệm vụ:\n- Trả lời ngắn gọn, rõ ràng, đúng nghiệp vụ đất đai/bản đồ.\n- Hướng dẫn người dùng thao tác trong hệ thống: bản đồ, editor, quản trị, lịch sử biến động, bảng giá đất, import/export.\n- Nếu người dùng hỏi dữ liệu cụ thể nhưng chưa có dữ liệu trong context, hãy nói cần dùng chức năng tra cứu/lọc hoặc chọn thửa trên bản đồ.\n- Không bịa số liệu pháp lý.\n\nContext hiện tại: ${JSON.stringify(context || {})}\n\nLịch sử chat gần đây: ${JSON.stringify((history || []).slice(-8))}\n\nCâu hỏi người dùng: ${message}`;
+            const systemPrompt = `Bạn tên là Axis, trợ lý AI tiếng Việt cho hệ thống WebGIS quản lý đất đai QLDDHCM.\n\nPhong cách giao tiếp:\n- Xưng là Axis khi cần, nói tự nhiên, chuyên nghiệp, thân thiện.\n- Trả lời ngắn gọn, rõ ràng, đúng nghiệp vụ đất đai/bản đồ.\n- Không nhắc lộ chi tiết context nội bộ trừ khi người dùng hỏi trực tiếp.\n\nNhiệm vụ:\n- Hướng dẫn người dùng thao tác trong hệ thống: bản đồ, editor, quản trị, lịch sử biến động, bảng giá đất, import/export.\n- Nếu người dùng hỏi dữ liệu cụ thể nhưng chưa có dữ liệu trong context, hãy nói cần dùng chức năng tra cứu/lọc hoặc chọn thửa trên bản đồ.\n- Không bịa số liệu pháp lý.\n\nContext nội bộ: ${JSON.stringify(context || {})}\n\nLịch sử chat gần đây: ${JSON.stringify((history || []).slice(-8))}\n\nCâu hỏi người dùng: ${message}`;
             const enrichedPrompt = `${systemPrompt}\n\nDữ liệu tra cứu thật từ CSDL (nếu có):\n${JSON.stringify({ intent, parcels: parcels.slice(0, 5), histories }, null, 2)}\n\nNếu có dữ liệu tra cứu thật, hãy ưu tiên trả lời dựa trên dữ liệu này.`;
 
             let reply = '';

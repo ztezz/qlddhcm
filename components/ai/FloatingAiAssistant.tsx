@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { Bot, Send, X, Loader2, Sparkles, Minimize2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { aiApi } from '../../services/aiApi';
 import { User } from '../../types';
 
@@ -22,9 +23,10 @@ const FloatingAiAssistant: React.FC<FloatingAiAssistantProps> = ({ user, page })
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
     const [messages, setMessages] = useState<ChatMessage[]>([
-        { role: 'assistant', content: 'Xin chào, tôi là trợ lý AI của hệ thống. Bạn có thể hỏi về tra cứu thửa đất, lịch sử biến động, chỉnh sửa bản đồ, bảng giá đất hoặc báo cáo.' }
+        { role: 'assistant', content: 'Xin chào, tôi là Axis. Tôi có thể hỗ trợ bạn tra cứu thửa đất, xem lịch sử biến động, chỉnh sửa bản đồ, phân tích dữ liệu và tạo báo cáo.' }
     ]);
     const inputRef = useRef<HTMLInputElement>(null);
+    const navigate = useNavigate();
 
     const context = useMemo(() => ({
         page,
@@ -55,6 +57,12 @@ const FloatingAiAssistant: React.FC<FloatingAiAssistantProps> = ({ user, page })
         }
     };
 
+    const openParcelInEditor = (parcel: any) => {
+        sessionStorage.setItem('ai_editor_parcel', JSON.stringify(parcel));
+        navigate('/chinhsuabanve');
+        setOpen(false);
+    };
+
     if (!user) return null;
 
     return (
@@ -63,10 +71,10 @@ const FloatingAiAssistant: React.FC<FloatingAiAssistantProps> = ({ user, page })
                 <button
                     onClick={() => setOpen(true)}
                     className="fixed bottom-5 right-5 z-[900] flex items-center gap-2 rounded-full bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 shadow-2xl border border-purple-400/40 transition-all hover:scale-105"
-                    title="Trợ lý AI"
+                    title="Axis"
                 >
                     <Sparkles size={18} />
-                    <span className="text-xs font-black uppercase tracking-wider">AI</span>
+                    <span className="text-xs font-black uppercase tracking-wider">Axis</span>
                 </button>
             )}
 
@@ -78,8 +86,8 @@ const FloatingAiAssistant: React.FC<FloatingAiAssistantProps> = ({ user, page })
                                 <Bot size={17} />
                             </div>
                             <div>
-                                <div className="text-sm font-black">Trợ lý AI</div>
-                                <div className="text-[10px] text-purple-300">Ngữ cảnh: {page}</div>
+                                <div className="text-sm font-black">Axis</div>
+                                <div className="text-[10px] text-purple-300">Trợ lý AI đất đai</div>
                             </div>
                         </div>
                         <div className="flex items-center gap-1">
@@ -104,14 +112,22 @@ const FloatingAiAssistant: React.FC<FloatingAiAssistantProps> = ({ user, page })
                                     {m.role === 'assistant' && m.parcels && m.parcels.length > 0 && (
                                         <div className="mt-2 space-y-1.5">
                                             {m.parcels.slice(0, 3).map((p, i) => (
-                                                <button
-                                                    key={`${p.table_name}-${p.gid}-${i}`}
-                                                    onClick={() => window.dispatchEvent(new CustomEvent('ai:zoom-parcel', { detail: p }))}
-                                                    className="w-full text-left rounded-lg border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 px-2 py-1.5 text-[10px] text-purple-100 transition-colors"
-                                                >
-                                                    Zoom tới thửa {p.sothua || '?'} / tờ {p.sodoto || '?'}
-                                                    <span className="block text-[9px] text-purple-300">{p.display_name || p.table_name} · GID {p.gid}</span>
-                                                </button>
+                                                <div key={`${p.table_name}-${p.gid}-${i}`} className="space-y-1.5">
+                                                    <button
+                                                        onClick={() => window.dispatchEvent(new CustomEvent('ai:zoom-parcel', { detail: p }))}
+                                                        className="w-full text-left rounded-lg border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 px-2 py-1.5 text-[10px] text-purple-100 transition-colors"
+                                                    >
+                                                        Zoom tới thửa {p.sothua || '?'} / tờ {p.sodoto || '?'}
+                                                        <span className="block text-[9px] text-purple-300">{p.display_name || p.table_name} · GID {p.gid}</span>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => openParcelInEditor(p)}
+                                                        className="w-full text-left rounded-lg border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 px-2 py-1.5 text-[10px] text-emerald-100 transition-colors"
+                                                    >
+                                                        Mở trong Editor
+                                                        <span className="block text-[9px] text-emerald-300">Nạp thửa vào bản vẽ để chỉnh sửa/cập nhật</span>
+                                                    </button>
+                                                </div>
                                             ))}
                                         </div>
                                     )}
