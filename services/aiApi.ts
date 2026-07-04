@@ -43,7 +43,7 @@ export const aiApi = {
         message: string;
         history?: { role: 'user' | 'assistant'; content: string }[];
         context?: Record<string, any>;
-    }): Promise<{ status: string; provider: string; reply: string }> => {
+    }): Promise<{ status: string; provider: string; reply: string; parcels?: any[] }> => {
         const res = await fetch(`${API_URL}/api/ai/chat`, {
             method: 'POST',
             headers: getAuthHeaders(),

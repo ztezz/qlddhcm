@@ -8,7 +8,7 @@ interface FloatingAiAssistantProps {
     page: string;
 }
 
-type ChatMessage = { role: 'user' | 'assistant'; content: string; provider?: string };
+type ChatMessage = { role: 'user' | 'assistant'; content: string; provider?: string; parcels?: any[] };
 
 const QUICK_PROMPTS = [
     'Hướng dẫn tra cứu thửa đất',
@@ -46,7 +46,7 @@ const FloatingAiAssistant: React.FC<FloatingAiAssistantProps> = ({ user, page })
                 history: nextMessages.slice(-8).map(m => ({ role: m.role, content: m.content })),
                 context
             });
-            setMessages(prev => [...prev, { role: 'assistant', content: result.reply, provider: result.provider }]);
+            setMessages(prev => [...prev, { role: 'assistant', content: result.reply, provider: result.provider, parcels: result.parcels || [] }]);
         } catch (e: any) {
             setMessages(prev => [...prev, { role: 'assistant', content: `Không gọi được trợ lý AI: ${e.message}` }]);
         } finally {
@@ -101,6 +101,20 @@ const FloatingAiAssistant: React.FC<FloatingAiAssistantProps> = ({ user, page })
                                 }`}>
                                     {m.content}
                                     {m.provider && <div className="mt-1 text-[9px] text-purple-300 uppercase">{m.provider}</div>}
+                                    {m.role === 'assistant' && m.parcels && m.parcels.length > 0 && (
+                                        <div className="mt-2 space-y-1.5">
+                                            {m.parcels.slice(0, 3).map((p, i) => (
+                                                <button
+                                                    key={`${p.table_name}-${p.gid}-${i}`}
+                                                    onClick={() => window.dispatchEvent(new CustomEvent('ai:zoom-parcel', { detail: p }))}
+                                                    className="w-full text-left rounded-lg border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 px-2 py-1.5 text-[10px] text-purple-100 transition-colors"
+                                                >
+                                                    Zoom tới thửa {p.sothua || '?'} / tờ {p.sodoto || '?'}
+                                                    <span className="block text-[9px] text-purple-300">{p.display_name || p.table_name} · GID {p.gid}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ))}

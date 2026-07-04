@@ -140,6 +140,39 @@ const MapPage: React.FC<{ user: User | null; systemSettings?: Record<string, str
         [spatialTables, mapPageSearchTableSet]
     );
 
+    useEffect(() => {
+        const onAiZoomParcel = (event: Event) => {
+            const detail = (event as CustomEvent).detail;
+            if (!detail?.geometry) {
+                setDialog({ isOpen: true, type: 'info', title: 'AI', message: 'Kết quả AI không có hình học để zoom.' });
+                return;
+            }
+            handleSelectResult({
+                id: String(detail.gid || detail.madinhdanh || `${detail.table_name}-${detail.sodoto}-${detail.sothua}`),
+                gid: detail.gid,
+                geometry: detail.geometry,
+                properties: {
+                    tableName: detail.table_name,
+                    table_name: detail.table_name,
+                    so_to: detail.sodoto,
+                    so_thua: detail.sothua,
+                    sodoto: detail.sodoto,
+                    sothua: detail.sothua,
+                    landType: detail.loaidat || '',
+                    area: Number(detail.dientich || 0),
+                    ownerName: '',
+                    pricePerM2: 0,
+                    totalValue: 0,
+                    planningStatus: 'Safe',
+                    branchId: '',
+                    madinhdanh: detail.madinhdanh
+                }
+            } as any);
+        };
+        window.addEventListener('ai:zoom-parcel', onAiZoomParcel);
+        return () => window.removeEventListener('ai:zoom-parcel', onAiZoomParcel);
+    }, [handleSelectResult, setDialog]);
+
 
     // Loại bỏ lớp hành chính khỏi MapPage để đảm bảo chỉ hiển thị ở trang riêng.
     useEffect(() => {

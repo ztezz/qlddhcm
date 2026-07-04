@@ -108,6 +108,127 @@ const fallbackChat = (message = '', context = {}) => {
     return lines.join('\n');
 };
 
+const TABLE_NAME_REGEX = /^[a-z0-9_]+$/;
+const PARCEL_COL_CANDIDATES = {
+    sodoto: ['sodoto', 'so_to', 'shbando', 'sh_ban_do', 'tobando', 'to_ban_do'],
+    sothua: ['sothua', 'so_thua', 'shthua', 'sh_thua', 'thua_dat'],
+    loaidat: ['loaidat', 'loai_dat', 'kyhieumucd', 'ky_hieu_muc_dich'],
+    dientich: ['dientich', 'dien_tich', 'area', 'shape_area'],
+    madinhdanh: ['madinhdanh', 'ma_dinh_danh', 'parcel_code']
+};
+
+const extractParcelIntent = (message = '') => {
+    const text = String(message).toLowerCase();
+    const soTo =
+        text.match(/(?:số\s*)?tờ\s*(?:bản\s*đồ)?\s*[:#-]?\s*([\w.-]+)/i)?.[1] ||
+        text.match(/to\s*(?:ban\s*do)?\s*[:#-]?\s*([\w.-]+)/i)?.[1] || '';
+    const soThua =
+        text.match(/(?:số\s*)?thửa\s*[:#-]?\s*([\w.-]+)/i)?.[1] ||
+        text.match(/thua\s*[:#-]?\s*([\w.-]+)/i)?.[1] || '';
+    return {
+        soTo: soTo.replace(/[,.]$/, ''),
+        soThua: soThua.replace(/[,.]$/, ''),
+        wantsHistory: /lịch\s*sử|biến\s*động|thay\s*đổi|phục\s*hồi/i.test(text),
+        wantsParcel: /thửa|thua|số\s*tờ|tờ\s*bản\s*đồ|số\s*thửa/i.test(text)
+    };
+};
+
+const getRegisteredTables = async (pool) => {
+    const r = await pool.query(`SELECT table_name, display_name FROM spatial_tables_registry ORDER BY display_name NULLS LAST, table_name`);
+    return r.rows.filter(row => TABLE_NAME_REGEX.test(row.table_name));
+};
+
+const resolveColumns = async (pool, table) => {
+    const r = await pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name = $1`, [table]);
+    const lowerMap = Object.fromEntries(r.rows.map(row => [String(row.column_name).toLowerCase(), row.column_name]));
+    const find = (key) => PARCEL_COL_CANDIDATES[key].find(c => lowerMap[c]) ? lowerMap[PARCEL_COL_CANDIDATES[key].find(c => lowerMap[c])] : null;
+    return {
+        gid: lowerMap.gid || lowerMap.id || null,
+        geometry: lowerMap.geometry || null,
+        sodoto: find('sodoto'),
+        sothua: find('sothua'),
+        loaidat: find('loaidat'),
+        dientich: find('dientich'),
+        madinhdanh: find('madinhdanh')
+    };
+};
+
+const searchParcelsBySheetParcel = async (pool, { soTo, soThua }) => {
+    if (!soTo && !soThua) return [];
+    const tables = await getRegisteredTables(pool);
+    const results = [];
+    for (const tableInfo of tables) {
+        if (results.length >= 10) break;
+        const table = tableInfo.table_name;
+        const cols = await resolveColumns(pool, table);
+        if (!cols.gid || (!cols.sodoto && soTo) || (!cols.sothua && soThua)) continue;
+
+        const where = [];
+        const params = [];
+        let idx = 1;
+        if (soTo && cols.sodoto) {
+            where.push(`"${cols.sodoto}"::text ILIKE $${idx++}`);
+            params.push(soTo);
+        }
+        if (soThua && cols.sothua) {
+            where.push(`"${cols.sothua}"::text ILIKE $${idx++}`);
+            params.push(soThua);
+        }
+        if (where.length === 0) continue;
+
+        const selectParts = [
+            `"${cols.gid}" AS gid`,
+            cols.sodoto ? `"${cols.sodoto}" AS sodoto` : `NULL AS sodoto`,
+            cols.sothua ? `"${cols.sothua}" AS sothua` : `NULL AS sothua`,
+            cols.loaidat ? `"${cols.loaidat}" AS loaidat` : `NULL AS loaidat`,
+            cols.dientich ? `"${cols.dientich}" AS dientich` : `NULL AS dientich`,
+            cols.madinhdanh ? `"${cols.madinhdanh}" AS madinhdanh` : `NULL AS madinhdanh`,
+            cols.geometry ? `CASE WHEN "${cols.geometry}" IS NOT NULL THEN ST_AsGeoJSON(ST_Transform("${cols.geometry}", 4326))::json ELSE NULL END AS geometry` : `NULL AS geometry`
+        ];
+
+        try {
+            const q = `SELECT ${selectParts.join(', ')} FROM "${table}" WHERE ${where.join(' AND ')} LIMIT 5`;
+            const r = await pool.query(q, params);
+            r.rows.forEach(row => results.push({ ...row, table_name: table, display_name: tableInfo.display_name || table }));
+        } catch (_) {}
+    }
+    return results;
+};
+
+const getRecentHistoryForParcel = async (pool, table, gid) => {
+    try {
+        const r = await pool.query(
+            `SELECT id, action, changed_by_name, changed_at, note,
+                    COALESCE(snapshot_after->>'dientich', snapshot_before->>'dientich', snapshot->>'dientich') AS dientich
+             FROM parcel_history
+             WHERE table_name = $1 AND parcel_gid = $2
+             ORDER BY changed_at DESC
+             LIMIT 5`,
+            [table, gid]
+        );
+        return r.rows;
+    } catch {
+        return [];
+    }
+};
+
+const buildDataLookupFallback = ({ intent, parcels, histories }) => {
+    if (!intent.wantsParcel || (!intent.soTo && !intent.soThua)) return null;
+    if (parcels.length === 0) {
+        return `Không tìm thấy thửa phù hợp với số tờ "${intent.soTo || '?'}" và số thửa "${intent.soThua || '?'}" trong các bảng dữ liệu đã đăng ký.`;
+    }
+    const lines = [`Tìm thấy ${parcels.length} thửa phù hợp:`];
+    parcels.slice(0, 5).forEach((p, i) => {
+        lines.push(`${i + 1}. Bảng ${p.display_name} (${p.table_name}), GID ${p.gid}: thửa ${p.sothua || '?'} / tờ ${p.sodoto || '?'}, loại đất ${p.loaidat || 'chưa rõ'}, diện tích ${p.dientich || 'chưa rõ'} m².`);
+        const h = histories?.[`${p.table_name}:${p.gid}`] || [];
+        if (intent.wantsHistory) {
+            if (h.length === 0) lines.push(`   - Chưa có lịch sử biến động gần đây.`);
+            else h.forEach(item => lines.push(`   - ${item.action} lúc ${new Date(item.changed_at).toLocaleString('vi-VN')} bởi ${item.changed_by_name || 'không rõ'}${item.note ? ` (${item.note})` : ''}`));
+        }
+    });
+    return lines.join('\n');
+};
+
 export default function aiRouter(pool, logSystemAction) {
     const router = express.Router();
 
@@ -160,7 +281,17 @@ export default function aiRouter(pool, logSystemAction) {
             }
 
             const settings = await getSettingsMap(pool).catch(() => ({}));
+            const intent = extractParcelIntent(message);
+            const parcels = intent.wantsParcel ? await searchParcelsBySheetParcel(pool, intent).catch(() => []) : [];
+            const histories = {};
+            if (intent.wantsHistory && parcels.length > 0) {
+                for (const p of parcels.slice(0, 5)) {
+                    histories[`${p.table_name}:${p.gid}`] = await getRecentHistoryForParcel(pool, p.table_name, p.gid);
+                }
+            }
+            const dataLookupFallback = buildDataLookupFallback({ intent, parcels, histories });
             const systemPrompt = `Bạn là trợ lý AI tiếng Việt cho hệ thống WebGIS quản lý đất đai QLDDHCM.\n\nNhiệm vụ:\n- Trả lời ngắn gọn, rõ ràng, đúng nghiệp vụ đất đai/bản đồ.\n- Hướng dẫn người dùng thao tác trong hệ thống: bản đồ, editor, quản trị, lịch sử biến động, bảng giá đất, import/export.\n- Nếu người dùng hỏi dữ liệu cụ thể nhưng chưa có dữ liệu trong context, hãy nói cần dùng chức năng tra cứu/lọc hoặc chọn thửa trên bản đồ.\n- Không bịa số liệu pháp lý.\n\nContext hiện tại: ${JSON.stringify(context || {})}\n\nLịch sử chat gần đây: ${JSON.stringify((history || []).slice(-8))}\n\nCâu hỏi người dùng: ${message}`;
+            const enrichedPrompt = `${systemPrompt}\n\nDữ liệu tra cứu thật từ CSDL (nếu có):\n${JSON.stringify({ intent, parcels: parcels.slice(0, 5), histories }, null, 2)}\n\nNếu có dữ liệu tra cứu thật, hãy ưu tiên trả lời dựa trên dữ liệu này.`;
 
             let reply = '';
             let provider = 'fallback';
@@ -170,25 +301,40 @@ export default function aiRouter(pool, logSystemAction) {
                         apiKey: settings.ocr_9router_key,
                         model: settings.ocr_9router_model,
                         endpoint: settings.ocr_9router_endpoint,
-                        prompt: systemPrompt
+                        prompt: enrichedPrompt
                     });
                     provider = '9router';
                 } else if (settings.ocr_use_gemini === 'true' && settings.ocr_gemini_key) {
                     reply = await callGemini({
                         apiKey: settings.ocr_gemini_key,
                         model: settings.ocr_gemini_model,
-                        prompt: systemPrompt
+                        prompt: enrichedPrompt
                     });
                     provider = 'gemini';
                 }
             } catch (aiError) {
-                reply = `${fallbackChat(message, context)}\n\n> Ghi chú: AI cloud lỗi (${aiError.message}), hệ thống đã dùng trả lời nội bộ.`;
+                reply = `${dataLookupFallback || fallbackChat(message, context)}\n\n> Ghi chú: AI cloud lỗi (${aiError.message}), hệ thống đã dùng trả lời nội bộ.`;
                 provider = 'fallback';
             }
 
-            if (!reply) reply = fallbackChat(message, context);
+            if (!reply) reply = dataLookupFallback || fallbackChat(message, context);
             await logSystemAction?.(req, 'AI_CHAT', `Người dùng hỏi AI (${provider}): ${String(message).slice(0, 120)}`);
-            res.json({ status: 'ok', provider, reply });
+            res.json({
+                status: 'ok',
+                provider,
+                reply,
+                parcels: parcels.slice(0, 5).map(p => ({
+                    gid: p.gid,
+                    table_name: p.table_name,
+                    display_name: p.display_name,
+                    sodoto: p.sodoto,
+                    sothua: p.sothua,
+                    loaidat: p.loaidat,
+                    dientich: p.dientich,
+                    madinhdanh: p.madinhdanh,
+                    geometry: p.geometry
+                }))
+            });
         } catch (e) {
             res.status(500).json({ error: e.message });
         }
