@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { User, UserRole } from '../types';
 import { adminService } from '../services/apiClient';
 import { parcelApi } from '../services/parcelApi';
+import { aiApi } from '../services/aiApi';
 import { getUid } from 'ol/util';
 import { importDxfAsPolygonFeatures } from '../utils/dxfImport';
 import { registerDynamicVn2000, Vn2000Zone } from '../utils/editorProjection';
@@ -104,6 +105,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     const [isMapLoading, setIsMapLoading] = useState(false);
     const [branchPermissions, setBranchPermissions] = useState<any>(null);
     const [contextMenu, setContextMenu] = useState<EditorContextMenuState>({ visible: false, x: 0, y: 0, featureUid: null });
+    const [aiTopologyLoading, setAiTopologyLoading] = useState(false);
 
     // Custom Hooks for Selection, History and Draft Management
     const {
@@ -502,6 +504,55 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                 title: 'Kết Quả Kiểm Tra',
                 message: 'Tuyệt vời! Không phát hiện lỗi chồng lấn ranh giới giữa các thửa đất trên bản đồ.'
             });
+        }
+    };
+
+    const handleAiTopologyCheck = async () => {
+        const features = editSource.current.getFeatures();
+        if (features.length === 0) {
+            setDialog({ isOpen: true, type: 'info', title: 'Axis', message: 'Chưa có thửa đất nào trên bản đồ để AI kiểm tra.' });
+            return;
+        }
+
+        setAiTopologyLoading(true);
+        try {
+            const payloadFeatures = features.map((f, index) => {
+                const geom = f.getGeometry() as any;
+                const type = geom?.getType?.() || '';
+                let vertexCount = 0;
+                try {
+                    const coords = geom?.getCoordinates?.();
+                    if (type === 'Polygon') vertexCount = coords?.[0]?.length || 0;
+                    else if (type === 'MultiPolygon') vertexCount = coords?.[0]?.[0]?.length || 0;
+                } catch {}
+                return {
+                    index: index + 1,
+                    uid: getUid(f),
+                    gid: f.get('gid') || null,
+                    sodoto: f.get('sodoto') || '',
+                    sothua: f.get('sothua') || '',
+                    loaidat: f.get('loaidat') || '',
+                    area: geom ? getArea(geom) : 0,
+                    geometryType: type,
+                    vertexCount,
+                    targetTable
+                };
+            });
+
+            const result = await aiApi.analyzeTopologyBatch({
+                features: payloadFeatures,
+                context: { targetTable, featureCount: features.length, source: 'editor' }
+            });
+            setDialog({
+                isOpen: true,
+                type: 'info',
+                title: 'Axis kiểm tra dữ liệu / topology',
+                message: result.analysis
+            });
+        } catch (e: any) {
+            setDialog({ isOpen: true, type: 'error', title: 'Axis lỗi', message: e.message });
+        } finally {
+            setAiTopologyLoading(false);
         }
     };
 
@@ -1222,6 +1273,8 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                     showParcelInfo,
                     setShowParcelInfo,
                     onTopologyCheck: handleTopologyCheck,
+                    onAiTopologyCheck: handleAiTopologyCheck,
+                    aiTopologyLoading,
                     // Lịch sử biến động
                     selectedGid: selectedFeature ? (Number(selectedFeature.get('gid')) > 0 ? Number(selectedFeature.get('gid')) : null) : null,
                     userRole: user?.role ?? 'VIEWER',

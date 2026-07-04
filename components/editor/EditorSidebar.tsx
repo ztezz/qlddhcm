@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ClipboardList, Download, Plus, FileDigit, Tag, Save, RefreshCw, Hash, Trash2, FileUp, FileDown, CloudUpload, List, Edit3, AlertCircle, FileJson, Search, History } from 'lucide-react';
+import { ClipboardList, Download, Plus, FileDigit, Tag, Save, RefreshCw, Hash, Trash2, FileUp, FileDown, CloudUpload, List, Edit3, AlertCircle, FileJson, Search, History, Sparkles } from 'lucide-react';
 import * as proj from 'ol/proj';
 import proj4 from 'proj4';
 import ParcelHistoryPanel from './ParcelHistoryPanel';
@@ -59,6 +59,8 @@ interface EditorSidebarProps {
     showParcelInfo: boolean;
     setShowParcelInfo: (val: boolean) => void;
     onTopologyCheck: () => void;
+    onAiTopologyCheck: () => void;
+    aiTopologyLoading?: boolean;
 
     // Lịch sử biến động
     /** gid của thửa đang chọn trong CSDL (null nếu chưa lưu) */
@@ -230,6 +232,14 @@ const EditorSidebar: React.FC<EditorSidebarProps> = (props) => {
                             className="w-full bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 border border-indigo-500/20 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2"
                         >
                             🔍 Kiểm tra chồng lấn ranh giới
+                        </button>
+                        <button
+                            onClick={props.onAiTopologyCheck}
+                            disabled={props.aiTopologyLoading || props.featuresList.length === 0}
+                            className="w-full bg-purple-600/10 hover:bg-purple-600/20 text-purple-400 border border-purple-500/20 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 disabled:opacity-40"
+                        >
+                            {props.aiTopologyLoading ? <RefreshCw size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                            AI kiểm tra dữ liệu / topology
                         </button>
                     </div>
 

@@ -51,6 +51,43 @@ const fallbackAnalysis = ({ action, before, after }) => {
     return lines.join('\n');
 };
 
+const fallbackTopologyBatchAnalysis = ({ features = [] }) => {
+    const lines = ['## Kết quả AI kiểm tra dữ liệu/topology hàng loạt'];
+    const warnings = [];
+    const keyMap = new Map();
+
+    features.forEach((f, idx) => {
+        const label = `#${idx + 1} thửa ${f.sothua || '?'} / tờ ${f.sodoto || '?'}`;
+        if (!f.sodoto || !f.sothua) warnings.push(`${label}: thiếu số tờ hoặc số thửa.`);
+        const key = `${f.sodoto || ''}::${f.sothua || ''}`;
+        if (f.sodoto && f.sothua) {
+            if (keyMap.has(key)) warnings.push(`${label}: trùng số tờ/số thửa với ${keyMap.get(key)}.`);
+            else keyMap.set(key, label);
+        }
+        const area = Number(f.area || f.dientich || 0);
+        if (!Number.isFinite(area) || area <= 0) warnings.push(`${label}: diện tích không hợp lệ.`);
+        else if (area < 5) warnings.push(`${label}: diện tích rất nhỏ (${area.toFixed(2)} m²), cần kiểm tra.`);
+        else if (area > 100000) warnings.push(`${label}: diện tích rất lớn (${area.toFixed(2)} m²), cần kiểm tra hệ tọa độ hoặc hình học.`);
+        if (!f.geometryType) warnings.push(`${label}: thiếu geometry.`);
+        if (f.vertexCount && f.vertexCount < 4) warnings.push(`${label}: polygon có quá ít đỉnh.`);
+        if (!f.loaidat) warnings.push(`${label}: thiếu loại đất/ký hiệu mục đích sử dụng.`);
+    });
+
+    lines.push(`- Tổng số thửa kiểm tra: ${features.length}`);
+    lines.push(`- Số cảnh báo phát hiện: ${warnings.length}`);
+    if (warnings.length > 0) {
+        lines.push('\n## Cảnh báo');
+        warnings.slice(0, 50).forEach(w => lines.push(`- ${w}`));
+    } else {
+        lines.push('\nKhông phát hiện lỗi dữ liệu rõ ràng theo các quy tắc kiểm tra cơ bản.');
+    }
+    lines.push('\n## Gợi ý tiếp theo');
+    lines.push('- Chạy kiểm tra chồng lấn ranh giới trong Editor để phát hiện overlap hình học.');
+    lines.push('- Kiểm tra các thửa thiếu số tờ/số thửa hoặc thiếu loại đất trước khi lưu vào CSDL.');
+    lines.push('- Với thửa diện tích bất thường, kiểm tra lại hệ tọa độ và nguồn import.');
+    return lines.join('\n');
+};
+
 const getSettingsMap = async (pool) => {
     const res = await pool.query(`SELECT key, value FROM system_settings WHERE key LIKE 'ocr_%' OR key LIKE 'ai_%'`);
     return Object.fromEntries(res.rows.map(r => [r.key, r.value]));
@@ -438,6 +475,48 @@ export default function aiRouter(pool, logSystemAction) {
                 })),
                 landPrices: landPrices.slice(0, 10)
             });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    });
+
+    router.post('/analyze-topology-batch', authenticateToken, async (req, res) => {
+        try {
+            const { features = [], context = {} } = req.body || {};
+            if (!Array.isArray(features) || features.length === 0) {
+                return res.status(400).json({ error: 'Không có danh sách thửa để kiểm tra.' });
+            }
+            const limitedFeatures = features.slice(0, 200);
+            const settings = await getSettingsMap(pool).catch(() => ({}));
+            const fallback = fallbackTopologyBatchAnalysis({ features: limitedFeatures });
+            const prompt = `Bạn tên là Axis, trợ lý AI kiểm tra dữ liệu đất đai/topology. Hãy phân tích danh sách thửa dưới đây bằng tiếng Việt.\n\nYêu cầu:\n- Tóm tắt số lượng thửa và chất lượng dữ liệu.\n- Phát hiện lỗi thuộc tính: thiếu số tờ/số thửa, thiếu loại đất, diện tích bất thường, trùng định danh.\n- Phát hiện rủi ro topology dựa trên metadata: polygon quá ít đỉnh, diện tích bằng 0, hình học thiếu.\n- Không bịa lỗi không có dữ liệu chứng minh.\n- Trả lời Markdown ngắn gọn, có mục Cảnh báo và Gợi ý xử lý.\n\nContext: ${JSON.stringify(context)}\nFeatures: ${JSON.stringify(limitedFeatures)}`;
+
+            let analysis = '';
+            let provider = 'fallback';
+            try {
+                if (settings.ocr_use_9router === 'true' && settings.ocr_9router_key) {
+                    analysis = await callNineRouter({
+                        apiKey: settings.ocr_9router_key,
+                        model: settings.ocr_9router_model,
+                        endpoint: settings.ocr_9router_endpoint,
+                        prompt
+                    });
+                    provider = '9router';
+                } else if (settings.ocr_use_gemini === 'true' && settings.ocr_gemini_key) {
+                    analysis = await callGemini({
+                        apiKey: settings.ocr_gemini_key,
+                        model: settings.ocr_gemini_model,
+                        prompt
+                    });
+                    provider = 'gemini';
+                }
+            } catch (aiError) {
+                analysis = `${fallback}\n\n> Ghi chú: AI cloud lỗi (${aiError.message}), hệ thống đã dùng kiểm tra nội bộ.`;
+                provider = 'fallback';
+            }
+            if (!analysis) analysis = fallback;
+            await logSystemAction?.(req, 'AI_ANALYZE_TOPOLOGY_BATCH', `AI kiểm tra ${limitedFeatures.length} thửa bằng ${provider}`);
+            res.json({ status: 'ok', provider, analysis });
         } catch (e) {
             res.status(500).json({ error: e.message });
         }

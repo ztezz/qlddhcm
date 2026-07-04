@@ -50,5 +50,17 @@ export const aiApi = {
             body: JSON.stringify(payload)
         });
         return handleResponse(res);
+    },
+
+    analyzeTopologyBatch: async (payload: {
+        features: any[];
+        context?: Record<string, any>;
+    }): Promise<{ status: string; provider: string; analysis: string }> => {
+        const res = await fetch(`${API_URL}/api/ai/analyze-topology-batch`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(payload)
+        });
+        return handleResponse(res);
     }
 };
