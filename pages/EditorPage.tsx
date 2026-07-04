@@ -17,6 +17,7 @@ import EditorLayoutShell from '../components/editor/EditorLayoutShell';
 import EditorModals from '../components/editor/EditorModals';
 import { ParcelSearchDialog, ParcelResultDialog } from '../components/editor/ParcelLookupDialogs';
 import { OcrCoordinateModal } from '../components/editor/OcrCoordinateModal';
+import EditorContextMenu, { EditorContextMenuState } from '../components/editor/EditorContextMenu';
 
 // Hooks
 import { useEditorHistory } from '../hooks/useEditorHistory';
@@ -102,6 +103,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     const [dialog, setDialog] = useState<{ isOpen: boolean; type: 'success' | 'error' | 'info'; title: string; message: string; }>({ isOpen: false, type: 'info', title: '', message: '' });
     const [isMapLoading, setIsMapLoading] = useState(false);
     const [branchPermissions, setBranchPermissions] = useState<any>(null);
+    const [contextMenu, setContextMenu] = useState<EditorContextMenuState>({ visible: false, x: 0, y: 0, featureUid: null });
 
     // Custom Hooks for Selection, History and Draft Management
     const {
@@ -1018,6 +1020,38 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         }
     };
 
+    const handleMapContextMenu = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        // Tìm feature tại vị trí click phải trên map
+        let clickedUid: string | null = null;
+        if (mapInstance.current) {
+            const pixel = mapInstance.current.getEventPixel(e.nativeEvent);
+            const feature = mapInstance.current.forEachFeatureAtPixel(pixel, (f) => f, {
+                layerFilter: (layer) => layer.get('name') === 'edit',
+                hitTolerance: 6,
+            });
+            if (feature) {
+                clickedUid = getUid(feature as any);
+                // Auto-chọn feature được click phải nếu chưa được chọn
+                if (!selectedFeatureUids.includes(clickedUid)) {
+                    selectInteraction.current?.getFeatures().clear();
+                    selectInteraction.current?.getFeatures().push(feature as any);
+                    updateSelectionState(feature as any);
+                }
+            }
+        }
+        setContextMenu({ visible: true, x: e.clientX, y: e.clientY, featureUid: clickedUid });
+    }, [mapInstance, selectedFeatureUids, updateSelectionState]);
+
+    const handleContextMenuDeleteSelected = useCallback(() => {
+        if (selectedFeatureUids.length > 0) {
+            const uids = [...selectedFeatureUids];
+            uids.forEach(uid => handleDeleteFeature(uid));
+        } else if (selectedFeature) {
+            handleDeleteFeature(getUid(selectedFeature));
+        }
+    }, [selectedFeatureUids, selectedFeature, handleDeleteFeature]);
+
     const handleSaveFeatureFromList = (uid: string) => {
         if (permissionLoading) {
             setDialog({ isOpen: true, type: 'info', title: 'Đang tải phân quyền', message: 'Vui lòng thử lại sau khi hệ thống tải xong quyền truy cập.' });
@@ -1067,6 +1101,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                 isSidebarVisible={isSidebarVisible}
                 onToggleSidebar={() => setIsSidebarVisible((prev) => !prev)}
                 isMapLoading={isMapLoading}
+                onMapContextMenu={handleMapContextMenu}
                 sidebarProps={{
                     coordSystem,
                     setCoordSystem,
@@ -1199,6 +1234,30 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                 centralMeridian={centralMeridian}
                 projectionZone={projectionZone}
                 onDrawShape={handleDrawOcrShape}
+            />
+
+            <EditorContextMenu
+                state={contextMenu}
+                onClose={() => setContextMenu(prev => ({ ...prev, visible: false }))}
+                hasSelectedFeature={!!selectedFeature}
+                canSplit={canSplit}
+                canMerge={canMerge}
+                canSaveToDb={canSaveToDb}
+                canUndo={canUndo}
+                canRedo={canRedo}
+                soTo={soTo}
+                soThua={soThua}
+                onSelectMode={() => setActiveInteraction('SELECT')}
+                onModifyMode={() => setActiveInteraction('MODIFY')}
+                onSplit={handleSplitFeature}
+                onMerge={handleMergeFeatures}
+                onDelete={handleContextMenuDeleteSelected}
+                onSave={handleSaveToDB}
+                onFitView={handleFitView}
+                onUndo={handleUndo}
+                onRedo={handleRedo}
+                onTopologyCheck={handleTopologyCheck}
+                onClearAll={() => { editSource.current.clear(); handleClearSelection(); setVertices([]); updateFeatureListState(); clearDraft(); }}
             />
         </div>
     );

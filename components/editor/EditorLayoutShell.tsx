@@ -8,6 +8,7 @@ interface EditorLayoutShellProps {
     onToggleSidebar: () => void;
     sidebarProps: React.ComponentProps<typeof EditorSidebar>;
     isMapLoading?: boolean;
+    onMapContextMenu?: (e: React.MouseEvent<HTMLDivElement>) => void;
 }
 
 const EditorLayoutShell: React.FC<EditorLayoutShellProps> = ({
@@ -15,12 +16,17 @@ const EditorLayoutShell: React.FC<EditorLayoutShellProps> = ({
     isSidebarVisible,
     onToggleSidebar,
     sidebarProps,
-    isMapLoading
+    isMapLoading,
+    onMapContextMenu,
 }) => {
     return (
         <>
             <div className="flex-1 relative bg-[#05070a]">
-                <div ref={mapElementRef} className="w-full h-full" />
+                <div
+                    ref={mapElementRef}
+                    className="w-full h-full"
+                    onContextMenu={onMapContextMenu}
+                />
 
                 {isMapLoading && (
                     <div className="absolute inset-0 bg-[#05070a]/60 backdrop-blur-sm z-40 flex flex-col items-center justify-center gap-4 animate-in fade-in duration-300">
