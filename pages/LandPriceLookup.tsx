@@ -132,6 +132,30 @@ const LandPriceLookup: React.FC<LandPriceLookupProps> = ({ user, systemSettings 
         }
     };
 
+    useEffect(() => {
+        const raw = sessionStorage.getItem('ai_land_price_result');
+        if (!raw) return;
+        sessionStorage.removeItem('ai_land_price_result');
+        try {
+            const row = JSON.parse(raw) as LandPrice2026;
+            const wardLabel = row.tinhcu ? `${row.phuongxa} (${row.tinhcu})` : row.phuongxa;
+            const filters = {
+                phuongxa: wardLabel || '',
+                tenduong: row.tenduong || '',
+                tu: row.tu || '',
+                den: row.den || ''
+            };
+            setPhuongxa(filters.phuongxa);
+            setTenduong(filters.tenduong);
+            setTu(filters.tu);
+            setDen(filters.den);
+            setSelectedRow(row);
+            runSearch(filters, 1, pageSize).catch(() => {});
+        } catch (e) {
+            console.error('Cannot open AI land price result', e);
+        }
+    }, []);
+
     const handleSearch = async (e: React.FormEvent) => {
         e.preventDefault();
 

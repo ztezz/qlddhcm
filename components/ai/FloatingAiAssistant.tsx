@@ -63,6 +63,12 @@ const FloatingAiAssistant: React.FC<FloatingAiAssistantProps> = ({ user, page })
         setOpen(false);
     };
 
+    const openLandPriceDetail = (row: any) => {
+        sessionStorage.setItem('ai_land_price_result', JSON.stringify(row));
+        navigate('/giadata');
+        setOpen(false);
+    };
+
     if (!user) return null;
 
     return (
@@ -136,7 +142,13 @@ const FloatingAiAssistant: React.FC<FloatingAiAssistantProps> = ({ user, page })
                                                 <div key={`${r.id}-${i}`} className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[10px] text-amber-50">
                                                     <div className="font-bold">{r.tenduong} · {r.phuongxa}</div>
                                                     <div className="text-[9px] text-amber-200">Đoạn {r.tu || '?'} → {r.den || '?'}</div>
-                                                    <div className="text-[9px] text-amber-100 mt-0.5">Đất ở: {Number(r.dato || 0).toLocaleString('vi-VN')} đ/m²</div>
+                                                    <div className="text-[9px] text-amber-100 mt-0.5">Đất ở: {(Number(r.dato || 0) * 1000).toLocaleString('vi-VN')} đ/m²</div>
+                                                    <button
+                                                        onClick={() => openLandPriceDetail(r)}
+                                                        className="mt-1.5 w-full rounded-md border border-amber-400/30 bg-amber-400/10 hover:bg-amber-400/20 px-2 py-1 text-[9px] font-bold text-amber-100 transition-colors"
+                                                    >
+                                                        Xem chi tiết giá đất
+                                                    </button>
                                                 </div>
                                             ))}
                                         </div>

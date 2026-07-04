@@ -232,7 +232,7 @@ const buildDataLookupFallback = ({ intent, parcels, histories }) => {
 const normalizeLandPriceText = (s = '') => String(s)
     .toLowerCase()
     .replace(/đ/g, 'd')
-    .replace(/[.\s_-]+/g, '')
+    .replace(/[^a-z0-9]+/g, '')
     .trim();
 
 const cleanPlaceName = (value = '') => String(value)
@@ -247,15 +247,18 @@ const extractLandPriceIntent = (message = '', context = {}) => {
     const lower = raw.toLowerCase();
     const page = String(context?.page || '').toLowerCase();
     const hasPriceWords = /giá\s*đất|bảng\s*giá|gia\s*dat|bang\s*gia/.test(lower);
+    const hasStreetWords = /đường|duong|tuyến|tuyen|đh|dh|đt|dt|ql|quốc\s*lộ|quoc\s*lo/.test(lower);
     const hasPlaceWords = /phường|phuong|xã|xa|thị trấn|thi tran/.test(lower);
-    const wantsLandPrice = hasPriceWords || page.includes('land-price') || page.includes('giadata') || (hasPlaceWords && /xem|tra|tìm|thông tin|thong tin/.test(lower));
+    const wantsLandPrice = hasPriceWords || page.includes('land-price') || page.includes('giadata') || (hasPlaceWords && /xem|tra|tìm|thông tin|thong tin/.test(lower)) || (hasStreetWords && /ở|tai|tại|khu vực|khu vuc/.test(lower));
     if (!wantsLandPrice) return { wantsLandPrice: false, street: '', ward: '', tinhcu: '' };
 
     let street = raw.match(/(?:đường|duong|tuyến|tuyen)\s+([^,;\n]+?)(?=\s+(?:ở|tai|tại|phường|phuong|xã|xa|thị trấn|thi tran)\b|$)/i)?.[1]?.trim() || '';
     if (!street) {
         street = raw.match(/\b(?:đh|dh|đt|dt|ql|quốc\s*lộ|quoc\s*lo)[\s.\-]*\d+[\w.\-]*/i)?.[0]?.trim() || '';
     }
-    const wardRaw = raw.match(/(?:phường|phuong|xã|xa|thị trấn|thi tran)\s+([^,;\n]+)/i)?.[1]?.trim() || '';
+    const wardRaw = raw.match(/(?:phường|phuong|xã|xa|thị trấn|thi tran)\s+([^,;\n]+)/i)?.[1]?.trim()
+        || raw.match(/(?:ở|tai|tại|khu vực|khu vuc)\s+([^,;\n]+)/i)?.[1]?.trim()
+        || '';
     const paren = raw.match(/\(([^)]+)\)/)?.[1] || '';
     const parenParts = paren.split(',').map(s => s.trim()).filter(Boolean);
     const tinhcu = parenParts.length > 0 ? parenParts[parenParts.length - 1] : (lower.includes('bình dương') || lower.includes('binh duong') ? 'Bình Dương' : '');
@@ -276,12 +279,15 @@ const searchLandPrices = async (pool, intent) => {
 
     if (intent.street) {
         const normalized = `%${normalizeLandPriceText(intent.street)}%`;
+        const digits = String(intent.street).replace(/\D/g, '');
         filters.push(`(
             tenduong ILIKE $${idx}
-            OR replace(replace(replace(lower(tenduong), 'đ', 'd'), '.', ''), ' ', '') LIKE $${idx + 1}
+            OR regexp_replace(replace(lower(tenduong), 'đ', 'd'), '[^a-z0-9]+', '', 'g') LIKE $${idx + 1}
+            ${digits ? `OR regexp_replace(tenduong, '\\D', '', 'g') LIKE $${idx + 2}` : ''}
         )`);
         params.push(`%${intent.street}%`, normalized);
-        idx += 2;
+        if (digits) params.push(`%${digits}%`);
+        idx += digits ? 3 : 2;
     }
     if (intent.ward) {
         filters.push(`phuongxa ILIKE $${idx++}`);
@@ -317,7 +323,7 @@ const buildLandPriceFallback = ({ intent, results }) => {
     const lines = [`Axis tìm thấy ${results.length} dòng giá đất phù hợp${intent.street ? ` cho "${intent.street}"` : ''}${intent.ward ? ` tại ${intent.ward}` : ''}${intent.tinhcu ? ` (${intent.tinhcu})` : ''}:`];
     results.slice(0, 8).forEach((r, i) => {
         lines.push(`${i + 1}. ${r.tenduong} — ${r.phuongxa}${r.tinhcu ? ` (${r.tinhcu})` : ''}, đoạn ${r.tu || '?'} → ${r.den || '?'}`);
-        lines.push(`   - Đất ở: ${Number(r.dato || 0).toLocaleString('vi-VN')} đ/m²; TM-DV: ${Number(r.dattmdv || 0).toLocaleString('vi-VN')} đ/m²; SX-KD PNN: ${Number(r.datsxkdpnn || 0).toLocaleString('vi-VN')} đ/m².`);
+        lines.push(`   - Đất ở: ${(Number(r.dato || 0) * 1000).toLocaleString('vi-VN')} đ/m²; TM-DV: ${(Number(r.dattmdv || 0) * 1000).toLocaleString('vi-VN')} đ/m²; SX-KD PNN: ${(Number(r.datsxkdpnn || 0) * 1000).toLocaleString('vi-VN')} đ/m².`);
     });
     return lines.join('\n');
 };
@@ -386,7 +392,7 @@ export default function aiRouter(pool, logSystemAction) {
             }
             const dataLookupFallback = buildDataLookupFallback({ intent, parcels, histories });
             const landPriceFallback = buildLandPriceFallback({ intent: landPriceIntent, results: landPrices });
-            const systemPrompt = `Bạn tên là Axis, trợ lý AI tiếng Việt cho hệ thống WebGIS quản lý đất đai QLDDHCM.\n\nPhong cách giao tiếp:\n- Xưng là Axis khi cần, nói tự nhiên, chuyên nghiệp, thân thiện.\n- Trả lời ngắn gọn, rõ ràng, đúng nghiệp vụ đất đai/bản đồ.\n- Không nhắc lộ chi tiết context nội bộ trừ khi người dùng hỏi trực tiếp.\n\nNhiệm vụ:\n- Hướng dẫn người dùng thao tác trong hệ thống: bản đồ, editor, quản trị, lịch sử biến động, bảng giá đất, import/export.\n- Nếu người dùng hỏi dữ liệu cụ thể nhưng chưa có dữ liệu trong context, hãy nói cần dùng chức năng tra cứu/lọc hoặc chọn thửa trên bản đồ.\n- Không bịa số liệu pháp lý.\n\nContext nội bộ: ${JSON.stringify(context || {})}\n\nLịch sử chat gần đây: ${JSON.stringify((history || []).slice(-8))}\n\nCâu hỏi người dùng: ${message}`;
+            const systemPrompt = `Bạn tên là Axis, trợ lý AI tiếng Việt cho hệ thống WebGIS quản lý đất đai QLDDHCM.\n\nPhong cách giao tiếp:\n- Xưng là Axis khi cần, nói tự nhiên, chuyên nghiệp, thân thiện.\n- Trả lời ngắn gọn, rõ ràng, đúng nghiệp vụ đất đai/bản đồ.\n- Không nhắc lộ chi tiết context nội bộ trừ khi người dùng hỏi trực tiếp.\n\nNhiệm vụ:\n- Hướng dẫn người dùng thao tác trong hệ thống: bản đồ, editor, quản trị, lịch sử biến động, bảng giá đất, import/export.\n- Nếu người dùng hỏi dữ liệu cụ thể nhưng chưa có dữ liệu trong context, hãy nói cần dùng chức năng tra cứu/lọc hoặc chọn thửa trên bản đồ.\n- Khi trả lời về bảng giá đất, KHÔNG gợi ý click tuyến đường trên bản đồ. Hãy gợi ý bấm nút xem chi tiết giá đất hoặc mở trang tra cứu giá đất.\n- Không bịa số liệu pháp lý.\n\nContext nội bộ: ${JSON.stringify(context || {})}\n\nLịch sử chat gần đây: ${JSON.stringify((history || []).slice(-8))}\n\nCâu hỏi người dùng: ${message}`;
             const enrichedPrompt = `${systemPrompt}\n\nDữ liệu tra cứu thật từ CSDL (nếu có):\n${JSON.stringify({ intent, parcels: parcels.slice(0, 5), histories, landPriceIntent, landPrices }, null, 2)}\n\nNếu có dữ liệu tra cứu thật, hãy ưu tiên trả lời dựa trên dữ liệu này.`;
 
             let reply = '';
