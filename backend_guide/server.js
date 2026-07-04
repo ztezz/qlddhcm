@@ -24,6 +24,7 @@ import messageRouter from './routes_messages.js';
 import notificationRouter from './routes_notifications.js';
 import conversionRouter from './routes_conversion.js';
 import parcelHistoryRouter from './routes_parcel_history.js';
+import aiRouter from './routes_ai.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -229,6 +230,7 @@ app.use('/api', mapAdminRouter(pool, logSystemAction, dbConfig));
 app.use('/api', spatialRouter(pool, logSystemAction));
 app.use('/api', conversionRouter(pool, logSystemAction));
 app.use('/api/parcel-history', parcelHistoryRouter(pool, logSystemAction));
+app.use('/api/ai', aiRouter(pool, logSystemAction));
 app.use('/api/proxy', proxyRouter);
 
 app.get('/', (req, res) => {

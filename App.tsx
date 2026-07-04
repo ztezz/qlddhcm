@@ -2,6 +2,7 @@
 import React, { useState, useEffect, Suspense, lazy, useRef } from 'react';
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
+import FloatingAiAssistant from './components/ai/FloatingAiAssistant';
 import Login from './pages/Login';
 import { User, UserRole, SystemSetting } from './types';
 import { ShieldAlert, RefreshCw, WifiOff } from 'lucide-react';
@@ -327,6 +328,7 @@ const App: React.FC = () => {
             </Routes>
         </Suspense>
       </main>
+      <FloatingAiAssistant user={user} page={activePage || currentPath} />
     </div>
   );
 };

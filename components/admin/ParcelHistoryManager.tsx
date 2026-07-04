@@ -3,9 +3,10 @@ import {
     History, RefreshCw, Search, Filter, ChevronLeft, ChevronRight,
     PlusCircle, Edit3, XCircle, RotateCcw, Trash2, Eye, EyeOff,
     Database, Clock, User, StickyNote, AlertTriangle, CheckCircle,
-    Loader2, ChevronDown, ChevronUp, Download,
+    Loader2, ChevronDown, ChevronUp, Download, Sparkles,
 } from 'lucide-react';
 import { parcelHistoryApi } from '../../services/parcelApi';
+import { aiApi } from '../../services/aiApi';
 import { gisService } from '../../services/apiClient';
 import { ParcelHistoryRecord, ParcelHistoryAction } from '../../types';
 import GeometryPreview from '../common/GeometryPreview';
@@ -126,9 +127,12 @@ const HistoryRow: React.FC<{
     canDelete: boolean;
     onRestore: (rec: ParcelHistoryRecord) => void;
     onDeleteRecord: (id: number) => void;
+    onAiAnalyze: (rec: ParcelHistoryRecord) => void;
     restoringId: number | null;
     deletingId: number | null;
-}> = ({ rec, canRestore, canDelete, onRestore, onDeleteRecord, restoringId, deletingId }) => {
+    analyzingId: number | null;
+    aiText?: string;
+}> = ({ rec, canRestore, canDelete, onRestore, onDeleteRecord, onAiAnalyze, restoringId, deletingId, analyzingId, aiText }) => {
     const [expanded, setExpanded] = useState(false);
     const meta = ACTION_META[rec.action] ?? ACTION_META.UPDATE;
 
@@ -225,6 +229,15 @@ const HistoryRow: React.FC<{
                                 : <Trash2 size={12} />}
                         </button>
                     )}
+                    <button
+                        onClick={() => onAiAnalyze(rec)}
+                        disabled={analyzingId === rec.id}
+                        title="AI phân tích biến động"
+                        className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold bg-purple-900/40 text-purple-300 hover:bg-purple-800/60 border border-purple-700/40 transition-all disabled:opacity-40"
+                    >
+                        {analyzingId === rec.id ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
+                        AI
+                    </button>
                 </div>
             </td>
 
@@ -233,6 +246,14 @@ const HistoryRow: React.FC<{
             <tr className="bg-gray-900/60 border-b border-gray-800">
                 <td colSpan={8} className="px-6 py-4">
                     <HistorySnapshots rec={rec} />
+                    {aiText && (
+                        <div className="mt-4 rounded-xl border border-purple-700/40 bg-purple-950/30 p-4 text-xs text-gray-200 whitespace-pre-wrap leading-relaxed">
+                            <div className="text-[10px] text-purple-300 font-black uppercase tracking-widest mb-2 flex items-center gap-1">
+                                <Sparkles size={12} /> AI phân tích biến động
+                            </div>
+                            {aiText}
+                        </div>
+                    )}
                 </td>
             </tr>
         )}
@@ -266,6 +287,8 @@ const ParcelHistoryManager: React.FC<ParcelHistoryManagerProps> = ({ permissions
     // Action state
     const [restoringId, setRestoringId] = useState<number | null>(null);
     const [deletingId, setDeletingId]   = useState<number | null>(null);
+    const [analyzingId, setAnalyzingId] = useState<number | null>(null);
+    const [aiAnalysis, setAiAnalysis]   = useState<Record<number, string>>({});
     const [toast, setToast] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
     const totalPages = Math.ceil(total / LIMIT);
@@ -345,6 +368,31 @@ const ParcelHistoryManager: React.FC<ParcelHistoryManagerProps> = ({ permissions
             showToast('err', e.message);
         } finally {
             setDeletingId(null);
+        }
+    };
+
+    const handleAiAnalyze = async (rec: ParcelHistoryRecord) => {
+        const before = rec.snapshot_before ?? (rec.action !== 'CREATE' ? rec.snapshot : null);
+        const after = rec.snapshot_after ?? (rec.action === 'CREATE' ? rec.snapshot : null);
+        setAnalyzingId(rec.id);
+        try {
+            const result = await aiApi.analyzeParcelHistory({
+                action: rec.action,
+                before,
+                after,
+                context: {
+                    tableName: rec.table_name,
+                    parcelGid: rec.parcel_gid,
+                    soTo: rec.sodoto,
+                    soThua: rec.sothua,
+                    source: 'admin'
+                }
+            });
+            setAiAnalysis(prev => ({ ...prev, [rec.id]: result.analysis }));
+        } catch (e: any) {
+            showToast('err', e.message);
+        } finally {
+            setAnalyzingId(null);
         }
     };
 
@@ -613,8 +661,11 @@ const ParcelHistoryManager: React.FC<ParcelHistoryManagerProps> = ({ permissions
                                         canDelete={canDelete}
                                         onRestore={handleRestore}
                                         onDeleteRecord={handleDeleteRecord}
+                                        onAiAnalyze={handleAiAnalyze}
                                         restoringId={restoringId}
                                         deletingId={deletingId}
+                                        analyzingId={analyzingId}
+                                        aiText={aiAnalysis[rec.id]}
                                     />
                                 ))
                             )}

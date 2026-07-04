@@ -16,8 +16,10 @@ import {
     User,
     Clock,
     StickyNote,
+    Sparkles,
 } from 'lucide-react';
 import { parcelHistoryApi } from '../../services/parcelApi';
+import { aiApi } from '../../services/aiApi';
 import { ParcelHistoryRecord, ParcelHistoryAction, UserRole } from '../../types';
 import GeometryPreview from '../common/GeometryPreview';
 
@@ -129,6 +131,8 @@ const ParcelHistoryPanel: React.FC<ParcelHistoryPanelProps> = ({
     const [error, setError]             = useState<string | null>(null);
     const [expandedId, setExpandedId]   = useState<number | null>(null);
     const [restoringId, setRestoringId] = useState<number | null>(null);
+    const [analyzingId, setAnalyzingId] = useState<number | null>(null);
+    const [aiAnalysis, setAiAnalysis]   = useState<Record<number, string>>({});
     const [restoreMsg, setRestoreMsg]   = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
     const [clearLoading, setClearLoading] = useState(false);
 
@@ -172,6 +176,25 @@ const ParcelHistoryPanel: React.FC<ParcelHistoryPanelProps> = ({
             setRestoreMsg({ type: 'err', text: e.message });
         } finally {
             setRestoringId(null);
+        }
+    };
+
+    const handleAiAnalyze = async (rec: ParcelHistoryRecord) => {
+        const before = rec.snapshot_before ?? (rec.action !== 'CREATE' ? rec.snapshot : null);
+        const after = rec.snapshot_after ?? (rec.action === 'CREATE' ? rec.snapshot : null);
+        setAnalyzingId(rec.id);
+        try {
+            const result = await aiApi.analyzeParcelHistory({
+                action: rec.action,
+                before,
+                after,
+                context: { tableName, parcelGid, soTo, soThua, source: 'editor' }
+            });
+            setAiAnalysis(prev => ({ ...prev, [rec.id]: result.analysis }));
+        } catch (e: any) {
+            setRestoreMsg({ type: 'err', text: e.message });
+        } finally {
+            setAnalyzingId(null);
         }
     };
 
@@ -330,12 +353,29 @@ const ParcelHistoryPanel: React.FC<ParcelHistoryPanelProps> = ({
                                         Phục hồi
                                     </button>
                                 )}
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handleAiAnalyze(rec); }}
+                                    disabled={analyzingId === rec.id}
+                                    title="AI phân tích biến động"
+                                    className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-bold bg-purple-600/20 text-purple-300 hover:bg-purple-600/35 border border-purple-500/30 transition-all disabled:opacity-40"
+                                >
+                                    {analyzingId === rec.id ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
+                                    AI
+                                </button>
                             </div>
 
                             {/* Expanded snapshot diff */}
                             {isExpanded && (
                                 <div className="px-3 pb-3 border-t border-white/5 mt-0.5 pt-2">
                                     <HistorySnapshots rec={rec} />
+                                    {aiAnalysis[rec.id] && (
+                                        <div className="mt-3 rounded-lg border border-purple-500/30 bg-purple-500/10 p-3 text-[11px] text-slate-200 whitespace-pre-wrap leading-relaxed">
+                                            <div className="text-[9px] text-purple-300 font-black uppercase tracking-widest mb-1 flex items-center gap-1">
+                                                <Sparkles size={10} /> AI phân tích
+                                            </div>
+                                            {aiAnalysis[rec.id]}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
