@@ -8,6 +8,7 @@ import {
 import { parcelHistoryApi } from '../../services/parcelApi';
 import { gisService } from '../../services/apiClient';
 import { ParcelHistoryRecord, ParcelHistoryAction } from '../../types';
+import GeometryPreview from '../common/GeometryPreview';
 
 interface ParcelHistoryManagerProps {
     permissions?: string[];
@@ -83,10 +84,12 @@ const HistorySnapshots: React.FC<{ rec: ParcelHistoryRecord }> = ({ rec }) => {
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             <div>
                 <div className="text-[10px] font-black uppercase tracking-widest text-red-300 mb-1">Trước biến động</div>
+                <GeometryPreview geometry={before?.geometry} height={160} stroke="#f87171" fill="rgba(248, 113, 113, 0.16)" className="mb-2" />
                 <SnapshotViewer snapshot={before} />
             </div>
             <div>
                 <div className="text-[10px] font-black uppercase tracking-widest text-emerald-300 mb-1">Sau biến động</div>
+                <GeometryPreview geometry={after?.geometry} height={160} stroke="#34d399" fill="rgba(52, 211, 153, 0.16)" className="mb-2" />
                 <SnapshotViewer snapshot={after} />
             </div>
         </div>

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { parcelHistoryApi } from '../../services/parcelApi';
 import { ParcelHistoryRecord, ParcelHistoryAction, UserRole } from '../../types';
+import GeometryPreview from '../common/GeometryPreview';
 
 interface ParcelHistoryPanelProps {
     /** gid của thửa đang xem, null khi chưa chọn */
@@ -79,10 +80,12 @@ const HistorySnapshots: React.FC<{ rec: ParcelHistoryRecord }> = ({ rec }) => {
         <div className="grid grid-cols-1 gap-3">
             <div>
                 <p className="text-[9px] text-red-300 uppercase font-bold mb-1">Trước biến động</p>
+                <GeometryPreview geometry={before?.geometry} height={120} stroke="#f87171" fill="rgba(248, 113, 113, 0.16)" className="mb-2" />
                 <SnapshotDiff snapshot={before} />
             </div>
             <div>
                 <p className="text-[9px] text-emerald-300 uppercase font-bold mb-1">Sau biến động</p>
+                <GeometryPreview geometry={after?.geometry} height={120} stroke="#34d399" fill="rgba(52, 211, 153, 0.16)" className="mb-2" />
                 <SnapshotDiff snapshot={after} />
             </div>
         </div>
