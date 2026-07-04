@@ -29,7 +29,11 @@ const ensureParcelHistoryTable = (pool) => {
                     SELECT 1 FROM information_schema.columns
                     WHERE table_name = TG_TABLE_NAME AND column_name = 'geometry'
                 ) INTO has_geometry;
-                IF has_madinhdanh AND has_geometry AND NEW.geometry IS NOT NULL THEN
+                IF NOT has_madinhdanh OR NOT has_geometry THEN
+                    RETURN NEW;
+                END IF;
+
+                IF NEW.geometry IS NOT NULL THEN
                     NEW.madinhdanh := ST_GeoHash(ST_Transform(ST_Centroid(NEW.geometry), 4326), 12);
                 END IF;
                 RETURN NEW;
@@ -51,6 +55,8 @@ const ensureParcelHistoryTable = (pool) => {
         `);
         await pool.query(`CREATE INDEX IF NOT EXISTS parcel_history_table_gid_idx  ON parcel_history (table_name, parcel_gid)`);
         await pool.query(`CREATE INDEX IF NOT EXISTS parcel_history_changed_at_idx ON parcel_history (changed_at DESC)`);
+        await pool.query(`DROP TRIGGER IF EXISTS trg_cap_nhat_madinhdanh_insert_parcel_history ON parcel_history`);
+        await pool.query(`DROP TRIGGER IF EXISTS trg_cap_nhat_madinhdanh_update_parcel_history ON parcel_history`);
     })().catch(e => {
         _parcelHistoryTablePromise = null; // reset để lần sau thử lại
         throw e;
