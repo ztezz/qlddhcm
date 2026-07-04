@@ -572,6 +572,9 @@ export const PERMISSIONS_LIST: PermissionDefinition[] = [
     { code: 'EXPORT_LOGS', name: 'Xuất nhật ký hệ thống', group: 'SYSTEM', description: 'Tải log phục vụ kiểm tra hoặc lưu trữ.' },
     { code: 'MANAGE_BACKUP', name: 'Tạo sao lưu SQL', group: 'SYSTEM', description: 'Xuất file sao lưu SQL.' },
     { code: 'RESTORE_BACKUP', name: 'Khôi phục SQL', group: 'SYSTEM', description: 'Khôi phục dữ liệu từ file SQL.' },
+    { code: 'VIEW_PARCEL_HISTORY', name: 'Xem lịch sử biến động thửa đất', group: 'DATA', description: 'Xem toàn bộ lịch sử thay đổi của thửa đất trong CSDL.' },
+    { code: 'RESTORE_PARCEL_HISTORY', name: 'Phục hồi biến động thửa đất', group: 'DATA', description: 'Khôi phục thửa đất về trạng thái cũ từ lịch sử.' },
+    { code: 'DELETE_PARCEL_HISTORY', name: 'Xóa lịch sử biến động', group: 'DATA', description: 'Xóa bản ghi lịch sử biến động của thửa đất.' },
 ];
 
 export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, string[]> = {
@@ -581,7 +584,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, string[]> = {
         'MANAGE_PARCELS', 'CREATE_PARCELS', 'EDIT_PARCELS', 'IMPORT_PARCELS', 'EDIT_MAP', 'SAVE_MAP_TO_DB',
         'VIEW_DASHBOARD', 'EXPORT_REPORT',
         'MANAGE_LAND_PRICES', 'CREATE_LAND_PRICES', 'EDIT_LAND_PRICES',
-        'VIEW_LOGS'
+        'VIEW_LOGS', 'VIEW_PARCEL_HISTORY'
     ],
     [UserRole.VIEWER]: [
         'VIEW_MAP', 'SEARCH_PARCELS', 'PRINT_PARCEL_PDF', 'VIEW_DASHBOARD'
@@ -599,7 +602,8 @@ export const ADMIN_TAB_PERMISSIONS: Record<string, string[]> = {
     DATA_LAYERS: ['MANAGE_LAYERS', 'MANAGE_TABLES', 'MANAGE_BASEMAPS'],
     SETTINGS: ['MANAGE_SYSTEM', 'SAVE_SYSTEM_SETTINGS', 'MANAGE_BACKUP', 'RESTORE_BACKUP'],
     PDF_SETTINGS: ['MANAGE_SYSTEM', 'SAVE_SYSTEM_SETTINGS'],
-    LOGS: ['VIEW_LOGS', 'EXPORT_LOGS']
+    LOGS: ['VIEW_LOGS', 'EXPORT_LOGS'],
+    PARCEL_HISTORY: ['VIEW_PARCEL_HISTORY', 'RESTORE_PARCEL_HISTORY', 'DELETE_PARCEL_HISTORY'],
 };
 
 export const hasAnyPermission = (permissions: string[] = [], required: string | string[]) => {

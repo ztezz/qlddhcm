@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Users, Building2, Map, FileText, Settings, Database, Layers, ShieldCheck, LayoutList, BellRing, Coins, Menu, X, ArrowLeft } from 'lucide-react';
+import { Users, Building2, Map, FileText, Settings, Database, Layers, ShieldCheck, LayoutList, BellRing, Coins, Menu, X, ArrowLeft, History } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface AdminMenuProps {
@@ -32,8 +32,9 @@ const AdminMenu: React.FC<AdminMenuProps> = ({ activeTab, onSelect, systemName, 
         { id: 'SETTINGS', icon: Settings, label: 'Thiết lập hệ thống', highlight: true },
 
         { header: 'Nghiệp vụ Đất đai' },
-        { id: 'PARCEL_MANAGER', icon: Map, label: 'Quản lý Thửa đất', highlight: true },
-        { id: 'PDF_SETTINGS', icon: FileText, label: 'Cấu hình Tài liệu & PDF', highlight: true },
+        { id: 'PARCEL_MANAGER',  icon: Map,     label: 'Quản lý Thửa đất', highlight: true },
+        { id: 'PARCEL_HISTORY',  icon: History, label: 'Lịch sử biến động', highlight: true },
+        { id: 'PDF_SETTINGS',    icon: FileText, label: 'Cấu hình Tài liệu & PDF', highlight: true },
         
         { header: 'Cấu hình Dữ liệu' },
         { id: 'DATA_LAYERS', icon: Layers, label: 'Lớp bản đồ & DB' },

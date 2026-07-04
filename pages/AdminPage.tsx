@@ -16,6 +16,7 @@ import LogViewer from '../components/admin/LogViewer';
 import MenuManager from '../components/admin/MenuManager';
 import NotificationManager from '../components/admin/NotificationManager';
 import PdfSettingsManager from '../components/admin/PdfSettingsManager';
+import ParcelHistoryManager from '../components/admin/ParcelHistoryManager';
 import { User, UserRole } from '../types';
 
 interface AdminPageProps {
@@ -98,6 +99,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ systemName, logoUrl, user }) => {
         }
         switch (activeTab) {
             case 'PARCEL_MANAGER': return <ParcelManager permissions={currentPermissions} />;
+            case 'PARCEL_HISTORY': return <ParcelHistoryManager permissions={currentPermissions} />;
             case 'MENU_MANAGER': return <MenuManager permissions={currentPermissions} />;
             case 'USERS': return <UserManager permissions={currentPermissions} />;
             case 'NOTIFICATIONS': return <NotificationManager permissions={currentPermissions} />;
