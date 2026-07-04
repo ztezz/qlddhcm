@@ -8,6 +8,40 @@ import { fileURLToPath } from 'url';
 import { authenticateToken } from './middleware_auth.js';
 import geohash from 'ngeohash';
 
+// ─── Helper: ghi lịch sử biến động thửa đất ─────────────────────────────────
+const writeParcelHistory = async (pool, tableName, parcelGid, action, snapshot, req, note = null) => {
+    try {
+        const userId   = req.headers['x-user-id']   || req.user?.id   || 'system';
+        const userName = decodeURIComponent(req.headers['x-user-name'] || req.user?.name || 'System');
+        await pool.query(
+            `INSERT INTO parcel_history (table_name, parcel_gid, action, snapshot, changed_by_id, changed_by_name, note)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [tableName, parcelGid, action, JSON.stringify(snapshot), userId, userName, note]
+        );
+    } catch (e) {
+        console.error('[writeParcelHistory] Lỗi ghi lịch sử:', e.message);
+    }
+};
+
+// ─── Helper: lấy snapshot hiện tại của một thửa đất ─────────────────────────
+const getParcelSnapshot = async (pool, tableName, gid) => {
+    try {
+        const colRes = await pool.query(
+            `SELECT column_name FROM information_schema.columns WHERE table_name = $1`, [tableName]
+        );
+        const cols = colRes.rows.map(r => r.column_name);
+        const hasGeom = cols.includes('geometry');
+        const scalarCols = cols.filter(c => c !== 'geometry').map(c => `"${c}"`).join(', ');
+        const geomExpr = hasGeom ? `, ST_AsGeoJSON(ST_Transform(geometry, 4326))::json AS geometry` : '';
+        const result = await pool.query(
+            `SELECT ${scalarCols}${geomExpr} FROM "${tableName}" WHERE gid = $1 LIMIT 1`, [gid]
+        );
+        return result.rows[0] || null;
+    } catch {
+        return null;
+    }
+};
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -1009,7 +1043,13 @@ export default function(pool, logSystemAction) {
 
             const query = `INSERT INTO "${table}" (${fields.join(', ')}) VALUES (${placeholders.join(', ')}) RETURNING gid, ${cols.madinhdanh ? `"${cols.madinhdanh}" as madinhdanh` : `NULL as madinhdanh`}`;
             const result = await pool.query(query, params);
-            res.json({ status: 'ok', gid: result.rows[0].gid, madinhdanh: result.rows[0].madinhdanh });
+            const newGid = result.rows[0].gid;
+
+            // Ghi lịch sử CREATE
+            const snap = await getParcelSnapshot(pool, table, newGid);
+            await writeParcelHistory(pool, table, newGid, 'CREATE', snap, req);
+
+            res.json({ status: 'ok', gid: newGid, madinhdanh: result.rows[0].madinhdanh });
         } catch (e) { res.status(500).json({ error: e.message }); }
     });
 
@@ -1119,9 +1159,16 @@ export default function(pool, logSystemAction) {
 
             if (updates.length === 0) return res.status(400).json({ error: "Không có dữ liệu hợp lệ để cập nhật." });
 
+            // Lấy snapshot TRƯỚC khi cập nhật
+            const snapshotBefore = await getParcelSnapshot(pool, table, gid);
+
             const query = `UPDATE "${table}" SET ${updates.join(', ')} WHERE gid=$${idx}`;
             params.push(gid);
             await pool.query(query, params);
+
+            // Ghi lịch sử UPDATE (snapshot = trạng thái trước khi thay đổi)
+            await writeParcelHistory(pool, table, parseInt(gid, 10), 'UPDATE', snapshotBefore, req);
+
             res.json({ status: 'ok' });
         } catch (e) { res.status(500).json({ error: e.message }); }
     });
@@ -1298,7 +1345,17 @@ export default function(pool, logSystemAction) {
         const { gid } = req.params;
         try {
             const table = await resolveSafeTableName(req.params.table);
+
+            // Lấy snapshot TRƯỚC khi xóa
+            const snapshotBefore = await getParcelSnapshot(pool, table, parseInt(gid, 10));
+
             await pool.query(`DELETE FROM "${table}" WHERE gid=$1`, [gid]);
+
+            // Ghi lịch sử DELETE (giữ nguyên toàn bộ dữ liệu để có thể khôi phục)
+            if (snapshotBefore) {
+                await writeParcelHistory(pool, table, parseInt(gid, 10), 'DELETE', snapshotBefore, req);
+            }
+
             res.json({ status: 'ok' });
         } catch (e) { res.status(500).json({ error: e.message }); }
     });

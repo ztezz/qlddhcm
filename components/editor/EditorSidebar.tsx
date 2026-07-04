@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { ClipboardList, Download, Plus, FileDigit, Tag, Save, RefreshCw, Hash, Trash2, FileUp, FileDown, CloudUpload, List, Edit3, AlertCircle, FileJson, Search } from 'lucide-react';
+import { ClipboardList, Download, Plus, FileDigit, Tag, Save, RefreshCw, Hash, Trash2, FileUp, FileDown, CloudUpload, List, Edit3, AlertCircle, FileJson, Search, History } from 'lucide-react';
 import * as proj from 'ol/proj';
 import proj4 from 'proj4';
+import ParcelHistoryPanel from './ParcelHistoryPanel';
+import { UserRole } from '../../types';
 
 interface EditorSidebarProps {
     coordSystem: 'WGS84' | 'VN2000';
@@ -57,10 +59,17 @@ interface EditorSidebarProps {
     showParcelInfo: boolean;
     setShowParcelInfo: (val: boolean) => void;
     onTopologyCheck: () => void;
+
+    // Lịch sử biến động
+    /** gid của thửa đang chọn trong CSDL (null nếu chưa lưu) */
+    selectedGid:     number | null;
+    userRole:        UserRole | string;
+    /** Callback khi người dùng phục hồi một thửa từ lịch sử */
+    onHistoryRestored: (snapshot: Record<string, any>) => void;
 }
 
 const EditorSidebar: React.FC<EditorSidebarProps> = (props) => {
-    const [activeTab, setActiveTab] = useState<'ATTR' | 'LIST'>('ATTR');
+    const [activeTab, setActiveTab] = useState<'ATTR' | 'LIST' | 'HISTORY'>('ATTR');
 
     const progressPercent = props.batchProgress.total > 0
         ? Math.round((props.batchProgress.current / props.batchProgress.total) * 100)
@@ -94,6 +103,13 @@ const EditorSidebar: React.FC<EditorSidebarProps> = (props) => {
                     className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 border-b-2 transition-all ${activeTab === 'LIST' ? 'text-emerald-400 border-emerald-500 bg-slate-900/50' : 'text-slate-500 border-transparent hover:text-slate-300'}`}
                 >
                     <List size={14}/> Danh sách ({props.featuresList.length})
+                </button>
+                <button
+                    onClick={() => setActiveTab('HISTORY')}
+                    className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 border-b-2 transition-all ${activeTab === 'HISTORY' ? 'text-purple-400 border-purple-500 bg-slate-900/50' : 'text-slate-500 border-transparent hover:text-slate-300'}`}
+                    title="Lịch sử biến động thửa đất"
+                >
+                    <History size={14}/> Lịch sử
                 </button>
             </div>
 
@@ -355,6 +371,20 @@ const EditorSidebar: React.FC<EditorSidebarProps> = (props) => {
                             ))}
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* TAB CONTENT: HISTORY */}
+            {activeTab === 'HISTORY' && (
+                <div className="flex-1 overflow-hidden flex flex-col">
+                    <ParcelHistoryPanel
+                        parcelGid={props.selectedGid}
+                        tableName={props.targetTable}
+                        soTo={props.soTo}
+                        soThua={props.soThua}
+                        userRole={props.userRole}
+                        onRestored={props.onHistoryRestored}
+                    />
                 </div>
             )}
         </div>

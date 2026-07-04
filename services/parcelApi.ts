@@ -1,5 +1,5 @@
 
-import { LandParcel } from '../types';
+import { LandParcel, ParcelHistoryRecord, ParcelHistoryListResponse } from '../types';
 
 const PRODUCTION_API_URL = 'https://thuonghongthai97-qlddhcm.hf.space';
 
@@ -374,5 +374,74 @@ export const parcelApi = {
                 xhr.send(formData);
             });
         }
+    }
+};
+
+// ─── API lịch sử biến động thửa đất ────────────────────────────────────────
+export const parcelHistoryApi = {
+    /**
+     * Lấy lịch sử biến động của một thửa đất cụ thể.
+     */
+    getByGid: async (
+        table: string,
+        gid: number,
+        page = 1,
+        limit = 20
+    ): Promise<ParcelHistoryListResponse> => {
+        const res = await fetch(
+            `${API_URL}/api/parcel-history/${encodeURIComponent(table)}/${gid}?page=${page}&limit=${limit}`,
+            { headers: getAuthHeaders() }
+        );
+        return handleResponse(res);
+    },
+
+    /**
+     * Lấy lịch sử toàn bảng (dành cho admin / báo cáo).
+     */
+    getByTable: async (
+        table: string,
+        opts: { page?: number; limit?: number; action?: string; user?: string } = {}
+    ): Promise<ParcelHistoryListResponse> => {
+        const params = new URLSearchParams();
+        if (opts.page)   params.set('page',   String(opts.page));
+        if (opts.limit)  params.set('limit',  String(opts.limit));
+        if (opts.action) params.set('action', opts.action);
+        if (opts.user)   params.set('user',   opts.user);
+        const res = await fetch(
+            `${API_URL}/api/parcel-history/${encodeURIComponent(table)}?${params}`,
+            { headers: getAuthHeaders() }
+        );
+        return handleResponse(res);
+    },
+
+    /**
+     * Phục hồi thửa đất về một trạng thái lịch sử.
+     * Trả về { status, snapshot } — snapshot là dữ liệu vừa khôi phục.
+     */
+    restore: async (
+        table: string,
+        gid: number,
+        historyId: number
+    ): Promise<{ status: string; snapshot: Record<string, any> }> => {
+        const res = await fetch(
+            `${API_URL}/api/parcel-history/${encodeURIComponent(table)}/${gid}/restore`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                body: JSON.stringify({ history_id: historyId })
+            }
+        );
+        return handleResponse(res);
+    },
+
+    /**
+     * Xóa toàn bộ lịch sử của một thửa (chỉ ADMIN).
+     */
+    clearHistory: async (table: string, gid: number): Promise<{ status: string; deleted: number }> => {
+        const res = await fetch(
+            `${API_URL}/api/parcel-history/${encodeURIComponent(table)}/${gid}/clear`,
+            { method: 'DELETE', headers: getAuthHeaders() }
+        );
+        return handleResponse(res);
     }
 };

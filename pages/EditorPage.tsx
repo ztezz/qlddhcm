@@ -1149,7 +1149,27 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                     setShowSegmentLengths,
                     showParcelInfo,
                     setShowParcelInfo,
-                    onTopologyCheck: handleTopologyCheck
+                    onTopologyCheck: handleTopologyCheck,
+                    // Lịch sử biến động
+                    selectedGid: selectedFeature ? (Number(selectedFeature.get('gid')) > 0 ? Number(selectedFeature.get('gid')) : null) : null,
+                    userRole: user?.role ?? 'VIEWER',
+                    onHistoryRestored: (snapshot) => {
+                        // Reload lại thửa từ snapshot mới nhất lên editSource
+                        if (!selectedFeature || !snapshot?.geometry) return;
+                        const format = new GeoJSON();
+                        const geom = format.readGeometry(snapshot.geometry, {
+                            dataProjection: 'EPSG:4326',
+                            featureProjection: 'EPSG:3857',
+                        });
+                        selectedFeature.setGeometry(geom as any);
+                        if (snapshot.sodoto)  selectedFeature.set('sodoto',  snapshot.sodoto);
+                        if (snapshot.sothua)  selectedFeature.set('sothua',  snapshot.sothua);
+                        if (snapshot.kyhieumucd) selectedFeature.set('loaidat', snapshot.kyhieumucd);
+                        selectedFeature.changed();
+                        updateVerticesFromFeature(selectedFeature);
+                        updateFeatureListState();
+                        setDialog({ isOpen: true, type: 'success', title: 'Phục hồi thành công', message: 'Thửa đất đã được phục hồi về trạng thái đã chọn.' });
+                    }
                 }}
             />
 

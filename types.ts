@@ -198,3 +198,30 @@ export interface RoleConfig {
     role: UserRole;
     permissions: string[];
 }
+
+// ─── Lịch sử biến động thửa đất ────────────────────────────────────────────
+export type ParcelHistoryAction = 'CREATE' | 'UPDATE' | 'DELETE';
+
+export interface ParcelHistoryRecord {
+    id:               number;
+    table_name?:      string;
+    parcel_gid:       number;
+    action:           ParcelHistoryAction;
+    /** Dữ liệu toàn bộ thửa tại thời điểm trước thay đổi (null khi CREATE) */
+    snapshot:         Record<string, any> | null;
+    changed_by_id:    string;
+    changed_by_name:  string;
+    changed_at:       string;   // ISO timestamp
+    note:             string | null;
+    /** Chỉ xuất hiện ở endpoint /history/:table (list toàn bảng) */
+    sodoto?:          string;
+    sothua?:          string;
+}
+
+export interface ParcelHistoryListResponse {
+    data:   ParcelHistoryRecord[];
+    total:  number;
+    page:   number;
+    limit:  number;
+    pages:  number;
+}

@@ -23,6 +23,7 @@ import statsRouter from './routes_stats.js';
 import messageRouter from './routes_messages.js';
 import notificationRouter from './routes_notifications.js';
 import conversionRouter from './routes_conversion.js';
+import parcelHistoryRouter from './routes_parcel_history.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -124,6 +125,23 @@ const initDB = async () => {
             )
         `);
 
+        // Bảng lịch sử biến động thửa đất
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS parcel_history (
+                id          SERIAL PRIMARY KEY,
+                table_name  TEXT NOT NULL,
+                parcel_gid  INTEGER NOT NULL,
+                action      TEXT NOT NULL CHECK (action IN ('CREATE','UPDATE','DELETE')),
+                snapshot    JSONB,
+                changed_by_id   TEXT,
+                changed_by_name TEXT,
+                changed_at  TIMESTAMPTZ DEFAULT NOW(),
+                note        TEXT
+            )
+        `);
+        await pool.query(`CREATE INDEX IF NOT EXISTS parcel_history_table_gid_idx ON parcel_history (table_name, parcel_gid)`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS parcel_history_changed_at_idx ON parcel_history (changed_at DESC)`);
+
         console.log("🚀 Database Schema Verified & Initialized");
 
         try {
@@ -157,6 +175,7 @@ app.use('/api', configRouter(pool, logSystemAction));
 app.use('/api', mapAdminRouter(pool, logSystemAction, dbConfig));
 app.use('/api', spatialRouter(pool, logSystemAction));
 app.use('/api', conversionRouter(pool, logSystemAction));
+app.use('/api/parcel-history', parcelHistoryRouter(pool, logSystemAction));
 app.use('/api/proxy', proxyRouter);
 
 app.get('/', (req, res) => {
