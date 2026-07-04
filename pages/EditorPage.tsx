@@ -516,6 +516,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
 
         setAiTopologyLoading(true);
         try {
+            const topologyFindings: any[] = [];
             const payloadFeatures = features.map((f, index) => {
                 const geom = f.getGeometry() as any;
                 const type = geom?.getType?.() || '';
@@ -539,9 +540,74 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                 };
             });
 
+            // Geometry-level checks: self-intersection and polygon overlap.
+            const turfPolygons = features.map((f, index) => {
+                const geom = f.getGeometry();
+                const label = `Thửa ${f.get('sothua') || '?'} / Tờ ${f.get('sodoto') || '?'} (#${index + 1})`;
+                if (!(geom instanceof Polygon) && !(geom instanceof MultiPolygon)) {
+                    topologyFindings.push({ type: 'INVALID_GEOMETRY_TYPE', severity: 'warning', label, message: 'Geometry không phải Polygon/MultiPolygon.' });
+                    return null;
+                }
+
+                try {
+                    const poly = geom instanceof Polygon
+                        ? turf.polygon(geom.getCoordinates() as any)
+                        : turf.multiPolygon(geom.getCoordinates() as any);
+
+                    try {
+                        const kinks = turf.kinks(poly as any);
+                        if (kinks.features.length > 0) {
+                            topologyFindings.push({
+                                type: 'SELF_INTERSECTION',
+                                severity: 'error',
+                                label,
+                                count: kinks.features.length,
+                                message: `Polygon có ${kinks.features.length} điểm tự cắt.`
+                            });
+                        }
+                    } catch {}
+
+                    return { feature: f, index, label, poly };
+                } catch (e: any) {
+                    topologyFindings.push({ type: 'INVALID_TURF_POLYGON', severity: 'error', label, message: e.message || 'Không chuyển được geometry sang Turf polygon.' });
+                    return null;
+                }
+            }).filter(Boolean) as any[];
+
+            for (let i = 0; i < turfPolygons.length; i++) {
+                for (let j = i + 1; j < turfPolygons.length; j++) {
+                    const a = turfPolygons[i];
+                    const b = turfPolygons[j];
+                    try {
+                        const intersection = turf.intersect(turf.featureCollection([a.poly, b.poly]) as any);
+                        if (intersection) {
+                            const overlapArea = turf.area(intersection as any);
+                            if (overlapArea > 0.05) {
+                                topologyFindings.push({
+                                    type: 'OVERLAP',
+                                    severity: 'error',
+                                    featureA: a.label,
+                                    featureB: b.label,
+                                    area: Math.round(overlapArea * 100) / 100,
+                                    message: `${a.label} chồng lấn ${b.label}, diện tích khoảng ${overlapArea.toFixed(2)} m².`
+                                });
+                            }
+                        }
+                    } catch (e: any) {
+                        topologyFindings.push({
+                            type: 'INTERSECTION_CHECK_FAILED',
+                            severity: 'warning',
+                            featureA: a.label,
+                            featureB: b.label,
+                            message: e.message || 'Không kiểm tra được giao cắt giữa hai thửa.'
+                        });
+                    }
+                }
+            }
+
             const result = await aiApi.analyzeTopologyBatch({
                 features: payloadFeatures,
-                context: { targetTable, featureCount: features.length, source: 'editor' }
+                context: { targetTable, featureCount: features.length, source: 'editor', topologyFindings }
             });
             setDialog({
                 isOpen: true,

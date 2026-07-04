@@ -51,7 +51,7 @@ const fallbackAnalysis = ({ action, before, after }) => {
     return lines.join('\n');
 };
 
-const fallbackTopologyBatchAnalysis = ({ features = [] }) => {
+const fallbackTopologyBatchAnalysis = ({ features = [], topologyFindings = [] }) => {
     const lines = ['## Kết quả AI kiểm tra dữ liệu/topology hàng loạt'];
     const warnings = [];
     const keyMap = new Map();
@@ -74,12 +74,17 @@ const fallbackTopologyBatchAnalysis = ({ features = [] }) => {
     });
 
     lines.push(`- Tổng số thửa kiểm tra: ${features.length}`);
-    lines.push(`- Số cảnh báo phát hiện: ${warnings.length}`);
+    lines.push(`- Số cảnh báo dữ liệu phát hiện: ${warnings.length}`);
+    lines.push(`- Số phát hiện topology/hình học: ${topologyFindings.length}`);
     if (warnings.length > 0) {
         lines.push('\n## Cảnh báo');
         warnings.slice(0, 50).forEach(w => lines.push(`- ${w}`));
     } else {
         lines.push('\nKhông phát hiện lỗi dữ liệu rõ ràng theo các quy tắc kiểm tra cơ bản.');
+    }
+    if (topologyFindings.length > 0) {
+        lines.push('\n## Lỗi topology / hình học');
+        topologyFindings.slice(0, 50).forEach(f => lines.push(`- [${f.severity || 'info'}] ${f.message || `${f.type}: ${f.label || ''}`}`));
     }
     lines.push('\n## Gợi ý tiếp theo');
     lines.push('- Chạy kiểm tra chồng lấn ranh giới trong Editor để phát hiện overlap hình học.');
@@ -487,9 +492,10 @@ export default function aiRouter(pool, logSystemAction) {
                 return res.status(400).json({ error: 'Không có danh sách thửa để kiểm tra.' });
             }
             const limitedFeatures = features.slice(0, 200);
+            const topologyFindings = Array.isArray(context?.topologyFindings) ? context.topologyFindings.slice(0, 200) : [];
             const settings = await getSettingsMap(pool).catch(() => ({}));
-            const fallback = fallbackTopologyBatchAnalysis({ features: limitedFeatures });
-            const prompt = `Bạn tên là Axis, trợ lý AI kiểm tra dữ liệu đất đai/topology. Hãy phân tích danh sách thửa dưới đây bằng tiếng Việt.\n\nYêu cầu:\n- Tóm tắt số lượng thửa và chất lượng dữ liệu.\n- Phát hiện lỗi thuộc tính: thiếu số tờ/số thửa, thiếu loại đất, diện tích bất thường, trùng định danh.\n- Phát hiện rủi ro topology dựa trên metadata: polygon quá ít đỉnh, diện tích bằng 0, hình học thiếu.\n- Không bịa lỗi không có dữ liệu chứng minh.\n- Trả lời Markdown ngắn gọn, có mục Cảnh báo và Gợi ý xử lý.\n\nContext: ${JSON.stringify(context)}\nFeatures: ${JSON.stringify(limitedFeatures)}`;
+            const fallback = fallbackTopologyBatchAnalysis({ features: limitedFeatures, topologyFindings });
+            const prompt = `Bạn tên là Axis, trợ lý AI kiểm tra dữ liệu đất đai/topology. Hãy phân tích danh sách thửa dưới đây bằng tiếng Việt.\n\nYêu cầu:\n- Tóm tắt số lượng thửa và chất lượng dữ liệu.\n- Phát hiện lỗi thuộc tính: thiếu số tờ/số thửa, thiếu loại đất, diện tích bất thường, trùng định danh.\n- Phân tích findings hình học thật: overlap, self-intersection, geometry không hợp lệ, kiểm tra giao cắt lỗi.\n- Không bịa lỗi không có dữ liệu chứng minh.\n- Trả lời Markdown ngắn gọn, có mục Cảnh báo và Gợi ý xử lý.\n\nContext: ${JSON.stringify(context)}\nTopology findings: ${JSON.stringify(topologyFindings)}\nFeatures: ${JSON.stringify(limitedFeatures)}`;
 
             let analysis = '';
             let provider = 'fallback';
