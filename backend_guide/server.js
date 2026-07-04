@@ -73,95 +73,135 @@ const cleanupOldTrash = async () => {
     }
 };
 
-const initDB = async () => { 
+const initDB = async () => {
+    // Helper: chạy từng migration riêng, lỗi chỉ log — không dừng toàn bộ
+    const run = async (label, fn) => {
+        try {
+            await fn();
+        } catch (e) {
+            console.warn(`[initDB] Bỏ qua bước "${label}": ${e.message}`);
+        }
+    };
+
     try {
         await pool.query('SELECT 1');
-
-        await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT`);
-        await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_notification_read_at TIMESTAMPTZ`);
-        await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS users_username_unique ON users (LOWER(username)) WHERE username IS NOT NULL`);
-
-        await pool.query(`ALTER TABLE wms_layers ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'WMS'`);
-        await pool.query(`ALTER TABLE wms_layers ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'STANDARD'`);
-        await pool.query(`ALTER TABLE wms_layers ADD COLUMN IF NOT EXISTS map_scope TEXT DEFAULT 'MAIN'`);
-        await pool.query(`ALTER TABLE wms_layers ADD COLUMN IF NOT EXISTS opacity NUMERIC DEFAULT 1`);
-        await pool.query(`ALTER TABLE wms_layers ADD COLUMN IF NOT EXISTS description TEXT DEFAULT ''`);
-        await pool.query(`ALTER TABLE wms_layers ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0`);
-        await pool.query(`ALTER TABLE basemaps ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0`);
-        await pool.query(`ALTER TABLE basemaps ADD COLUMN IF NOT EXISTS description TEXT DEFAULT ''`);
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS role_permissions (
-                role TEXT PRIMARY KEY,
-                permissions TEXT[] DEFAULT ARRAY[]::TEXT[]
-            )
-        `);
-
-        // Đảm bảo bảng tin nhắn có cột is_deleted và deleted_at
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS internal_messages (
-                id SERIAL PRIMARY KEY,
-                sender_id TEXT REFERENCES users(id) ON DELETE CASCADE,
-                receiver_id TEXT REFERENCES users(id) ON DELETE CASCADE,
-                content TEXT NOT NULL,
-                is_read BOOLEAN DEFAULT FALSE,
-                is_deleted BOOLEAN DEFAULT FALSE,
-                deleted_at TIMESTAMP DEFAULT NULL,
-                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-        await pool.query(`ALTER TABLE internal_messages ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE`);
-        await pool.query(`ALTER TABLE internal_messages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP DEFAULT NULL`);
-
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS menu_items (
-                id TEXT PRIMARY KEY,
-                label TEXT NOT NULL,
-                icon TEXT NOT NULL,
-                roles TEXT[] DEFAULT ARRAY['GUEST','VIEWER','EDITOR','ADMIN']::TEXT[],
-                order_index INTEGER DEFAULT 0,
-                is_active BOOLEAN DEFAULT TRUE,
-                type TEXT DEFAULT 'INTERNAL',
-                url TEXT DEFAULT ''
-            )
-        `);
-
-        // Bảng lịch sử biến động thửa đất
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS parcel_history (
-                id          SERIAL PRIMARY KEY,
-                table_name  TEXT NOT NULL,
-                parcel_gid  INTEGER NOT NULL,
-                action      TEXT NOT NULL CHECK (action IN ('CREATE','UPDATE','DELETE')),
-                snapshot    JSONB,
-                changed_by_id   TEXT,
-                changed_by_name TEXT,
-                changed_at  TIMESTAMPTZ DEFAULT NOW(),
-                note        TEXT
-            )
-        `);
-        await pool.query(`CREATE INDEX IF NOT EXISTS parcel_history_table_gid_idx ON parcel_history (table_name, parcel_gid)`);
-        await pool.query(`CREATE INDEX IF NOT EXISTS parcel_history_changed_at_idx ON parcel_history (changed_at DESC)`);
-
-        console.log("🚀 Database Schema Verified & Initialized");
-
-        try {
-            const syncSummary = await syncRegisteredSpatialTables(pool);
-            if (syncSummary.total > 0) {
-                console.log(`[Startup Sync] Đã đồng bộ ${syncSummary.synced.length}/${syncSummary.total} bảng đã đăng ký.`);
-            }
-            if (syncSummary.failed.length > 0) {
-                console.warn('[Startup Sync] Một số bảng đồng bộ thất bại:', syncSummary.failed);
-            }
-        } catch (syncError) {
-            console.error('[Startup Sync] Lỗi đồng bộ bảng đã đăng ký:', syncError.message);
-        }
-
-        cleanupOldTrash();
-        setInterval(cleanupOldTrash, 86400000);
-
-    } catch (e) { 
-        console.error("❌ Init DB Critical Error:", e.message); 
+    } catch (e) {
+        console.error('❌ Init DB Critical Error: Không kết nối được DB:', e.message);
+        return;
     }
+
+    // Tạo lại function cap_nhat_madinhdanh_phuc_hop trước tiên
+    // Event trigger trong DB tự động gắn trigger này vào mọi CREATE TABLE mới.
+    // Nếu function bị mất, mọi CREATE TABLE sẽ thất bại.
+    await run('create function cap_nhat_madinhdanh_phuc_hop', () => pool.query(`
+        CREATE OR REPLACE FUNCTION cap_nhat_madinhdanh_phuc_hop()
+        RETURNS TRIGGER LANGUAGE plpgsql AS $$
+        DECLARE
+            has_madinhdanh BOOLEAN;
+            has_geometry   BOOLEAN;
+        BEGIN
+            -- Kiểm tra bảng có cột madinhdanh và geometry không
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = TG_TABLE_NAME AND column_name = 'madinhdanh'
+            ) INTO has_madinhdanh;
+
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = TG_TABLE_NAME AND column_name = 'geometry'
+            ) INTO has_geometry;
+
+            -- Chỉ cập nhật geohash khi bảng có cả 2 cột và geometry không null
+            IF has_madinhdanh AND has_geometry AND NEW.geometry IS NOT NULL THEN
+                NEW.madinhdanh := ST_GeoHash(ST_Transform(ST_Centroid(NEW.geometry), 4326), 12);
+            END IF;
+
+            RETURN NEW;
+        END;
+        $$
+    `));
+
+    await run('users: add username', () => pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT`));
+    await run('users: add last_notification_read_at', () => pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_notification_read_at TIMESTAMPTZ`));
+    await run('users: unique index username', () => pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS users_username_unique ON users (LOWER(username)) WHERE username IS NOT NULL`));
+
+    await run('wms_layers: add type', () => pool.query(`ALTER TABLE wms_layers ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'WMS'`));
+    await run('wms_layers: add category', () => pool.query(`ALTER TABLE wms_layers ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'STANDARD'`));
+    await run('wms_layers: add map_scope', () => pool.query(`ALTER TABLE wms_layers ADD COLUMN IF NOT EXISTS map_scope TEXT DEFAULT 'MAIN'`));
+    await run('wms_layers: add opacity', () => pool.query(`ALTER TABLE wms_layers ADD COLUMN IF NOT EXISTS opacity NUMERIC DEFAULT 1`));
+    await run('wms_layers: add description', () => pool.query(`ALTER TABLE wms_layers ADD COLUMN IF NOT EXISTS description TEXT DEFAULT ''`));
+    await run('wms_layers: add sort_order', () => pool.query(`ALTER TABLE wms_layers ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0`));
+    await run('basemaps: add sort_order', () => pool.query(`ALTER TABLE basemaps ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0`));
+    await run('basemaps: add description', () => pool.query(`ALTER TABLE basemaps ADD COLUMN IF NOT EXISTS description TEXT DEFAULT ''`));
+
+    await run('create role_permissions', () => pool.query(`
+        CREATE TABLE IF NOT EXISTS role_permissions (
+            role TEXT PRIMARY KEY,
+            permissions TEXT[] DEFAULT ARRAY[]::TEXT[]
+        )
+    `));
+
+    await run('create internal_messages', () => pool.query(`
+        CREATE TABLE IF NOT EXISTS internal_messages (
+            id SERIAL PRIMARY KEY,
+            sender_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+            receiver_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+            content TEXT NOT NULL,
+            is_read BOOLEAN DEFAULT FALSE,
+            is_deleted BOOLEAN DEFAULT FALSE,
+            deleted_at TIMESTAMP DEFAULT NULL,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    `));
+    await run('internal_messages: add is_deleted', () => pool.query(`ALTER TABLE internal_messages ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE`));
+    await run('internal_messages: add deleted_at', () => pool.query(`ALTER TABLE internal_messages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP DEFAULT NULL`));
+
+    await run('create menu_items', () => pool.query(`
+        CREATE TABLE IF NOT EXISTS menu_items (
+            id TEXT PRIMARY KEY,
+            label TEXT NOT NULL,
+            icon TEXT NOT NULL,
+            roles TEXT[] DEFAULT ARRAY['GUEST','VIEWER','EDITOR','ADMIN']::TEXT[],
+            order_index INTEGER DEFAULT 0,
+            is_active BOOLEAN DEFAULT TRUE,
+            type TEXT DEFAULT 'INTERNAL',
+            url TEXT DEFAULT ''
+        )
+    `));
+
+    // Bảng lịch sử biến động thửa đất
+    await run('create parcel_history', () => pool.query(`
+        CREATE TABLE IF NOT EXISTS parcel_history (
+            id              SERIAL PRIMARY KEY,
+            table_name      TEXT NOT NULL,
+            parcel_gid      INTEGER NOT NULL,
+            action          TEXT NOT NULL CHECK (action IN ('CREATE','UPDATE','DELETE')),
+            snapshot        JSONB,
+            changed_by_id   TEXT,
+            changed_by_name TEXT,
+            changed_at      TIMESTAMPTZ DEFAULT NOW(),
+            note            TEXT
+        )
+    `));
+    await run('parcel_history: index table_gid', () => pool.query(`CREATE INDEX IF NOT EXISTS parcel_history_table_gid_idx  ON parcel_history (table_name, parcel_gid)`));
+    await run('parcel_history: index changed_at', () => pool.query(`CREATE INDEX IF NOT EXISTS parcel_history_changed_at_idx ON parcel_history (changed_at DESC)`));
+
+    console.log('🚀 Database Schema Verified & Initialized');
+
+    try {
+        const syncSummary = await syncRegisteredSpatialTables(pool);
+        if (syncSummary.total > 0) {
+            console.log(`[Startup Sync] Đã đồng bộ ${syncSummary.synced.length}/${syncSummary.total} bảng đã đăng ký.`);
+        }
+        if (syncSummary.failed.length > 0) {
+            console.warn('[Startup Sync] Một số bảng đồng bộ thất bại:', syncSummary.failed);
+        }
+    } catch (syncError) {
+        console.error('[Startup Sync] Lỗi đồng bộ bảng đã đăng ký:', syncError.message);
+    }
+
+    cleanupOldTrash();
+    setInterval(cleanupOldTrash, 86400000);
 };
 initDB();
 

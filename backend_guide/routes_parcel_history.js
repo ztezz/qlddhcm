@@ -17,6 +17,60 @@ const TABLE_NAME_REGEX = /^[a-z0-9_]+$/;
 export default function parcelHistoryRouter(pool, logSystemAction) {
     const router = express.Router();
 
+    // ─── Tự động tạo bảng parcel_history nếu chưa tồn tại (Promise cache) ────
+    let _tablePromise = null;
+    const ensureTable = () => {
+        if (_tablePromise) return _tablePromise;
+        _tablePromise = (async () => {
+            // Đảm bảo function trigger tồn tại trước khi CREATE TABLE
+            // (event trigger trong DB tự gắn trigger này vào mọi bảng mới)
+            await pool.query(`
+                CREATE OR REPLACE FUNCTION cap_nhat_madinhdanh_phuc_hop()
+                RETURNS TRIGGER LANGUAGE plpgsql AS $$
+                DECLARE
+                    has_madinhdanh BOOLEAN;
+                    has_geometry   BOOLEAN;
+                BEGIN
+                    SELECT EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_name = TG_TABLE_NAME AND column_name = 'madinhdanh'
+                    ) INTO has_madinhdanh;
+                    SELECT EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_name = TG_TABLE_NAME AND column_name = 'geometry'
+                    ) INTO has_geometry;
+                    IF has_madinhdanh AND has_geometry AND NEW.geometry IS NOT NULL THEN
+                        NEW.madinhdanh := ST_GeoHash(ST_Transform(ST_Centroid(NEW.geometry), 4326), 12);
+                    END IF;
+                    RETURN NEW;
+                END;
+                $$
+            `);
+            await pool.query(`
+                CREATE TABLE IF NOT EXISTS parcel_history (
+                    id              SERIAL PRIMARY KEY,
+                    table_name      TEXT NOT NULL,
+                    parcel_gid      INTEGER NOT NULL,
+                    action          TEXT NOT NULL CHECK (action IN ('CREATE','UPDATE','DELETE')),
+                    snapshot        JSONB,
+                    changed_by_id   TEXT,
+                    changed_by_name TEXT,
+                    changed_at      TIMESTAMPTZ DEFAULT NOW(),
+                    note            TEXT
+                )
+            `);
+            await pool.query(`CREATE INDEX IF NOT EXISTS parcel_history_table_gid_idx  ON parcel_history (table_name, parcel_gid)`);
+            await pool.query(`CREATE INDEX IF NOT EXISTS parcel_history_changed_at_idx ON parcel_history (changed_at DESC)`);
+        })().catch(e => {
+            _tablePromise = null; // reset để lần sau thử lại
+            throw e;
+        });
+        return _tablePromise;
+    };
+
+    // Kích hoạt tạo bảng ngay khi router mount — không block
+    ensureTable().catch(e => console.error('[parcel_history] ensureTable error:', e.message));
+
     // ─── helper: validate table in registry ──────────────────────────────────
     const resolveSafeTableName = async (rawName) => {
         const table = (rawName || '').toLowerCase().trim();
@@ -69,6 +123,7 @@ export default function parcelHistoryRouter(pool, logSystemAction) {
     // ─────────────────────────────────────────────────────────────────────────
     router.get('/:table/:gid', authenticateToken, async (req, res) => {
         try {
+            await ensureTable();
             const table = await resolveSafeTableName(req.params.table);
             const gid = parseInt(req.params.gid, 10);
             if (!Number.isFinite(gid)) return res.status(400).json({ error: 'gid không hợp lệ.' });
@@ -111,6 +166,7 @@ export default function parcelHistoryRouter(pool, logSystemAction) {
     // ─────────────────────────────────────────────────────────────────────────
     router.get('/:table', authenticateToken, async (req, res) => {
         try {
+            await ensureTable();
             const table = await resolveSafeTableName(req.params.table);
             const page   = Math.max(1, parseInt(req.query.page   || '1',  10));
             const limit  = Math.min(200, Math.max(1, parseInt(req.query.limit || '50', 10)));
@@ -170,6 +226,7 @@ export default function parcelHistoryRouter(pool, logSystemAction) {
         if (!history_id) return res.status(400).json({ error: 'Thiếu history_id.' });
 
         try {
+            await ensureTable();
             const table = await resolveSafeTableName(req.params.table);
             const gid   = parseInt(req.params.gid, 10);
             if (!Number.isFinite(gid)) return res.status(400).json({ error: 'gid không hợp lệ.' });
@@ -260,6 +317,7 @@ export default function parcelHistoryRouter(pool, logSystemAction) {
         if (role !== 'ADMIN') return res.status(403).json({ error: 'Chỉ quản trị viên mới có thể xóa lịch sử.' });
 
         try {
+            await ensureTable();
             const table = await resolveSafeTableName(req.params.table);
             const gid   = parseInt(req.params.gid, 10);
             if (!Number.isFinite(gid)) return res.status(400).json({ error: 'gid không hợp lệ.' });

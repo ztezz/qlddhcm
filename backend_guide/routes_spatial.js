@@ -8,9 +8,60 @@ import { fileURLToPath } from 'url';
 import { authenticateToken } from './middleware_auth.js';
 import geohash from 'ngeohash';
 
+// ─── Helper: đảm bảo bảng parcel_history tồn tại ────────────────────────────
+let _parcelHistoryTablePromise = null;
+const ensureParcelHistoryTable = (pool) => {
+    if (_parcelHistoryTablePromise) return _parcelHistoryTablePromise;
+    _parcelHistoryTablePromise = (async () => {
+        // Tạo function trigger trước (event trigger DB gắn nó vào mọi CREATE TABLE mới)
+        await pool.query(`
+            CREATE OR REPLACE FUNCTION cap_nhat_madinhdanh_phuc_hop()
+            RETURNS TRIGGER LANGUAGE plpgsql AS $$
+            DECLARE
+                has_madinhdanh BOOLEAN;
+                has_geometry   BOOLEAN;
+            BEGIN
+                SELECT EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = TG_TABLE_NAME AND column_name = 'madinhdanh'
+                ) INTO has_madinhdanh;
+                SELECT EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = TG_TABLE_NAME AND column_name = 'geometry'
+                ) INTO has_geometry;
+                IF has_madinhdanh AND has_geometry AND NEW.geometry IS NOT NULL THEN
+                    NEW.madinhdanh := ST_GeoHash(ST_Transform(ST_Centroid(NEW.geometry), 4326), 12);
+                END IF;
+                RETURN NEW;
+            END;
+            $$
+        `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS parcel_history (
+                id              SERIAL PRIMARY KEY,
+                table_name      TEXT NOT NULL,
+                parcel_gid      INTEGER NOT NULL,
+                action          TEXT NOT NULL CHECK (action IN ('CREATE','UPDATE','DELETE')),
+                snapshot        JSONB,
+                changed_by_id   TEXT,
+                changed_by_name TEXT,
+                changed_at      TIMESTAMPTZ DEFAULT NOW(),
+                note            TEXT
+            )
+        `);
+        await pool.query(`CREATE INDEX IF NOT EXISTS parcel_history_table_gid_idx  ON parcel_history (table_name, parcel_gid)`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS parcel_history_changed_at_idx ON parcel_history (changed_at DESC)`);
+    })().catch(e => {
+        _parcelHistoryTablePromise = null; // reset để lần sau thử lại
+        throw e;
+    });
+    return _parcelHistoryTablePromise;
+};
+
 // ─── Helper: ghi lịch sử biến động thửa đất ─────────────────────────────────
 const writeParcelHistory = async (pool, tableName, parcelGid, action, snapshot, req, note = null) => {
     try {
+        await ensureParcelHistoryTable(pool);
         const userId   = req.headers['x-user-id']   || req.user?.id   || 'system';
         const userName = decodeURIComponent(req.headers['x-user-name'] || req.user?.name || 'System');
         await pool.query(
