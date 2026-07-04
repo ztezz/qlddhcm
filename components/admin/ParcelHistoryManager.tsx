@@ -49,7 +49,9 @@ const formatDate = (iso: string) =>
     });
 
 // ─── Snapshot viewer nhỏ gọn ─────────────────────────────────────────────────
-const SnapshotViewer: React.FC<{ snapshot: Record<string, any> | null }> = ({ snapshot }) => {
+const valueChanged = (a: any, b: any) => JSON.stringify(a ?? null) !== JSON.stringify(b ?? null);
+
+const SnapshotViewer: React.FC<{ snapshot: Record<string, any> | null; compareSnapshot?: Record<string, any> | null }> = ({ snapshot, compareSnapshot }) => {
     if (!snapshot) return <p className="text-xs text-gray-500 italic">Không có dữ liệu snapshot.</p>;
 
     const SKIP = ['gid', 'created_at', 'updated_at', 'madinhdanh'];
@@ -59,12 +61,15 @@ const SnapshotViewer: React.FC<{ snapshot: Record<string, any> | null }> = ({ sn
     return (
         <div className="bg-gray-900 rounded-lg p-3 border border-gray-700/50 mt-2 space-y-1.5">
             <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                {entries.map(([k, v]) => (
-                    <div key={k} className="flex gap-1.5 items-start min-w-0">
+                {entries.map(([k, v]) => {
+                    const changed = compareSnapshot ? valueChanged(v, compareSnapshot[k]) : false;
+                    return (
+                    <div key={k} className={`flex gap-1.5 items-start min-w-0 rounded px-1 py-0.5 ${changed ? 'bg-amber-500/10 ring-1 ring-amber-500/20' : ''}`}>
                         <span className="text-[10px] text-gray-500 uppercase shrink-0 min-w-[60px]">{k}:</span>
-                        <span className="text-[11px] text-gray-200 font-mono break-all">{String(v)}</span>
+                        <span className={`text-[11px] font-mono break-all ${changed ? 'text-amber-200' : 'text-gray-200'}`}>{String(v)}</span>
                     </div>
-                ))}
+                    );
+                })}
             </div>
             {hasGeometry && (
                 <div className="flex items-center gap-1.5 pt-1 border-t border-gray-700/50">
@@ -81,17 +86,35 @@ const HistorySnapshots: React.FC<{ rec: ParcelHistoryRecord }> = ({ rec }) => {
     const after = rec.snapshot_after ?? (rec.action === 'CREATE' ? rec.snapshot : null);
 
     return (
+        <div className="space-y-4">
+        <div>
+            <div className="text-[10px] font-black uppercase tracking-widest text-purple-300 mb-1">Overlay trước/sau</div>
+            <GeometryPreview
+                geometry={after?.geometry}
+                compareGeometry={before?.geometry}
+                height={180}
+                stroke="#34d399"
+                fill="rgba(52, 211, 153, 0.14)"
+                compareStroke="#f87171"
+                compareFill="rgba(248, 113, 113, 0.12)"
+            />
+            <div className="flex gap-4 text-[10px] text-gray-500 mt-2">
+                <span><span className="inline-block w-2 h-2 rounded-full bg-red-400 mr-1"/>Trước biến động</span>
+                <span><span className="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-1"/>Sau biến động</span>
+            </div>
+        </div>
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             <div>
                 <div className="text-[10px] font-black uppercase tracking-widest text-red-300 mb-1">Trước biến động</div>
                 <GeometryPreview geometry={before?.geometry} height={160} stroke="#f87171" fill="rgba(248, 113, 113, 0.16)" className="mb-2" />
-                <SnapshotViewer snapshot={before} />
+                <SnapshotViewer snapshot={before} compareSnapshot={after} />
             </div>
             <div>
                 <div className="text-[10px] font-black uppercase tracking-widest text-emerald-300 mb-1">Sau biến động</div>
                 <GeometryPreview geometry={after?.geometry} height={160} stroke="#34d399" fill="rgba(52, 211, 153, 0.16)" className="mb-2" />
-                <SnapshotViewer snapshot={after} />
+                <SnapshotViewer snapshot={after} compareSnapshot={before} />
             </div>
+        </div>
         </div>
     );
 };
@@ -227,6 +250,10 @@ const ParcelHistoryManager: React.FC<ParcelHistoryManagerProps> = ({ permissions
     const [selectedTable, setSelectedTable] = useState('');
     const [filterAction, setFilterAction]   = useState('');
     const [filterUser, setFilterUser]       = useState('');
+    const [filterSoTo, setFilterSoTo]       = useState('');
+    const [filterSoThua, setFilterSoThua]   = useState('');
+    const [filterFrom, setFilterFrom]       = useState('');
+    const [filterTo, setFilterTo]           = useState('');
     const [page, setPage]                   = useState(1);
     const LIMIT = 30;
 
@@ -261,6 +288,10 @@ const ParcelHistoryManager: React.FC<ParcelHistoryManagerProps> = ({ permissions
                 limit: LIMIT,
                 action: filterAction || undefined,
                 user:   filterUser   || undefined,
+                sodoto: filterSoTo    || undefined,
+                sothua: filterSoThua  || undefined,
+                from:   filterFrom    || undefined,
+                to:     filterTo      || undefined,
             });
             setRecords(res.data);
             setTotal(res.total);
@@ -269,12 +300,12 @@ const ParcelHistoryManager: React.FC<ParcelHistoryManagerProps> = ({ permissions
         } finally {
             setLoading(false);
         }
-    }, [selectedTable, page, filterAction, filterUser]);
+    }, [selectedTable, page, filterAction, filterUser, filterSoTo, filterSoThua, filterFrom, filterTo]);
 
     useEffect(() => { load(); }, [load]);
 
     // Reset page khi thay filter
-    useEffect(() => { setPage(1); }, [selectedTable, filterAction, filterUser]);
+    useEffect(() => { setPage(1); }, [selectedTable, filterAction, filterUser, filterSoTo, filterSoThua, filterFrom, filterTo]);
 
     const showToast = (type: 'ok' | 'err', text: string) => {
         setToast({ type, text });
@@ -318,22 +349,49 @@ const ParcelHistoryManager: React.FC<ParcelHistoryManagerProps> = ({ permissions
     };
 
     // ── Export CSV ──────────────────────────────────────────────────────────
-    const handleExportCsv = () => {
-        if (records.length === 0) return;
+    const buildCsv = (items: ParcelHistoryRecord[]) => {
         const header = ['ID', 'Bảng', 'GID', 'Hành động', 'Số tờ', 'Số thửa', 'Người thực hiện', 'Thời gian', 'Ghi chú'];
-        const rows = records.map(r => [
+        const rows = items.map(r => [
             r.id, r.table_name, r.parcel_gid, r.action,
             r.sodoto ?? '', r.sothua ?? '',
             r.changed_by_name, formatDate(r.changed_at), r.note ?? ''
         ]);
-        const csv = [header, ...rows].map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+        return [header, ...rows].map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    };
+
+    const downloadCsv = (csv: string, suffix: string) => {
         const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
         const url  = URL.createObjectURL(blob);
         const a    = document.createElement('a');
         a.href     = url;
-        a.download = `lich_su_bien_dong_${selectedTable}_${Date.now()}.csv`;
+        a.download = `lich_su_bien_dong_${selectedTable}_${suffix}_${Date.now()}.csv`;
         a.click();
         URL.revokeObjectURL(url);
+    };
+
+    const handleExportCsv = () => {
+        if (records.length === 0) return;
+        downloadCsv(buildCsv(records), 'trang_hien_tai');
+    };
+
+    const handleExportReport = async () => {
+        if (!selectedTable) return;
+        try {
+            const res = await parcelHistoryApi.getByTable(selectedTable, {
+                page: 1,
+                limit: 200,
+                action: filterAction || undefined,
+                user: filterUser || undefined,
+                sodoto: filterSoTo || undefined,
+                sothua: filterSoThua || undefined,
+                from: filterFrom || undefined,
+                to: filterTo || undefined,
+            });
+            downloadCsv(buildCsv(res.data), 'bao_cao_theo_bo_loc');
+            showToast('ok', `Đã xuất ${res.data.length}/${res.total} bản ghi theo bộ lọc hiện tại.`);
+        } catch (e: any) {
+            showToast('err', e.message);
+        }
     };
 
     // ── Thống kê nhanh ──────────────────────────────────────────────────────
@@ -363,7 +421,14 @@ const ParcelHistoryManager: React.FC<ParcelHistoryManagerProps> = ({ permissions
                         disabled={records.length === 0}
                         className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-sm text-gray-200 border border-gray-600 transition-colors disabled:opacity-40"
                     >
-                        <Download size={15} /> Xuất CSV
+                        <Download size={15} /> Xuất trang
+                    </button>
+                    <button
+                        onClick={handleExportReport}
+                        disabled={!selectedTable}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-700 hover:bg-purple-600 text-sm text-white border border-purple-600 transition-colors disabled:opacity-40"
+                    >
+                        <Download size={15} /> Báo cáo theo lọc
                     </button>
                     <button
                         onClick={load}
@@ -394,7 +459,7 @@ const ParcelHistoryManager: React.FC<ParcelHistoryManagerProps> = ({ permissions
                     <Filter size={15} className="text-gray-400" />
                     <h3 className="text-sm font-bold text-gray-300 uppercase tracking-wider">Bộ lọc</h3>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     {/* Bảng dữ liệu */}
                     <div className="space-y-1.5">
                         <label className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Bảng dữ liệu</label>
@@ -439,6 +504,48 @@ const ParcelHistoryManager: React.FC<ParcelHistoryManagerProps> = ({ permissions
                                 className="w-full bg-gray-900 border border-gray-700 rounded-xl pl-9 pr-3 py-2.5 text-sm text-white outline-none focus:border-blue-500 placeholder-gray-600 transition-colors"
                             />
                         </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Số tờ</label>
+                        <input
+                            type="text"
+                            value={filterSoTo}
+                            onChange={e => setFilterSoTo(e.target.value)}
+                            placeholder="VD: 12"
+                            className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-blue-500 placeholder-gray-600 transition-colors"
+                        />
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Số thửa</label>
+                        <input
+                            type="text"
+                            value={filterSoThua}
+                            onChange={e => setFilterSoThua(e.target.value)}
+                            placeholder="VD: 55"
+                            className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-blue-500 placeholder-gray-600 transition-colors"
+                        />
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Từ ngày</label>
+                        <input
+                            type="date"
+                            value={filterFrom}
+                            onChange={e => setFilterFrom(e.target.value)}
+                            className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-blue-500 transition-colors"
+                        />
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Đến ngày</label>
+                        <input
+                            type="date"
+                            value={filterTo}
+                            onChange={e => setFilterTo(e.target.value)}
+                            className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-blue-500 transition-colors"
+                        />
                     </div>
                 </div>
             </div>

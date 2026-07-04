@@ -92,6 +92,19 @@ export default function parcelHistoryRouter(pool, logSystemAction) {
         return table;
     };
 
+    const hasPermission = async (req, code) => {
+        const role = String(req.user?.role || req.headers['x-user-role'] || '').toUpperCase();
+        if (role === 'ADMIN') return true;
+        if (!role) return false;
+        try {
+            const r = await pool.query(`SELECT permissions FROM role_permissions WHERE role = $1 LIMIT 1`, [role]);
+            const permissions = r.rows[0]?.permissions || [];
+            return Array.isArray(permissions) && permissions.includes(code);
+        } catch {
+            return false;
+        }
+    };
+
     // ─── helper: lấy snapshot hiện tại của một thửa ──────────────────────────
     const getCurrentSnapshot = async (table, gid) => {
         const colRes = await pool.query(
@@ -194,6 +207,10 @@ export default function parcelHistoryRouter(pool, logSystemAction) {
             const offset = (page - 1) * limit;
             const action = req.query.action || null; // 'CREATE'|'UPDATE'|'DELETE'
             const user   = req.query.user   || null; // filter by changed_by_name ILIKE
+            const sodoto = req.query.sodoto || null;
+            const sothua = req.query.sothua || null;
+            const from   = req.query.from   || null;
+            const to     = req.query.to     || null;
 
             const conditions = ['table_name = $1'];
             const params = [table];
@@ -206,6 +223,22 @@ export default function parcelHistoryRouter(pool, logSystemAction) {
             if (user) {
                 conditions.push(`changed_by_name ILIKE $${idx++}`);
                 params.push(`%${user}%`);
+            }
+            if (sodoto) {
+                conditions.push(`COALESCE(snapshot_after->>'sodoto', snapshot_before->>'sodoto', snapshot->>'sodoto') ILIKE $${idx++}`);
+                params.push(`%${sodoto}%`);
+            }
+            if (sothua) {
+                conditions.push(`COALESCE(snapshot_after->>'sothua', snapshot_before->>'sothua', snapshot->>'sothua') ILIKE $${idx++}`);
+                params.push(`%${sothua}%`);
+            }
+            if (from) {
+                conditions.push(`changed_at >= $${idx++}`);
+                params.push(from);
+            }
+            if (to) {
+                conditions.push(`changed_at < ($${idx++}::date + INTERVAL '1 day')`);
+                params.push(to);
             }
 
             const where = `WHERE ${conditions.join(' AND ')}`;
@@ -249,6 +282,9 @@ export default function parcelHistoryRouter(pool, logSystemAction) {
 
         try {
             await ensureTable();
+            if (!(await hasPermission(req, 'RESTORE_PARCEL_HISTORY'))) {
+                return res.status(403).json({ error: 'Bạn không có quyền phục hồi lịch sử biến động.' });
+            }
             const table = await resolveSafeTableName(req.params.table);
             const gid   = parseInt(req.params.gid, 10);
             if (!Number.isFinite(gid)) return res.status(400).json({ error: 'gid không hợp lệ.' });
@@ -336,11 +372,11 @@ export default function parcelHistoryRouter(pool, logSystemAction) {
     // Xóa toàn bộ lịch sử của một thửa (chỉ ADMIN)
     // ─────────────────────────────────────────────────────────────────────────
     router.delete('/:table/:gid/clear', authenticateToken, async (req, res) => {
-        const role = (req.headers['x-user-role'] || '').toUpperCase();
-        if (role !== 'ADMIN') return res.status(403).json({ error: 'Chỉ quản trị viên mới có thể xóa lịch sử.' });
-
         try {
             await ensureTable();
+            if (!(await hasPermission(req, 'DELETE_PARCEL_HISTORY'))) {
+                return res.status(403).json({ error: 'Bạn không có quyền xóa lịch sử biến động.' });
+            }
             const table = await resolveSafeTableName(req.params.table);
             const gid   = parseInt(req.params.gid, 10);
             if (!Number.isFinite(gid)) return res.status(400).json({ error: 'gid không hợp lệ.' });

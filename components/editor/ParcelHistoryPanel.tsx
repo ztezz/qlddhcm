@@ -46,7 +46,9 @@ const formatDate = (iso: string) => {
     return d.toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 };
 
-const SnapshotDiff: React.FC<{ snapshot: Record<string, any> | null }> = ({ snapshot }) => {
+const valueChanged = (a: any, b: any) => JSON.stringify(a ?? null) !== JSON.stringify(b ?? null);
+
+const SnapshotDiff: React.FC<{ snapshot: Record<string, any> | null; compareSnapshot?: Record<string, any> | null }> = ({ snapshot, compareSnapshot }) => {
     if (!snapshot) return <p className="text-[10px] text-slate-500 italic">Không có dữ liệu snapshot.</p>;
 
     const SKIP = ['gid', 'created_at', 'updated_at', 'geometry', 'madinhdanh'];
@@ -56,12 +58,15 @@ const SnapshotDiff: React.FC<{ snapshot: Record<string, any> | null }> = ({ snap
 
     return (
         <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-2">
-            {entries.map(([k, v]) => (
-                <div key={k}>
+            {entries.map(([k, v]) => {
+                const changed = compareSnapshot ? valueChanged(v, compareSnapshot[k]) : false;
+                return (
+                <div key={k} className={changed ? 'rounded bg-amber-500/10 px-1 py-0.5 ring-1 ring-amber-500/20' : ''}>
                     <span className="text-[9px] text-slate-500 uppercase">{k}:</span>
-                    <span className="text-[10px] text-slate-200 ml-1 font-mono">{String(v)}</span>
+                    <span className={`text-[10px] ml-1 font-mono ${changed ? 'text-amber-200' : 'text-slate-200'}`}>{String(v)}</span>
                 </div>
-            ))}
+                );
+            })}
             {snapshot.geometry && (
                 <div className="col-span-2">
                     <span className="text-[9px] text-slate-500 uppercase">geometry:</span>
@@ -79,14 +84,31 @@ const HistorySnapshots: React.FC<{ rec: ParcelHistoryRecord }> = ({ rec }) => {
     return (
         <div className="grid grid-cols-1 gap-3">
             <div>
+                <p className="text-[9px] text-purple-300 uppercase font-bold mb-1">Overlay trước/sau</p>
+                <GeometryPreview
+                    geometry={after?.geometry}
+                    compareGeometry={before?.geometry}
+                    height={130}
+                    stroke="#34d399"
+                    fill="rgba(52, 211, 153, 0.14)"
+                    compareStroke="#f87171"
+                    compareFill="rgba(248, 113, 113, 0.12)"
+                    className="mb-2"
+                />
+                <div className="flex gap-3 text-[9px] text-slate-500 mb-1">
+                    <span><span className="inline-block w-2 h-2 rounded-full bg-red-400 mr-1"/>Trước</span>
+                    <span><span className="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-1"/>Sau</span>
+                </div>
+            </div>
+            <div>
                 <p className="text-[9px] text-red-300 uppercase font-bold mb-1">Trước biến động</p>
                 <GeometryPreview geometry={before?.geometry} height={120} stroke="#f87171" fill="rgba(248, 113, 113, 0.16)" className="mb-2" />
-                <SnapshotDiff snapshot={before} />
+                <SnapshotDiff snapshot={before} compareSnapshot={after} />
             </div>
             <div>
                 <p className="text-[9px] text-emerald-300 uppercase font-bold mb-1">Sau biến động</p>
                 <GeometryPreview geometry={after?.geometry} height={120} stroke="#34d399" fill="rgba(52, 211, 153, 0.16)" className="mb-2" />
-                <SnapshotDiff snapshot={after} />
+                <SnapshotDiff snapshot={after} compareSnapshot={before} />
             </div>
         </div>
     );

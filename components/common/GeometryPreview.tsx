@@ -2,9 +2,12 @@ import React from 'react';
 
 interface GeometryPreviewProps {
     geometry?: any;
+    compareGeometry?: any;
     height?: number;
     stroke?: string;
     fill?: string;
+    compareStroke?: string;
+    compareFill?: string;
     className?: string;
 }
 
@@ -17,15 +20,20 @@ const getRings = (geometry: any): number[][][] => {
 
 const GeometryPreview: React.FC<GeometryPreviewProps> = ({
     geometry,
+    compareGeometry,
     height = 140,
     stroke = '#34d399',
     fill = 'rgba(52, 211, 153, 0.18)',
+    compareStroke = '#f87171',
+    compareFill = 'rgba(248, 113, 113, 0.14)',
     className = '',
 }) => {
     const rings = getRings(geometry);
+    const compareRings = getRings(compareGeometry);
     const outerRings = rings.filter(r => Array.isArray(r) && r.length >= 3);
+    const outerCompareRings = compareRings.filter(r => Array.isArray(r) && r.length >= 3);
 
-    if (outerRings.length === 0) {
+    if (outerRings.length === 0 && outerCompareRings.length === 0) {
         return (
             <div className={`flex items-center justify-center rounded-lg border border-dashed border-slate-700 bg-slate-950/60 text-[10px] text-slate-500 ${className}`} style={{ height }}>
                 Không có hình học
@@ -33,7 +41,7 @@ const GeometryPreview: React.FC<GeometryPreviewProps> = ({
         );
     }
 
-    const points = outerRings.flat();
+    const points = [...outerRings.flat(), ...outerCompareRings.flat()];
     const xs = points.map(p => Number(p[0])).filter(Number.isFinite);
     const ys = points.map(p => Number(p[1])).filter(Number.isFinite);
 
@@ -76,9 +84,20 @@ const GeometryPreview: React.FC<GeometryPreviewProps> = ({
                     </pattern>
                 </defs>
                 <rect x="0" y="0" width={width} height={height} fill="url(#geom-preview-grid)" />
+                {outerCompareRings.map((ring, idx) => (
+                    <polygon
+                        key={`compare-${idx}`}
+                        points={ring.map(toSvgPoint).join(' ')}
+                        fill={compareFill}
+                        stroke={compareStroke}
+                        strokeWidth="2"
+                        strokeDasharray="5 4"
+                        vectorEffect="non-scaling-stroke"
+                    />
+                ))}
                 {outerRings.map((ring, idx) => (
                     <polygon
-                        key={idx}
+                        key={`main-${idx}`}
                         points={ring.map(toSvgPoint).join(' ')}
                         fill={fill}
                         stroke={stroke}

@@ -85,6 +85,7 @@ const getAuthHeaders = () => {
             headers['x-user-id'] = u.id;
             headers['x-user-name'] = encodeURIComponent(u.name);
             headers['x-branch-id'] = u.branchId || u.branch_id;
+            headers['x-user-role'] = u.role;
         } catch (e) {}
     }
     return headers;
@@ -400,13 +401,17 @@ export const parcelHistoryApi = {
      */
     getByTable: async (
         table: string,
-        opts: { page?: number; limit?: number; action?: string; user?: string } = {}
+        opts: { page?: number; limit?: number; action?: string; user?: string; sodoto?: string; sothua?: string; from?: string; to?: string } = {}
     ): Promise<ParcelHistoryListResponse> => {
         const params = new URLSearchParams();
         if (opts.page)   params.set('page',   String(opts.page));
         if (opts.limit)  params.set('limit',  String(opts.limit));
         if (opts.action) params.set('action', opts.action);
         if (opts.user)   params.set('user',   opts.user);
+        if (opts.sodoto) params.set('sodoto', opts.sodoto);
+        if (opts.sothua) params.set('sothua', opts.sothua);
+        if (opts.from)   params.set('from',   opts.from);
+        if (opts.to)     params.set('to',     opts.to);
         const res = await fetch(
             `${API_URL}/api/parcel-history/${encodeURIComponent(table)}?${params}`,
             { headers: getAuthHeaders() }
