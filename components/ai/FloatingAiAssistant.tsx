@@ -70,7 +70,7 @@ const FloatingAiAssistant: React.FC<FloatingAiAssistantProps> = ({ user, page })
             {!open && (
                 <button
                     onClick={() => setOpen(true)}
-                    className="fixed bottom-24 right-5 z-[900] flex items-center gap-2 rounded-full bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 shadow-2xl border border-purple-400/40 transition-all hover:scale-105"
+                    className="fixed bottom-6 right-32 max-md:right-4 max-md:bottom-28 z-[900] flex items-center gap-2 rounded-full bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 shadow-2xl border border-purple-400/40 transition-all hover:scale-105"
                     title="Axis"
                 >
                     <Sparkles size={18} />
@@ -79,7 +79,7 @@ const FloatingAiAssistant: React.FC<FloatingAiAssistantProps> = ({ user, page })
             )}
 
             {open && (
-                <div className="fixed bottom-24 right-5 z-[900] w-[360px] max-w-[calc(100vw-2rem)] h-[520px] max-h-[calc(100vh-7rem)] rounded-2xl overflow-hidden bg-slate-950 border border-purple-500/30 shadow-2xl flex flex-col text-white">
+                <div className="fixed bottom-6 right-32 max-md:right-4 max-md:bottom-28 z-[900] w-[360px] max-w-[calc(100vw-2rem)] h-[520px] max-h-[calc(100vh-7rem)] rounded-2xl overflow-hidden bg-slate-950 border border-purple-500/30 shadow-2xl flex flex-col text-white">
                     <div className="shrink-0 px-4 py-3 bg-purple-950/60 border-b border-purple-500/20 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <div className="w-8 h-8 rounded-xl bg-purple-600 flex items-center justify-center">
