@@ -75,6 +75,24 @@ const SnapshotViewer: React.FC<{ snapshot: Record<string, any> | null }> = ({ sn
     );
 };
 
+const HistorySnapshots: React.FC<{ rec: ParcelHistoryRecord }> = ({ rec }) => {
+    const before = rec.snapshot_before ?? (rec.action !== 'CREATE' ? rec.snapshot : null);
+    const after = rec.snapshot_after ?? (rec.action === 'CREATE' ? rec.snapshot : null);
+
+    return (
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-red-300 mb-1">Trước biến động</div>
+                <SnapshotViewer snapshot={before} />
+            </div>
+            <div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-emerald-300 mb-1">Sau biến động</div>
+                <SnapshotViewer snapshot={after} />
+            </div>
+        </div>
+    );
+};
+
 // ─── Row lịch sử ─────────────────────────────────────────────────────────────
 const HistoryRow: React.FC<{
     rec: ParcelHistoryRecord;
@@ -89,6 +107,7 @@ const HistoryRow: React.FC<{
     const meta = ACTION_META[rec.action] ?? ACTION_META.UPDATE;
 
     return (
+        <>
         <tr className="border-b border-gray-800 hover:bg-gray-800/40 transition-colors group">
             {/* Action badge */}
             <td className="px-4 py-3 whitespace-nowrap">
@@ -183,15 +202,15 @@ const HistoryRow: React.FC<{
                 </div>
             </td>
 
-            {/* Expanded snapshot row */}
-            {expanded && (
-                <tr className="bg-gray-900/60">
-                    <td colSpan={8} className="px-6 pb-4">
-                        <SnapshotViewer snapshot={rec.snapshot} />
-                    </td>
-                </tr>
-            ) as any}
         </tr>
+        {expanded && (
+            <tr className="bg-gray-900/60 border-b border-gray-800">
+                <td colSpan={8} className="px-6 py-4">
+                    <HistorySnapshots rec={rec} />
+                </td>
+            </tr>
+        )}
+        </>
     );
 };
 

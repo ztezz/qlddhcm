@@ -182,12 +182,16 @@ const initDB = async () => {
             parcel_gid      INTEGER NOT NULL,
             action          TEXT NOT NULL CHECK (action IN ('CREATE','UPDATE','DELETE')),
             snapshot        JSONB,
+            snapshot_before JSONB,
+            snapshot_after  JSONB,
             changed_by_id   TEXT,
             changed_by_name TEXT,
             changed_at      TIMESTAMPTZ DEFAULT NOW(),
             note            TEXT
         )
     `));
+    await run('parcel_history: add snapshot_before', () => pool.query(`ALTER TABLE parcel_history ADD COLUMN IF NOT EXISTS snapshot_before JSONB`));
+    await run('parcel_history: add snapshot_after', () => pool.query(`ALTER TABLE parcel_history ADD COLUMN IF NOT EXISTS snapshot_after JSONB`));
     await run('parcel_history: index table_gid', () => pool.query(`CREATE INDEX IF NOT EXISTS parcel_history_table_gid_idx  ON parcel_history (table_name, parcel_gid)`));
     await run('parcel_history: index changed_at', () => pool.query(`CREATE INDEX IF NOT EXISTS parcel_history_changed_at_idx ON parcel_history (changed_at DESC)`));
     await run('parcel_history: remove geohash triggers', async () => {

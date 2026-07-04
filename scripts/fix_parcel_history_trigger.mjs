@@ -36,8 +36,17 @@ try {
 
   await pool.query(`DROP TRIGGER IF EXISTS trg_cap_nhat_madinhdanh_insert_parcel_history ON parcel_history`);
   await pool.query(`DROP TRIGGER IF EXISTS trg_cap_nhat_madinhdanh_update_parcel_history ON parcel_history`);
+  await pool.query(`ALTER TABLE parcel_history ADD COLUMN IF NOT EXISTS snapshot_before JSONB`);
+  await pool.query(`ALTER TABLE parcel_history ADD COLUMN IF NOT EXISTS snapshot_after JSONB`);
+  await pool.query(`
+    UPDATE parcel_history
+    SET snapshot_before = COALESCE(snapshot_before, CASE WHEN action <> 'CREATE' THEN snapshot ELSE NULL END),
+        snapshot_after  = COALESCE(snapshot_after,  CASE WHEN action = 'CREATE' THEN snapshot ELSE NULL END)
+    WHERE snapshot IS NOT NULL
+      AND (snapshot_before IS NULL OR snapshot_after IS NULL)
+  `);
 
-  console.log('Fixed parcel_history geohash trigger issue.');
+  console.log('Fixed parcel_history geohash trigger issue and added before/after snapshots.');
 } finally {
   await pool.end();
 }

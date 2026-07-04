@@ -47,12 +47,16 @@ const ensureParcelHistoryTable = (pool) => {
                 parcel_gid      INTEGER NOT NULL,
                 action          TEXT NOT NULL CHECK (action IN ('CREATE','UPDATE','DELETE')),
                 snapshot        JSONB,
+                snapshot_before JSONB,
+                snapshot_after  JSONB,
                 changed_by_id   TEXT,
                 changed_by_name TEXT,
                 changed_at      TIMESTAMPTZ DEFAULT NOW(),
                 note            TEXT
             )
         `);
+        await pool.query(`ALTER TABLE parcel_history ADD COLUMN IF NOT EXISTS snapshot_before JSONB`);
+        await pool.query(`ALTER TABLE parcel_history ADD COLUMN IF NOT EXISTS snapshot_after JSONB`);
         await pool.query(`CREATE INDEX IF NOT EXISTS parcel_history_table_gid_idx  ON parcel_history (table_name, parcel_gid)`);
         await pool.query(`CREATE INDEX IF NOT EXISTS parcel_history_changed_at_idx ON parcel_history (changed_at DESC)`);
         await pool.query(`DROP TRIGGER IF EXISTS trg_cap_nhat_madinhdanh_insert_parcel_history ON parcel_history`);
@@ -65,15 +69,26 @@ const ensureParcelHistoryTable = (pool) => {
 };
 
 // ─── Helper: ghi lịch sử biến động thửa đất ─────────────────────────────────
-const writeParcelHistory = async (pool, tableName, parcelGid, action, snapshot, req, note = null) => {
+const writeParcelHistory = async (pool, tableName, parcelGid, action, snapshotBefore, snapshotAfter, req, note = null) => {
     try {
         await ensureParcelHistoryTable(pool);
         const userId   = req.headers['x-user-id']   || req.user?.id   || 'system';
         const userName = decodeURIComponent(req.headers['x-user-name'] || req.user?.name || 'System');
+        const legacySnapshot = snapshotBefore || snapshotAfter || null;
         await pool.query(
-            `INSERT INTO parcel_history (table_name, parcel_gid, action, snapshot, changed_by_id, changed_by_name, note)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-            [tableName, parcelGid, action, JSON.stringify(snapshot), userId, userName, note]
+            `INSERT INTO parcel_history (table_name, parcel_gid, action, snapshot, snapshot_before, snapshot_after, changed_by_id, changed_by_name, note)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+            [
+                tableName,
+                parcelGid,
+                action,
+                legacySnapshot ? JSON.stringify(legacySnapshot) : null,
+                snapshotBefore ? JSON.stringify(snapshotBefore) : null,
+                snapshotAfter ? JSON.stringify(snapshotAfter) : null,
+                userId,
+                userName,
+                note
+            ]
         );
     } catch (e) {
         console.error('[writeParcelHistory] Lỗi ghi lịch sử:', e.message);
@@ -1104,7 +1119,7 @@ export default function(pool, logSystemAction) {
 
             // Ghi lịch sử CREATE
             const snap = await getParcelSnapshot(pool, table, newGid);
-            await writeParcelHistory(pool, table, newGid, 'CREATE', snap, req);
+            await writeParcelHistory(pool, table, newGid, 'CREATE', null, snap, req);
 
             res.json({ status: 'ok', gid: newGid, madinhdanh: result.rows[0].madinhdanh });
         } catch (e) { res.status(500).json({ error: e.message }); }
@@ -1224,7 +1239,8 @@ export default function(pool, logSystemAction) {
             await pool.query(query, params);
 
             // Ghi lịch sử UPDATE (snapshot = trạng thái trước khi thay đổi)
-            await writeParcelHistory(pool, table, parseInt(gid, 10), 'UPDATE', snapshotBefore, req);
+            const snapshotAfter = await getParcelSnapshot(pool, table, gid);
+            await writeParcelHistory(pool, table, parseInt(gid, 10), 'UPDATE', snapshotBefore, snapshotAfter, req);
 
             res.json({ status: 'ok' });
         } catch (e) { res.status(500).json({ error: e.message }); }
@@ -1410,7 +1426,7 @@ export default function(pool, logSystemAction) {
 
             // Ghi lịch sử DELETE (giữ nguyên toàn bộ dữ liệu để có thể khôi phục)
             if (snapshotBefore) {
-                await writeParcelHistory(pool, table, parseInt(gid, 10), 'DELETE', snapshotBefore, req);
+                await writeParcelHistory(pool, table, parseInt(gid, 10), 'DELETE', snapshotBefore, null, req);
             }
 
             res.json({ status: 'ok' });

@@ -207,8 +207,12 @@ export interface ParcelHistoryRecord {
     table_name?:      string;
     parcel_gid:       number;
     action:           ParcelHistoryAction;
-    /** Dữ liệu toàn bộ thửa tại thời điểm trước thay đổi (null khi CREATE) */
+    /** Legacy snapshot: dữ liệu cũ trước khi tách before/after */
     snapshot:         Record<string, any> | null;
+    /** Dữ liệu toàn bộ thửa trước khi thay đổi (null khi CREATE) */
+    snapshot_before?: Record<string, any> | null;
+    /** Dữ liệu toàn bộ thửa sau khi thay đổi (null khi DELETE) */
+    snapshot_after?:  Record<string, any> | null;
     changed_by_id:    string;
     changed_by_name:  string;
     changed_at:       string;   // ISO timestamp

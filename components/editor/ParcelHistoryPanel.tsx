@@ -71,6 +71,24 @@ const SnapshotDiff: React.FC<{ snapshot: Record<string, any> | null }> = ({ snap
     );
 };
 
+const HistorySnapshots: React.FC<{ rec: ParcelHistoryRecord }> = ({ rec }) => {
+    const before = rec.snapshot_before ?? (rec.action !== 'CREATE' ? rec.snapshot : null);
+    const after = rec.snapshot_after ?? (rec.action === 'CREATE' ? rec.snapshot : null);
+
+    return (
+        <div className="grid grid-cols-1 gap-3">
+            <div>
+                <p className="text-[9px] text-red-300 uppercase font-bold mb-1">Trước biến động</p>
+                <SnapshotDiff snapshot={before} />
+            </div>
+            <div>
+                <p className="text-[9px] text-emerald-300 uppercase font-bold mb-1">Sau biến động</p>
+                <SnapshotDiff snapshot={after} />
+            </div>
+        </div>
+    );
+};
+
 const ParcelHistoryPanel: React.FC<ParcelHistoryPanelProps> = ({
     parcelGid,
     tableName,
@@ -292,10 +310,7 @@ const ParcelHistoryPanel: React.FC<ParcelHistoryPanelProps> = ({
                             {/* Expanded snapshot diff */}
                             {isExpanded && (
                                 <div className="px-3 pb-3 border-t border-white/5 mt-0.5 pt-2">
-                                    <p className="text-[9px] text-slate-500 uppercase font-bold mb-1">
-                                        {rec.action === 'CREATE' ? 'Dữ liệu khi tạo' : 'Trạng thái trước thay đổi'}
-                                    </p>
-                                    <SnapshotDiff snapshot={rec.snapshot} />
+                                    <HistorySnapshots rec={rec} />
                                 </div>
                             )}
                         </div>

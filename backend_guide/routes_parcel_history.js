@@ -57,12 +57,16 @@ export default function parcelHistoryRouter(pool, logSystemAction) {
                     parcel_gid      INTEGER NOT NULL,
                     action          TEXT NOT NULL CHECK (action IN ('CREATE','UPDATE','DELETE')),
                     snapshot        JSONB,
+                    snapshot_before JSONB,
+                    snapshot_after  JSONB,
                     changed_by_id   TEXT,
                     changed_by_name TEXT,
                     changed_at      TIMESTAMPTZ DEFAULT NOW(),
                     note            TEXT
                 )
             `);
+            await pool.query(`ALTER TABLE parcel_history ADD COLUMN IF NOT EXISTS snapshot_before JSONB`);
+            await pool.query(`ALTER TABLE parcel_history ADD COLUMN IF NOT EXISTS snapshot_after JSONB`);
             await pool.query(`CREATE INDEX IF NOT EXISTS parcel_history_table_gid_idx  ON parcel_history (table_name, parcel_gid)`);
             await pool.query(`CREATE INDEX IF NOT EXISTS parcel_history_changed_at_idx ON parcel_history (changed_at DESC)`);
             await pool.query(`DROP TRIGGER IF EXISTS trg_cap_nhat_madinhdanh_insert_parcel_history ON parcel_history`);
@@ -113,13 +117,24 @@ export default function parcelHistoryRouter(pool, logSystemAction) {
     };
 
     // ─── helper: ghi một bản ghi lịch sử ────────────────────────────────────
-    const writeHistory = async (pool, tableName, parcelGid, action, snapshot, req, note = null) => {
+    const writeHistory = async (pool, tableName, parcelGid, action, snapshotBefore, snapshotAfter, req, note = null) => {
         const userId = req.headers['x-user-id'] || req.user?.id || 'system';
         const userName = decodeURIComponent(req.headers['x-user-name'] || req.user?.name || 'System');
+        const legacySnapshot = snapshotBefore || snapshotAfter || null;
         await pool.query(
-            `INSERT INTO parcel_history (table_name, parcel_gid, action, snapshot, changed_by_id, changed_by_name, note)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-            [tableName, parcelGid, action, JSON.stringify(snapshot), userId, userName, note]
+            `INSERT INTO parcel_history (table_name, parcel_gid, action, snapshot, snapshot_before, snapshot_after, changed_by_id, changed_by_name, note)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+            [
+                tableName,
+                parcelGid,
+                action,
+                legacySnapshot ? JSON.stringify(legacySnapshot) : null,
+                snapshotBefore ? JSON.stringify(snapshotBefore) : null,
+                snapshotAfter ? JSON.stringify(snapshotAfter) : null,
+                userId,
+                userName,
+                note
+            ]
         );
     };
 
@@ -140,7 +155,7 @@ export default function parcelHistoryRouter(pool, logSystemAction) {
 
             const [rows, countRes] = await Promise.all([
                 pool.query(
-                    `SELECT id, action, snapshot, changed_by_id, changed_by_name, changed_at, note
+                    `SELECT id, table_name, parcel_gid, action, snapshot, snapshot_before, snapshot_after, changed_by_id, changed_by_name, changed_at, note
                      FROM parcel_history
                      WHERE table_name = $1 AND parcel_gid = $2
                      ORDER BY changed_at DESC
@@ -197,8 +212,9 @@ export default function parcelHistoryRouter(pool, logSystemAction) {
 
             const [rows, countRes] = await Promise.all([
                 pool.query(
-                    `SELECT id, parcel_gid, action, changed_by_id, changed_by_name, changed_at, note,
-                            snapshot->>'sodoto' AS sodoto, snapshot->>'sothua' AS sothua
+                    `SELECT id, table_name, parcel_gid, action, snapshot, snapshot_before, snapshot_after, changed_by_id, changed_by_name, changed_at, note,
+                            COALESCE(snapshot_after->>'sodoto', snapshot_before->>'sodoto', snapshot->>'sodoto') AS sodoto,
+                            COALESCE(snapshot_after->>'sothua', snapshot_before->>'sothua', snapshot->>'sothua') AS sothua
                      FROM parcel_history ${where}
                      ORDER BY changed_at DESC
                      LIMIT $${idx} OFFSET $${idx + 1}`,
@@ -247,7 +263,7 @@ export default function parcelHistoryRouter(pool, logSystemAction) {
             }
 
             const histRow  = histRes.rows[0];
-            const snapshot = histRow.snapshot;
+            const snapshot = histRow.snapshot_before || histRow.snapshot || histRow.snapshot_after;
 
             if (!snapshot) {
                 return res.status(400).json({ error: 'Bản ghi lịch sử không có dữ liệu snapshot để phục hồi.' });
@@ -299,7 +315,8 @@ export default function parcelHistoryRouter(pool, logSystemAction) {
             );
 
             // Ghi lịch sử cho thao tác restore này
-            await writeHistory(pool, table, gid, 'UPDATE', currentSnap, req,
+            const restoredSnap = await getCurrentSnapshot(table, gid);
+            await writeHistory(pool, table, gid, 'UPDATE', currentSnap, restoredSnap, req,
                 `Phục hồi về lịch sử #${history_id} (${histRow.action} lúc ${new Date(histRow.changed_at).toLocaleString('vi-VN')})`
             );
 
