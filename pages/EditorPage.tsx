@@ -244,6 +244,11 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         executeSplit
     });
 
+    const draftOptions = useMemo(() => ({
+        getTargetTable: () => targetTable,
+        setTargetTable
+    }), [targetTable]);
+
     const {
         DRAFT_KEY,
         autoSaveTimerRef,
@@ -252,7 +257,7 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
         loadDraft,
         startAutoSave,
         stopAutoSave
-    } = useEditorDraft(editSource, mapInstance, updateFeatureListState);
+    } = useEditorDraft(editSource, mapInstance, updateFeatureListState, draftOptions);
 
     const {
         currentPermissions,

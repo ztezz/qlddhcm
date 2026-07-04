@@ -10,9 +10,15 @@ const DRAFT_KEY = 'editor_draft_v1';
 export function useEditorDraft(
     editSource: React.MutableRefObject<VectorSource>,
     mapInstance: React.MutableRefObject<Map | null>,
-    onFeaturesLoaded: () => void
+    onFeaturesLoaded: () => void,
+    options?: {
+        getTargetTable?: () => string;
+        setTargetTable?: (table: string) => void;
+    }
 ) {
     const autoSaveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const getTargetTable = options?.getTargetTable;
+    const setTargetTable = options?.setTargetTable;
 
     const saveDraft = useCallback(() => {
         if (editSource.current.getFeatures().length === 0) return;
@@ -21,8 +27,12 @@ export function useEditorDraft(
             dataProjection: 'EPSG:3857',
             featureProjection: 'EPSG:3857'
         });
-        localStorage.setItem(DRAFT_KEY, JSON.stringify(geojson));
-    }, []);
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({
+            version: 2,
+            targetTable: getTargetTable?.() || '',
+            geojson
+        }));
+    }, [getTargetTable]);
 
     const clearDraft = useCallback(() => {
         localStorage.removeItem(DRAFT_KEY);
@@ -33,8 +43,12 @@ export function useEditorDraft(
         if (!raw) return false;
         try {
             const parsed = JSON.parse(raw);
+            const geojson = parsed?.version === 2 && parsed.geojson ? parsed.geojson : parsed;
+            if (parsed?.version === 2 && parsed.targetTable && setTargetTable) {
+                setTargetTable(parsed.targetTable);
+            }
             const format = new GeoJSON();
-            const features = format.readFeatures(parsed, {
+            const features = format.readFeatures(geojson, {
                 dataProjection: 'EPSG:3857',
                 featureProjection: 'EPSG:3857'
             }) as Feature[];
@@ -52,7 +66,7 @@ export function useEditorDraft(
             localStorage.removeItem(DRAFT_KEY);
         }
         return false;
-    }, [editSource, mapInstance, onFeaturesLoaded]);
+    }, [editSource, mapInstance, onFeaturesLoaded, setTargetTable]);
 
     const startAutoSave = useCallback((handler: () => void) => {
         if (autoSaveTimerRef.current) {
