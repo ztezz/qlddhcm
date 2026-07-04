@@ -229,6 +229,76 @@ const buildDataLookupFallback = ({ intent, parcels, histories }) => {
     return lines.join('\n');
 };
 
+const normalizeLandPriceText = (s = '') => String(s)
+    .toLowerCase()
+    .replace(/đ/g, 'd')
+    .replace(/[.\s_-]+/g, '')
+    .trim();
+
+const extractLandPriceIntent = (message = '') => {
+    const raw = String(message || '');
+    const lower = raw.toLowerCase();
+    const wantsLandPrice = /giá\s*đất|bảng\s*giá|gia\s*dat|bang\s*gia/.test(lower);
+    if (!wantsLandPrice) return { wantsLandPrice: false, street: '', ward: '' };
+
+    let street = raw.match(/(?:đường|duong|tuyến|tuyen)\s+([^,;\n]+?)(?=\s+(?:ở|tai|tại|phường|phuong|xã|xa|thị trấn|thi tran)\b|$)/i)?.[1]?.trim() || '';
+    if (!street) {
+        street = raw.match(/\b(?:đh|dh|đt|dt|ql|quốc\s*lộ|quoc\s*lo)[\s.\-]*\d+[\w.\-]*/i)?.[0]?.trim() || '';
+    }
+    const ward = raw.match(/(?:phường|phuong|xã|xa|thị trấn|thi tran)\s+([^,;\n]+)/i)?.[1]?.trim() || '';
+    return { wantsLandPrice, street, ward };
+};
+
+const searchLandPrices = async (pool, intent) => {
+    if (!intent?.wantsLandPrice) return [];
+    const filters = [];
+    const params = [];
+    let idx = 1;
+
+    if (intent.street) {
+        const normalized = `%${normalizeLandPriceText(intent.street)}%`;
+        filters.push(`(
+            tenduong ILIKE $${idx}
+            OR replace(replace(replace(lower(tenduong), 'đ', 'd'), '.', ''), ' ', '') LIKE $${idx + 1}
+        )`);
+        params.push(`%${intent.street}%`, normalized);
+        idx += 2;
+    }
+    if (intent.ward) {
+        filters.push(`phuongxa ILIKE $${idx++}`);
+        params.push(`%${intent.ward}%`);
+    }
+    if (filters.length === 0) return [];
+
+    const where = `WHERE ${filters.join(' AND ')}`;
+    try {
+        const r = await pool.query(`
+            SELECT id, phuongxa, tinhcu, tenduong, tu, den, dato, dattmdv, datsxkdpnn, nam_ap_dung, nguon_du_lieu, ghi_chu
+            FROM bang_gia_dat_2026
+            ${where}
+            ORDER BY tinhcu ASC, phuongxa ASC, tenduong ASC, tu ASC
+            LIMIT 10
+        `, params);
+        return r.rows;
+    } catch (e) {
+        if (e.code === '42P01') return [];
+        throw e;
+    }
+};
+
+const buildLandPriceFallback = ({ intent, results }) => {
+    if (!intent?.wantsLandPrice) return null;
+    if (!results || results.length === 0) {
+        return `Axis chưa tìm thấy dòng giá đất phù hợp${intent.street ? ` cho "${intent.street}"` : ''}${intent.ward ? ` tại ${intent.ward}` : ''}. Bạn có thể thử viết tên đường đầy đủ hơn hoặc thêm phường/xã.`;
+    }
+    const lines = [`Axis tìm thấy ${results.length} dòng giá đất phù hợp${intent.street ? ` cho "${intent.street}"` : ''}:`];
+    results.slice(0, 8).forEach((r, i) => {
+        lines.push(`${i + 1}. ${r.tenduong} — ${r.phuongxa}${r.tinhcu ? ` (${r.tinhcu})` : ''}, đoạn ${r.tu || '?'} → ${r.den || '?'}`);
+        lines.push(`   - Đất ở: ${Number(r.dato || 0).toLocaleString('vi-VN')} đ/m²; TM-DV: ${Number(r.dattmdv || 0).toLocaleString('vi-VN')} đ/m²; SX-KD PNN: ${Number(r.datsxkdpnn || 0).toLocaleString('vi-VN')} đ/m².`);
+    });
+    return lines.join('\n');
+};
+
 export default function aiRouter(pool, logSystemAction) {
     const router = express.Router();
 
@@ -282,7 +352,9 @@ export default function aiRouter(pool, logSystemAction) {
 
             const settings = await getSettingsMap(pool).catch(() => ({}));
             const intent = extractParcelIntent(message);
+            const landPriceIntent = extractLandPriceIntent(message);
             const parcels = intent.wantsParcel ? await searchParcelsBySheetParcel(pool, intent).catch(() => []) : [];
+            const landPrices = landPriceIntent.wantsLandPrice ? await searchLandPrices(pool, landPriceIntent).catch(() => []) : [];
             const histories = {};
             if (intent.wantsHistory && parcels.length > 0) {
                 for (const p of parcels.slice(0, 5)) {
@@ -290,8 +362,9 @@ export default function aiRouter(pool, logSystemAction) {
                 }
             }
             const dataLookupFallback = buildDataLookupFallback({ intent, parcels, histories });
+            const landPriceFallback = buildLandPriceFallback({ intent: landPriceIntent, results: landPrices });
             const systemPrompt = `Bạn tên là Axis, trợ lý AI tiếng Việt cho hệ thống WebGIS quản lý đất đai QLDDHCM.\n\nPhong cách giao tiếp:\n- Xưng là Axis khi cần, nói tự nhiên, chuyên nghiệp, thân thiện.\n- Trả lời ngắn gọn, rõ ràng, đúng nghiệp vụ đất đai/bản đồ.\n- Không nhắc lộ chi tiết context nội bộ trừ khi người dùng hỏi trực tiếp.\n\nNhiệm vụ:\n- Hướng dẫn người dùng thao tác trong hệ thống: bản đồ, editor, quản trị, lịch sử biến động, bảng giá đất, import/export.\n- Nếu người dùng hỏi dữ liệu cụ thể nhưng chưa có dữ liệu trong context, hãy nói cần dùng chức năng tra cứu/lọc hoặc chọn thửa trên bản đồ.\n- Không bịa số liệu pháp lý.\n\nContext nội bộ: ${JSON.stringify(context || {})}\n\nLịch sử chat gần đây: ${JSON.stringify((history || []).slice(-8))}\n\nCâu hỏi người dùng: ${message}`;
-            const enrichedPrompt = `${systemPrompt}\n\nDữ liệu tra cứu thật từ CSDL (nếu có):\n${JSON.stringify({ intent, parcels: parcels.slice(0, 5), histories }, null, 2)}\n\nNếu có dữ liệu tra cứu thật, hãy ưu tiên trả lời dựa trên dữ liệu này.`;
+            const enrichedPrompt = `${systemPrompt}\n\nDữ liệu tra cứu thật từ CSDL (nếu có):\n${JSON.stringify({ intent, parcels: parcels.slice(0, 5), histories, landPriceIntent, landPrices }, null, 2)}\n\nNếu có dữ liệu tra cứu thật, hãy ưu tiên trả lời dựa trên dữ liệu này.`;
 
             let reply = '';
             let provider = 'fallback';
@@ -313,11 +386,11 @@ export default function aiRouter(pool, logSystemAction) {
                     provider = 'gemini';
                 }
             } catch (aiError) {
-                reply = `${dataLookupFallback || fallbackChat(message, context)}\n\n> Ghi chú: AI cloud lỗi (${aiError.message}), hệ thống đã dùng trả lời nội bộ.`;
+                reply = `${landPriceFallback || dataLookupFallback || fallbackChat(message, context)}\n\n> Ghi chú: AI cloud lỗi (${aiError.message}), hệ thống đã dùng trả lời nội bộ.`;
                 provider = 'fallback';
             }
 
-            if (!reply) reply = dataLookupFallback || fallbackChat(message, context);
+            if (!reply) reply = landPriceFallback || dataLookupFallback || fallbackChat(message, context);
             await logSystemAction?.(req, 'AI_CHAT', `Người dùng hỏi AI (${provider}): ${String(message).slice(0, 120)}`);
             res.json({
                 status: 'ok',
@@ -333,7 +406,8 @@ export default function aiRouter(pool, logSystemAction) {
                     dientich: p.dientich,
                     madinhdanh: p.madinhdanh,
                     geometry: p.geometry
-                }))
+                })),
+                landPrices: landPrices.slice(0, 10)
             });
         } catch (e) {
             res.status(500).json({ error: e.message });

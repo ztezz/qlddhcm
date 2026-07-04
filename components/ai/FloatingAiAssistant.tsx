@@ -9,7 +9,7 @@ interface FloatingAiAssistantProps {
     page: string;
 }
 
-type ChatMessage = { role: 'user' | 'assistant'; content: string; provider?: string; parcels?: any[] };
+type ChatMessage = { role: 'user' | 'assistant'; content: string; provider?: string; parcels?: any[]; landPrices?: any[] };
 
 const QUICK_PROMPTS = [
     'Hướng dẫn tra cứu thửa đất',
@@ -48,7 +48,7 @@ const FloatingAiAssistant: React.FC<FloatingAiAssistantProps> = ({ user, page })
                 history: nextMessages.slice(-8).map(m => ({ role: m.role, content: m.content })),
                 context
             });
-            setMessages(prev => [...prev, { role: 'assistant', content: result.reply, provider: result.provider, parcels: result.parcels || [] }]);
+            setMessages(prev => [...prev, { role: 'assistant', content: result.reply, provider: result.provider, parcels: result.parcels || [], landPrices: result.landPrices || [] }]);
         } catch (e: any) {
             setMessages(prev => [...prev, { role: 'assistant', content: `Không gọi được trợ lý AI: ${e.message}` }]);
         } finally {
@@ -127,6 +127,17 @@ const FloatingAiAssistant: React.FC<FloatingAiAssistantProps> = ({ user, page })
                                                         Mở trong Editor
                                                         <span className="block text-[9px] text-emerald-300">Nạp thửa vào bản vẽ để chỉnh sửa/cập nhật</span>
                                                     </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {m.role === 'assistant' && m.landPrices && m.landPrices.length > 0 && (
+                                        <div className="mt-2 space-y-1.5">
+                                            {m.landPrices.slice(0, 3).map((r, i) => (
+                                                <div key={`${r.id}-${i}`} className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[10px] text-amber-50">
+                                                    <div className="font-bold">{r.tenduong} · {r.phuongxa}</div>
+                                                    <div className="text-[9px] text-amber-200">Đoạn {r.tu || '?'} → {r.den || '?'}</div>
+                                                    <div className="text-[9px] text-amber-100 mt-0.5">Đất ở: {Number(r.dato || 0).toLocaleString('vi-VN')} đ/m²</div>
                                                 </div>
                                             ))}
                                         </div>
