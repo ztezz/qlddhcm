@@ -9,7 +9,7 @@ interface FloatingAiAssistantProps {
     page: string;
 }
 
-type ChatMessage = { role: 'user' | 'assistant'; content: string; provider?: string; parcels?: any[]; landPrices?: any[] };
+type ChatMessage = { role: 'user' | 'assistant'; content: string; parcels?: any[]; landPrices?: any[] };
 
 const QUICK_PROMPTS = [
     'Hướng dẫn tra cứu thửa đất',
@@ -48,7 +48,7 @@ const FloatingAiAssistant: React.FC<FloatingAiAssistantProps> = ({ user, page })
                 history: nextMessages.slice(-8).map(m => ({ role: m.role, content: m.content })),
                 context
             });
-            setMessages(prev => [...prev, { role: 'assistant', content: result.reply, provider: result.provider, parcels: result.parcels || [], landPrices: result.landPrices || [] }]);
+            setMessages(prev => [...prev, { role: 'assistant', content: result.reply, parcels: result.parcels || [], landPrices: result.landPrices || [] }]);
         } catch (e: any) {
             setMessages(prev => [...prev, { role: 'assistant', content: `Không gọi được trợ lý AI: ${e.message}` }]);
         } finally {
@@ -70,7 +70,7 @@ const FloatingAiAssistant: React.FC<FloatingAiAssistantProps> = ({ user, page })
             {!open && (
                 <button
                     onClick={() => setOpen(true)}
-                    className="fixed bottom-5 right-5 z-[900] flex items-center gap-2 rounded-full bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 shadow-2xl border border-purple-400/40 transition-all hover:scale-105"
+                    className="fixed bottom-24 right-5 z-[900] flex items-center gap-2 rounded-full bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 shadow-2xl border border-purple-400/40 transition-all hover:scale-105"
                     title="Axis"
                 >
                     <Sparkles size={18} />
@@ -79,7 +79,7 @@ const FloatingAiAssistant: React.FC<FloatingAiAssistantProps> = ({ user, page })
             )}
 
             {open && (
-                <div className="fixed bottom-5 right-5 z-[900] w-[360px] max-w-[calc(100vw-2rem)] h-[520px] max-h-[calc(100vh-2rem)] rounded-2xl overflow-hidden bg-slate-950 border border-purple-500/30 shadow-2xl flex flex-col text-white">
+                <div className="fixed bottom-24 right-5 z-[900] w-[360px] max-w-[calc(100vw-2rem)] h-[520px] max-h-[calc(100vh-7rem)] rounded-2xl overflow-hidden bg-slate-950 border border-purple-500/30 shadow-2xl flex flex-col text-white">
                     <div className="shrink-0 px-4 py-3 bg-purple-950/60 border-b border-purple-500/20 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <div className="w-8 h-8 rounded-xl bg-purple-600 flex items-center justify-center">
@@ -108,7 +108,6 @@ const FloatingAiAssistant: React.FC<FloatingAiAssistantProps> = ({ user, page })
                                     : 'bg-slate-800 text-slate-100 border border-slate-700 rounded-bl-sm'
                                 }`}>
                                     {m.content}
-                                    {m.provider && <div className="mt-1 text-[9px] text-purple-300 uppercase">{m.provider}</div>}
                                     {m.role === 'assistant' && m.parcels && m.parcels.length > 0 && (
                                         <div className="mt-2 space-y-1.5">
                                             {m.parcels.slice(0, 3).map((p, i) => (

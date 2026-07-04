@@ -235,18 +235,37 @@ const normalizeLandPriceText = (s = '') => String(s)
     .replace(/[.\s_-]+/g, '')
     .trim();
 
-const extractLandPriceIntent = (message = '') => {
+const cleanPlaceName = (value = '') => String(value)
+    .replace(/\(.*/g, '')
+    .replace(/\(.+?\)/g, '')
+    .replace(/\b(bến cát|ben cat|bình dương|binh duong|tp\.?hcm|hồ chí minh|ho chi minh)\b/ig, '')
+    .replace(/[,.]+$/g, '')
+    .trim();
+
+const extractLandPriceIntent = (message = '', context = {}) => {
     const raw = String(message || '');
     const lower = raw.toLowerCase();
-    const wantsLandPrice = /giá\s*đất|bảng\s*giá|gia\s*dat|bang\s*gia/.test(lower);
-    if (!wantsLandPrice) return { wantsLandPrice: false, street: '', ward: '' };
+    const page = String(context?.page || '').toLowerCase();
+    const hasPriceWords = /giá\s*đất|bảng\s*giá|gia\s*dat|bang\s*gia/.test(lower);
+    const hasPlaceWords = /phường|phuong|xã|xa|thị trấn|thi tran/.test(lower);
+    const wantsLandPrice = hasPriceWords || page.includes('land-price') || page.includes('giadata') || (hasPlaceWords && /xem|tra|tìm|thông tin|thong tin/.test(lower));
+    if (!wantsLandPrice) return { wantsLandPrice: false, street: '', ward: '', tinhcu: '' };
 
     let street = raw.match(/(?:đường|duong|tuyến|tuyen)\s+([^,;\n]+?)(?=\s+(?:ở|tai|tại|phường|phuong|xã|xa|thị trấn|thi tran)\b|$)/i)?.[1]?.trim() || '';
     if (!street) {
         street = raw.match(/\b(?:đh|dh|đt|dt|ql|quốc\s*lộ|quoc\s*lo)[\s.\-]*\d+[\w.\-]*/i)?.[0]?.trim() || '';
     }
-    const ward = raw.match(/(?:phường|phuong|xã|xa|thị trấn|thi tran)\s+([^,;\n]+)/i)?.[1]?.trim() || '';
-    return { wantsLandPrice, street, ward };
+    const wardRaw = raw.match(/(?:phường|phuong|xã|xa|thị trấn|thi tran)\s+([^,;\n]+)/i)?.[1]?.trim() || '';
+    const paren = raw.match(/\(([^)]+)\)/)?.[1] || '';
+    const parenParts = paren.split(',').map(s => s.trim()).filter(Boolean);
+    const tinhcu = parenParts.length > 0 ? parenParts[parenParts.length - 1] : (lower.includes('bình dương') || lower.includes('binh duong') ? 'Bình Dương' : '');
+    let ward = cleanPlaceName(wardRaw);
+    if (!ward && paren) {
+        ward = cleanPlaceName(raw.split('(')[0]
+            .replace(/giá\s*đất|bảng\s*giá|gia\s*dat|bang\s*gia|xem|tra|tìm|thông\s*tin|thong\s*tin/ig, '')
+            .trim());
+    }
+    return { wantsLandPrice, street, ward, tinhcu };
 };
 
 const searchLandPrices = async (pool, intent) => {
@@ -268,6 +287,10 @@ const searchLandPrices = async (pool, intent) => {
         filters.push(`phuongxa ILIKE $${idx++}`);
         params.push(`%${intent.ward}%`);
     }
+    if (intent.tinhcu) {
+        filters.push(`tinhcu ILIKE $${idx++}`);
+        params.push(`%${intent.tinhcu}%`);
+    }
     if (filters.length === 0) return [];
 
     const where = `WHERE ${filters.join(' AND ')}`;
@@ -277,7 +300,7 @@ const searchLandPrices = async (pool, intent) => {
             FROM bang_gia_dat_2026
             ${where}
             ORDER BY tinhcu ASC, phuongxa ASC, tenduong ASC, tu ASC
-            LIMIT 10
+            LIMIT 20
         `, params);
         return r.rows;
     } catch (e) {
@@ -289,9 +312,9 @@ const searchLandPrices = async (pool, intent) => {
 const buildLandPriceFallback = ({ intent, results }) => {
     if (!intent?.wantsLandPrice) return null;
     if (!results || results.length === 0) {
-        return `Axis chưa tìm thấy dòng giá đất phù hợp${intent.street ? ` cho "${intent.street}"` : ''}${intent.ward ? ` tại ${intent.ward}` : ''}. Bạn có thể thử viết tên đường đầy đủ hơn hoặc thêm phường/xã.`;
+        return `Axis chưa tìm thấy dòng giá đất phù hợp${intent.street ? ` cho "${intent.street}"` : ''}${intent.ward ? ` tại ${intent.ward}` : ''}${intent.tinhcu ? ` (${intent.tinhcu})` : ''}. Bạn có thể thử viết tên đường đầy đủ hơn hoặc kiểm tra lại tên phường/xã.`;
     }
-    const lines = [`Axis tìm thấy ${results.length} dòng giá đất phù hợp${intent.street ? ` cho "${intent.street}"` : ''}:`];
+    const lines = [`Axis tìm thấy ${results.length} dòng giá đất phù hợp${intent.street ? ` cho "${intent.street}"` : ''}${intent.ward ? ` tại ${intent.ward}` : ''}${intent.tinhcu ? ` (${intent.tinhcu})` : ''}:`];
     results.slice(0, 8).forEach((r, i) => {
         lines.push(`${i + 1}. ${r.tenduong} — ${r.phuongxa}${r.tinhcu ? ` (${r.tinhcu})` : ''}, đoạn ${r.tu || '?'} → ${r.den || '?'}`);
         lines.push(`   - Đất ở: ${Number(r.dato || 0).toLocaleString('vi-VN')} đ/m²; TM-DV: ${Number(r.dattmdv || 0).toLocaleString('vi-VN')} đ/m²; SX-KD PNN: ${Number(r.datsxkdpnn || 0).toLocaleString('vi-VN')} đ/m².`);
@@ -352,7 +375,7 @@ export default function aiRouter(pool, logSystemAction) {
 
             const settings = await getSettingsMap(pool).catch(() => ({}));
             const intent = extractParcelIntent(message);
-            const landPriceIntent = extractLandPriceIntent(message);
+            const landPriceIntent = extractLandPriceIntent(message, context);
             const parcels = intent.wantsParcel ? await searchParcelsBySheetParcel(pool, intent).catch(() => []) : [];
             const landPrices = landPriceIntent.wantsLandPrice ? await searchLandPrices(pool, landPriceIntent).catch(() => []) : [];
             const histories = {};
