@@ -942,9 +942,13 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
             const geom = feature.getGeometry();
             let geometryObject;
             
+            const exportProj = coordSystem === 'VN2000'
+                ? registerDynamicVn2000(centralMeridian, projectionZone)
+                : 'EPSG:4326';
+            
             if (geom) {
                  geometryObject = format.writeGeometryObject(geom, {
-                    dataProjection: 'EPSG:4326',
+                    dataProjection: exportProj,
                     featureProjection: 'EPSG:3857'
                 });
             }
@@ -961,6 +965,8 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                 sothua: fSoThua,
                 loaidat: fLoaiDat || 'Chưa xác định',
                 dientich: Math.round(fArea * 100) / 100,
+                tenchu: feature.get('tenchu'),
+                diachi: feature.get('diachi'),
                 geometry: geometryObject
             };
 
@@ -1039,7 +1045,11 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                     const fArea = getArea(feature.getGeometry() as any);
                     const geom = feature.getGeometry();
 
-                    let geometryObject = format.writeGeometryObject(geom, { dataProjection: 'EPSG:4326', featureProjection: 'EPSG:3857' });
+                    const exportProj = coordSystem === 'VN2000'
+                        ? registerDynamicVn2000(centralMeridian, projectionZone)
+                        : 'EPSG:4326';
+
+                    let geometryObject = format.writeGeometryObject(geom, { dataProjection: exportProj, featureProjection: 'EPSG:3857' });
                     if (geometryObject.type === 'Polygon') {
                         geometryObject = { type: 'MultiPolygon', coordinates: [geometryObject.coordinates] };
                     }
@@ -1049,6 +1059,8 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
                         sothua: fSoThua,
                         loaidat: fLoaiDat || 'Chưa xác định',
                         dientich: Math.round(fArea * 100) / 100,
+                        tenchu: feature.get('tenchu'),
+                        diachi: feature.get('diachi'),
                         geometry: geometryObject
                     };
 

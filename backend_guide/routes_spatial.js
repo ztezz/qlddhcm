@@ -221,6 +221,26 @@ export default function(pool, logSystemAction) {
         return geohash.encode(lat, lon, 12);
     };
 
+    const detectGeoJSONSrid = (geoJsonGeometry) => {
+        if (!geoJsonGeometry) return 4326;
+        let coords = null;
+        if (geoJsonGeometry.type === 'Point') {
+            coords = geoJsonGeometry.coordinates;
+        } else if (geoJsonGeometry.type === 'Polygon' && geoJsonGeometry.coordinates?.[0]?.[0]) {
+            coords = geoJsonGeometry.coordinates[0][0];
+        } else if (geoJsonGeometry.type === 'MultiPolygon' && geoJsonGeometry.coordinates?.[0]?.[0]?.[0]) {
+            coords = geoJsonGeometry.coordinates[0][0][0];
+        }
+        if (coords) {
+            const x = Math.abs(coords[0]);
+            const y = Math.abs(coords[1]);
+            if (x > 300000 && x < 900000 && y > 1000000 && y < 2200000) {
+                return 9210; // VN-2000
+            }
+        }
+        return 4326; // WGS-84
+    };
+
     const COLUMN_VARIANTS = {
         madinhdanh: ['madinhdanh', 'ma_dinh_danh', 'ma_thua', 'parcel_code', 'parcel_id', 'land_id', 'identifier'],
         sodoto: ['shbando', 'sh_ban_do', 'tobando', 'to_ban_do', 'map_sheet', 'shmap', 'sodoto', 'so_to'],
@@ -1105,8 +1125,9 @@ export default function(pool, logSystemAction) {
             addField('image_url', data.image_url);
 
             if (data.geometry) {
+                const sourceSrid = detectGeoJSONSrid(data.geometry);
                 fields.push('geometry');
-                placeholders.push(`ST_Multi(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($${idx}), 4326), ${targetSrid}))`);
+                placeholders.push(`ST_Multi(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($${idx}), ${sourceSrid}), ${targetSrid}))`);
                 params.push(JSON.stringify(data.geometry));
                 idx++;
             }
@@ -1145,19 +1166,19 @@ export default function(pool, logSystemAction) {
                     }
                 }
 
-                const fields = [];
-                const placeholders = [];
-                const params = [];
-                let idx = 1;
+            const fields = [];
+            const placeholders = [];
+            const params = [];
+            let idx = 1;
 
-                const addField = (key, value) => {
-                    if (cols[key]) {
-                        fields.push(`"${cols[key]}"`);
-                        placeholders.push(`$${idx}`);
-                        params.push(value);
-                        idx++;
-                    }
-                };
+            const addField = (key, value) => {
+                if (cols[key] && value !== undefined) {
+                    fields.push(`"${cols[key]}"`);
+                    placeholders.push(`$${idx}`);
+                    params.push(value);
+                    idx++;
+                }
+            };
 
             addField('madinhdanh', parcelCode);
                 addField('sodoto', item.sodoto);
@@ -1169,8 +1190,9 @@ export default function(pool, logSystemAction) {
                 addField('image_url', item.image_url);
 
                 if (item.geometry) {
+                    const sourceSrid = detectGeoJSONSrid(item.geometry);
                     fields.push('geometry');
-                    placeholders.push(`ST_Multi(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($${idx}), 4326), ${targetSrid}))`);
+                    placeholders.push(`ST_Multi(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($${idx}), ${sourceSrid}), ${targetSrid}))`);
                     params.push(JSON.stringify(item.geometry));
                     idx++;
                 }
@@ -1199,7 +1221,7 @@ export default function(pool, logSystemAction) {
             let idx = 1;
 
             const addField = (key, value) => {
-                if (cols[key]) {
+                if (cols[key] && value !== undefined) {
                     updates.push(`"${cols[key]}"=$${idx}`);
                     params.push(value);
                     idx++;
@@ -1224,7 +1246,8 @@ export default function(pool, logSystemAction) {
             addField('image_url', data.image_url);
 
             if (data.geometry) {
-                updates.push(`geometry=ST_Multi(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($${idx}), 4326), ${targetSrid}))`);
+                const sourceSrid = detectGeoJSONSrid(data.geometry);
+                updates.push(`geometry=ST_Multi(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($${idx}), ${sourceSrid}), ${targetSrid}))`);
                 params.push(JSON.stringify(data.geometry));
                 idx++;
             }
@@ -1334,8 +1357,9 @@ export default function(pool, logSystemAction) {
             addField('image_url', data.image_url);
 
             if (geometry) {
+                const sourceSrid = detectGeoJSONSrid(geometry);
                 fields.push('geometry');
-                placeholders.push(`ST_Multi(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($${idx}), 4326), ${targetSrid}))`);
+                placeholders.push(`ST_Multi(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($${idx}), ${sourceSrid}), ${targetSrid}))`);
                 params.push(JSON.stringify(geometry));
                 idx++;
             }
