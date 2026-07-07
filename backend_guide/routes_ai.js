@@ -98,6 +98,19 @@ const getSettingsMap = async (pool) => {
     return Object.fromEntries(res.rows.map(r => [r.key, r.value]));
 };
 
+const getAssistantProfile = (settings = {}, context = {}) => {
+    const name = String(settings.ai_assistant_name || context.assistantName || 'Axis').trim() || 'Axis';
+    const style = String(settings.ai_chat_style || context.chatStyle || 'friendly').trim() || 'friendly';
+    const styleInstructions = {
+        friendly: 'Thân thiện, dễ hiểu, tự nhiên; giải thích vừa đủ và ưu tiên hướng dẫn thao tác rõ ràng.',
+        professional: 'Chuyên nghiệp, chuẩn mực, điềm tĩnh; dùng ngôn ngữ nghiệp vụ đất đai chính xác.',
+        technical: 'Kỹ thuật, chi tiết; nêu rõ dữ liệu, điều kiện lọc, giả định và cách kiểm tra khi phù hợp.',
+        humorous: 'Hài hước nhẹ nhàng, thân thiện; có thể thêm chút dí dỏm nhưng không đùa trong nội dung pháp lý/số liệu.',
+        concise: 'Ngắn gọn, đi thẳng vấn đề; ưu tiên kết quả, thao tác tiếp theo và tránh diễn giải dài.'
+    };
+    return { name, style, styleInstruction: styleInstructions[style] || styleInstructions.friendly };
+};
+
 const callGemini = async ({ apiKey, model, prompt }) => {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-flash-latest'}:generateContent?key=${apiKey}`;
     const response = await fetch(url, {
@@ -128,10 +141,10 @@ const callNineRouter = async ({ apiKey, model, endpoint, prompt }) => {
     return json?.choices?.[0]?.message?.content?.trim() || '';
 };
 
-const fallbackChat = (message = '', context = {}) => {
+const fallbackChat = (message = '', context = {}, profile = getAssistantProfile({}, context)) => {
     const text = String(message || '').toLowerCase();
     const lines = [];
-    lines.push('Tôi là Axis, trợ lý AI của hệ thống WebGIS quản lý đất đai.');
+    lines.push(`Tôi là ${profile.name}, trợ lý AI của hệ thống WebGIS quản lý đất đai.`);
 
     if (text.includes('lịch sử') || text.includes('biến động')) {
         lines.push('Bạn có thể vào Editor hoặc Quản trị → Lịch sử biến động để xem trước/sau, overlay hình thửa và phục hồi biến động.');
@@ -462,6 +475,7 @@ export default function aiRouter(pool, logSystemAction) {
             }
 
             const settings = await getSettingsMap(pool).catch(() => ({}));
+            const assistantProfile = getAssistantProfile(settings, context);
             const intent = extractParcelIntent(message);
             const landPriceIntent = extractLandPriceIntent(message, context);
             const parcels = intent.wantsParcel ? await searchParcelsBySheetParcel(pool, intent).catch(() => []) : [];
@@ -474,7 +488,7 @@ export default function aiRouter(pool, logSystemAction) {
             }
             const dataLookupFallback = buildDataLookupFallback({ intent, parcels, histories });
             const landPriceFallback = buildLandPriceFallback({ intent: landPriceIntent, results: landPrices });
-            const systemPrompt = `Bạn tên là Axis, trợ lý AI tiếng Việt cho hệ thống WebGIS quản lý đất đai QLDDHCM.\n\nPhong cách giao tiếp:\n- Xưng là Axis khi cần, nói tự nhiên, chuyên nghiệp, thân thiện.\n- Trả lời ngắn gọn, rõ ràng, đúng nghiệp vụ đất đai/bản đồ.\n- Không nhắc lộ chi tiết context nội bộ trừ khi người dùng hỏi trực tiếp.\n\nNhiệm vụ:\n- Hướng dẫn người dùng thao tác trong hệ thống: bản đồ, editor, quản trị, lịch sử biến động, bảng giá đất, import/export.\n- Nếu người dùng hỏi dữ liệu cụ thể nhưng chưa có dữ liệu trong context, hãy nói cần dùng chức năng tra cứu/lọc hoặc chọn thửa trên bản đồ.\n- Khi trả lời về bảng giá đất, KHÔNG gợi ý click tuyến đường trên bản đồ. Hãy gợi ý bấm nút xem chi tiết giá đất hoặc mở trang tra cứu giá đất.\n- Không bịa số liệu pháp lý.\n\nContext nội bộ: ${JSON.stringify(context || {})}\n\nLịch sử chat gần đây: ${JSON.stringify((history || []).slice(-8))}\n\nCâu hỏi người dùng: ${message}`;
+            const systemPrompt = `Bạn tên là ${assistantProfile.name}, trợ lý AI tiếng Việt cho hệ thống WebGIS quản lý đất đai QLDDHCM.\n\nPhong cách giao tiếp cấu hình:\n- ${assistantProfile.styleInstruction}\n- Xưng là ${assistantProfile.name} khi cần.\n- Trả lời rõ ràng, đúng nghiệp vụ đất đai/bản đồ.\n- Không nhắc lộ chi tiết context nội bộ trừ khi người dùng hỏi trực tiếp.\n\nNhiệm vụ:\n- Hướng dẫn người dùng thao tác trong hệ thống: bản đồ, editor, quản trị, lịch sử biến động, bảng giá đất, import/export.\n- Nếu người dùng hỏi dữ liệu cụ thể nhưng chưa có dữ liệu trong context, hãy nói cần dùng chức năng tra cứu/lọc hoặc chọn thửa trên bản đồ.\n- Khi trả lời về bảng giá đất, KHÔNG gợi ý click tuyến đường trên bản đồ. Hãy gợi ý bấm nút xem chi tiết giá đất hoặc mở trang tra cứu giá đất.\n- Không bịa số liệu pháp lý.\n\nContext nội bộ: ${JSON.stringify(context || {})}\n\nLịch sử chat gần đây: ${JSON.stringify((history || []).slice(-8))}\n\nCâu hỏi người dùng: ${message}`;
             const enrichedPrompt = `${systemPrompt}\n\nDữ liệu tra cứu thật từ CSDL (nếu có):\n${JSON.stringify({ intent, parcels: parcels.slice(0, 5), histories, landPriceIntent, landPrices }, null, 2)}\n\nNếu có dữ liệu tra cứu thật, hãy ưu tiên trả lời dựa trên dữ liệu này.`;
 
             let reply = '';
@@ -497,11 +511,11 @@ export default function aiRouter(pool, logSystemAction) {
                     provider = 'gemini';
                 }
             } catch (aiError) {
-                reply = `${landPriceFallback || dataLookupFallback || fallbackChat(message, context)}\n\n> Ghi chú: AI cloud lỗi (${aiError.message}), hệ thống đã dùng trả lời nội bộ.`;
+                reply = `${landPriceFallback || dataLookupFallback || fallbackChat(message, context, assistantProfile)}\n\n> Ghi chú: AI cloud lỗi (${aiError.message}), hệ thống đã dùng trả lời nội bộ.`;
                 provider = 'fallback';
             }
 
-            if (!reply) reply = landPriceFallback || dataLookupFallback || fallbackChat(message, context);
+            if (!reply) reply = landPriceFallback || dataLookupFallback || fallbackChat(message, context, assistantProfile);
             await logSystemAction?.(req, 'AI_CHAT', `Người dùng hỏi AI (${provider}): ${String(message).slice(0, 120)}`);
             res.json({
                 status: 'ok',

@@ -545,6 +545,26 @@ const SystemSettingsManager: React.FC<SystemSettingsManagerProps> = ({ permissio
             );
         }
 
+        if (key === 'ai_chat_style') {
+            return (
+                <div className="space-y-2">
+                    <select
+                        className={`w-full bg-gray-900 border rounded p-2.5 text-white outline-none font-medium transition-colors ${dirty ? 'border-yellow-500/60 focus:border-yellow-400' : 'border-gray-600 focus:border-blue-500'}`}
+                        value={setting.value || 'friendly'}
+                        onChange={e => updateSettingValue(key, e.target.value)}
+                    >
+                        <option value="friendly">Thân thiện, dễ hiểu</option>
+                        <option value="professional">Chuyên nghiệp, chuẩn mực</option>
+                        <option value="technical">Kỹ thuật, chi tiết</option>
+                        <option value="humorous">Hài hước nhẹ nhàng</option>
+                        <option value="concise">Ngắn gọn, đi thẳng vấn đề</option>
+                    </select>
+                    <p className="text-[10px] text-gray-500">Phong cách này áp dụng cho khung chat Axis và các câu trả lời AI nghiệp vụ.</p>
+                    {dirty && <p className="text-[10px] text-yellow-500">● Chưa lưu</p>}
+                </div>
+            );
+        }
+
         // Password field with toggle
         if (key === 'mail_pass' || key === 'ocr_gemini_key' || key === 'ocr_9router_key') {
             return (
@@ -729,6 +749,17 @@ const SystemSettingsManager: React.FC<SystemSettingsManagerProps> = ({ permissio
 
                 {subTab === 'AI' && (
                     <div className="space-y-6 animate-in fade-in duration-300">
+                        <div className="text-[11px] font-black uppercase tracking-wider text-emerald-400">Cá nhân hóa trợ lý chat</div>
+                        {['ai_assistant_name', 'ai_chat_style'].map(key => (
+                            <div key={key} className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-gray-700/50 pb-6 last:border-0 last:pb-0">
+                                <div className="col-span-1">
+                                    <label className="text-sm font-bold text-gray-200 block mb-1">{SETTING_METADATA[key]?.label || key}</label>
+                                    <span className="text-xs text-gray-500 italic">{SETTING_METADATA[key]?.description}</span>
+                                </div>
+                                <div className="col-span-2">{renderSettingInput(key)}</div>
+                            </div>
+                        ))}
+
                         <div className="text-[11px] font-black uppercase tracking-wider text-purple-400">Cấu hình Google Gemini API</div>
                         {/* Gemini status card / test interface */}
                         <div className="bg-gray-950/40 p-5 rounded-xl border border-gray-700 space-y-4">

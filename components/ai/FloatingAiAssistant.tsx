@@ -7,6 +7,7 @@ import { User } from '../../types';
 interface FloatingAiAssistantProps {
     user: User | null;
     page: string;
+    systemSettings?: Record<string, string>;
 }
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string; parcels?: any[]; landPrices?: any[] };
@@ -20,14 +21,16 @@ const QUICK_PROMPTS = [
 
 const isZoomRequest = (text: string) => /\b(định\s*vị|dinh\s*vi|zoom|phóng\s*tới|phong\s*toi|tới\s*thửa|toi\s*thua|xem\s*trên\s*bản\s*đồ|xem\s*tren\s*ban\s*do)\b/i.test(text);
 
-const FloatingAiAssistant: React.FC<FloatingAiAssistantProps> = ({ user, page }) => {
+const FloatingAiAssistant: React.FC<FloatingAiAssistantProps> = ({ user, page, systemSettings = {} }) => {
+    const assistantName = (systemSettings.ai_assistant_name || 'Axis').trim() || 'Axis';
+    const chatStyle = systemSettings.ai_chat_style || 'friendly';
     const [open, setOpen] = useState(false);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
     const [showScrollDown, setShowScrollDown] = useState(false);
     const [showQuickPrompts, setShowQuickPrompts] = useState(true);
     const [messages, setMessages] = useState<ChatMessage[]>([
-        { role: 'assistant', content: 'Xin chào, tôi là Axis. Tôi có thể hỗ trợ bạn tra cứu thửa đất, xem lịch sử biến động, chỉnh sửa bản đồ, phân tích dữ liệu và tạo báo cáo.' }
+        { role: 'assistant', content: `Xin chào, tôi là ${assistantName}. Tôi có thể hỗ trợ bạn tra cứu thửa đất, xem lịch sử biến động, chỉnh sửa bản đồ, phân tích dữ liệu và tạo báo cáo.` }
     ]);
     const inputRef = useRef<HTMLInputElement>(null);
     const messagesRef = useRef<HTMLDivElement>(null);
@@ -37,8 +40,10 @@ const FloatingAiAssistant: React.FC<FloatingAiAssistantProps> = ({ user, page })
         page,
         userRole: user?.role,
         userName: user?.name,
+        assistantName,
+        chatStyle,
         timestamp: new Date().toISOString()
-    }), [page, user]);
+    }), [page, user, assistantName, chatStyle]);
 
     const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
         const el = messagesRef.current;
@@ -69,6 +74,13 @@ const FloatingAiAssistant: React.FC<FloatingAiAssistantProps> = ({ user, page })
             setTimeout(() => scrollToBottom('auto'), 50);
         }
     }, [open]);
+
+    useEffect(() => {
+        setMessages(prev => prev.length === 1 && prev[0]?.role === 'assistant'
+            ? [{ ...prev[0], content: `Xin chào, tôi là ${assistantName}. Tôi có thể hỗ trợ bạn tra cứu thửa đất, xem lịch sử biến động, chỉnh sửa bản đồ, phân tích dữ liệu và tạo báo cáo.` }]
+            : prev
+        );
+    }, [assistantName]);
 
     const sendMessage = async (text = input) => {
         const content = text.trim();
@@ -144,7 +156,7 @@ const FloatingAiAssistant: React.FC<FloatingAiAssistantProps> = ({ user, page })
                     title="Axis"
                 >
                     <Sparkles size={18} />
-                    <span className="text-xs font-black uppercase tracking-wider">Axis</span>
+                            <span className="text-xs font-black uppercase tracking-wider">{assistantName}</span>
                 </button>
             )}
 
@@ -156,7 +168,7 @@ const FloatingAiAssistant: React.FC<FloatingAiAssistantProps> = ({ user, page })
                                 <Bot size={17} />
                             </div>
                             <div>
-                                <div className="text-sm font-black">Axis</div>
+                                <div className="text-sm font-black">{assistantName}</div>
                                 <div className="text-[10px] text-purple-300">Trợ lý AI đất đai</div>
                             </div>
                         </div>

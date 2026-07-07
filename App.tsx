@@ -356,7 +356,7 @@ const App: React.FC = () => {
             </Routes>
         </Suspense>
       </main>
-      <FloatingAiAssistant user={user} page={activePage || currentPath} />
+      <FloatingAiAssistant user={user} page={activePage || currentPath} systemSettings={systemSettings} />
     </div>
   );
 };
