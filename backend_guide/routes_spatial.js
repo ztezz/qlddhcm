@@ -7,6 +7,9 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { authenticateToken } from './middleware_auth.js';
 import geohash from 'ngeohash';
+import proj4 from 'proj4';
+
+proj4.defs("EPSG:9210", "+proj=tmerc +lat_0=0 +lon_0=105.75 +k=0.9999 +x_0=500000 +y_0=0 +ellps=WGS84 +towgs84=-191.904,-39.303,-111.450,0,0,0,0 +units=m +no_defs");
 
 // ─── Helper: đảm bảo bảng parcel_history tồn tại ────────────────────────────
 let _parcelHistoryTablePromise = null;
@@ -205,12 +208,37 @@ export default function(pool, logSystemAction) {
             throw new Error('Geometry không hợp lệ.');
         }
         let lon, lat;
-        if (geoJsonGeometry.type === 'Point') {
-            [lon, lat] = geoJsonGeometry.coordinates;
-        } else if (geoJsonGeometry.type === 'Polygon' || geoJsonGeometry.type === 'MultiPolygon') {
-            const coords = geoJsonGeometry.type === 'Polygon'
-                ? geoJsonGeometry.coordinates[0]
-                : geoJsonGeometry.coordinates[0][0];
+        
+        // Tự động nhận diện và chuyển đổi sang WGS-84 nếu geometry đang ở VN-2000
+        let geometryWgs84 = geoJsonGeometry;
+        const sourceSrid = detectGeoJSONSrid(geoJsonGeometry);
+        if (sourceSrid === 9210) {
+            // Nếu là VN-2000, ta dùng proj4 để biến đổi các tọa độ sang WGS-84 (4326) để tính geohash
+            if (geoJsonGeometry.type === 'Point') {
+                const [x, y] = geoJsonGeometry.coordinates;
+                const [wgsLon, wgsLat] = proj4("EPSG:9210", "EPSG:4326", [x, y]);
+                geometryWgs84 = { type: 'Point', coordinates: [wgsLon, wgsLat] };
+            } else if (geoJsonGeometry.type === 'Polygon') {
+                const transformedRings = geoJsonGeometry.coordinates.map(ring => 
+                    ring.map(coord => proj4("EPSG:9210", "EPSG:4326", [coord[0], coord[1]]))
+                );
+                geometryWgs84 = { type: 'Polygon', coordinates: transformedRings };
+            } else if (geoJsonGeometry.type === 'MultiPolygon') {
+                const transformedCoords = geoJsonGeometry.coordinates.map(polygon => 
+                    polygon.map(ring => 
+                        ring.map(coord => proj4("EPSG:9210", "EPSG:4326", [coord[0], coord[1]]))
+                    )
+                );
+                geometryWgs84 = { type: 'MultiPolygon', coordinates: transformedCoords };
+            }
+        }
+
+        if (geometryWgs84.type === 'Point') {
+            [lon, lat] = geometryWgs84.coordinates;
+        } else if (geometryWgs84.type === 'Polygon' || geometryWgs84.type === 'MultiPolygon') {
+            const coords = geometryWgs84.type === 'Polygon'
+                ? geometryWgs84.coordinates[0]
+                : geometryWgs84.coordinates[0][0];
             const centerLon = coords.reduce((sum, c) => sum + c[0], 0) / coords.length;
             const centerLat = coords.reduce((sum, c) => sum + c[1], 0) / coords.length;
             lon = centerLon;

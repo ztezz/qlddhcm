@@ -33,7 +33,77 @@ const uploadDir = process.env.UPLOAD_DIR || (process.platform !== 'win32' && fs.
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 const { Pool } = pg;
-const pool = new Pool({ ...dbConfig, connectionTimeoutMillis: 10000 });
+const connectionErrorCodes = new Set([
+    '57P01', // admin_shutdown
+    '57P02', // crash_shutdown
+    '57P03', // cannot_connect_now
+    '08000', // connection_exception
+    '08003', // connection_does_not_exist
+    '08006', // connection_failure
+    '53300', // too_many_connections
+]);
+const connectionErrorMessages = [
+    'connection terminated',
+    'connection timeout',
+    'connection ended unexpectedly',
+    'terminating connection',
+    'server closed the connection',
+    'client has encountered a connection error',
+    'read econnreset',
+    'write econnreset',
+    'econnrefused',
+    'etimedout',
+    'socket hang up',
+];
+
+const isConnectionError = (error) => {
+    const code = String(error?.code || '').toUpperCase();
+    const message = String(error?.message || '').toLowerCase();
+    return connectionErrorCodes.has(code) || connectionErrorMessages.some((text) => message.includes(text));
+};
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const pool = new Pool({
+    ...dbConfig,
+    connectionTimeoutMillis: Number(process.env.PG_CONNECTION_TIMEOUT_MS || 10000),
+    idleTimeoutMillis: Number(process.env.PG_IDLE_TIMEOUT_MS || 30000),
+    maxLifetimeSeconds: Number(process.env.PG_MAX_LIFETIME_SECONDS || 300),
+    keepAlive: true,
+    keepAliveInitialDelayMillis: Number(process.env.PG_KEEPALIVE_INITIAL_DELAY_MS || 10000),
+});
+
+pool.on('error', (error) => {
+    console.warn('[DB Pool] Idle client error, client will be replaced:', error.message);
+});
+
+const originalPoolQuery = pool.query.bind(pool);
+pool.query = async (...args) => {
+    try {
+        return await originalPoolQuery(...args);
+    } catch (error) {
+        if (!isConnectionError(error)) throw error;
+        console.warn('[DB Pool] Query failed due to connection loss, retrying once:', error.message);
+        await delay(300);
+        return originalPoolQuery(...args);
+    }
+};
+
+const originalPoolConnect = pool.connect.bind(pool);
+pool.connect = async () => {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+        const client = await originalPoolConnect();
+        try {
+            await client.query('SELECT 1');
+            return client;
+        } catch (error) {
+            client.release(true);
+            if (!isConnectionError(error) || attempt === 1) throw error;
+            console.warn('[DB Pool] Dropped stale client, reconnecting:', error.message);
+            await delay(300);
+        }
+    }
+};
 const port = process.env.PORT || (process.env.SPACE_ID ? 7860 : 3004);
 
 // Khởi tạo Express App
@@ -242,7 +312,14 @@ app.get('/', (req, res) => {
     });
 });
 
-app.get('/health', (req, res) => res.json({ status: 'OK', db: 'Connected' }));
+app.get('/health', async (req, res) => {
+    try {
+        await pool.query('SELECT 1');
+        res.json({ status: 'OK', db: 'Connected' });
+    } catch (error) {
+        res.status(503).json({ status: 'ERROR', db: 'Disconnected', message: error.message });
+    }
+});
 
 const server = app.listen(port, '0.0.0.0', () => { 
     console.log(`✅ GeoMaster Enterprise API is alive on port ${port}`); 

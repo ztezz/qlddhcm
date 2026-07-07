@@ -140,8 +140,44 @@ const EditorSidebar: React.FC<EditorSidebarProps> = (props) => {
                             </div>
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-[9px] font-black text-gray-500 uppercase ml-1 flex items-center gap-1"><Tag size={10}/> Loại đất</label>
-                            <input className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-blue-300 outline-none focus:border-blue-500 font-bold uppercase" placeholder="VD: ODT, LNK..." value={props.loaiDat} onChange={e => props.setLoaiDat(e.target.value)} />
+                            <label className="text-[9px] font-black text-gray-500 uppercase ml-1 flex items-center gap-1">
+                                <Tag size={10}/> Loại đất
+                            </label>
+                            <select 
+                                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-blue-300 outline-none focus:border-blue-500 font-bold"
+                                value={['ODT', 'ONT', 'CLN', 'HNK', 'LUC', 'RSX', 'TMD', 'SKC', 'SON', 'DGT', 'DGD'].includes(props.loaiDat.toUpperCase()) ? props.loaiDat.toUpperCase() : 'CUSTOM'}
+                                onChange={e => {
+                                    const val = e.target.value;
+                                    if (val === 'CUSTOM') {
+                                        props.setLoaiDat('');
+                                    } else {
+                                        props.setLoaiDat(val);
+                                    }
+                                }}
+                            >
+                                <option value="" className="text-gray-500">-- Chọn loại đất --</option>
+                                <option value="ODT">ODT - Đất ở tại đô thị</option>
+                                <option value="ONT">ONT - Đất ở tại nông thôn</option>
+                                <option value="CLN">CLN - Đất trồng cây lâu năm</option>
+                                <option value="HNK">HNK - Đất trồng cây hàng năm khác</option>
+                                <option value="LUC">LUC - Đất chuyên trồng lúa nước</option>
+                                <option value="RSX">RSX - Đất rừng sản xuất</option>
+                                <option value="TMD">TMD - Đất thương mại, dịch vụ</option>
+                                <option value="SKC">SKC - Đất sản xuất phi nông nghiệp</option>
+                                <option value="SON">SON - Đất sông, ngòi, kênh, rạch</option>
+                                <option value="DGT">DGT - Đất giao thông</option>
+                                <option value="DGD">DGD - Đất giáo dục và đào tạo</option>
+                                <option value="CUSTOM">Khác (Nhập tay)...</option>
+                            </select>
+                            
+                            {(!['ODT', 'ONT', 'CLN', 'HNK', 'LUC', 'RSX', 'TMD', 'SKC', 'SON', 'DGT', 'DGD'].includes(props.loaiDat.toUpperCase()) || props.loaiDat === '') && (
+                                <input 
+                                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-blue-300 outline-none focus:border-blue-500 font-bold uppercase mt-2 animate-in fade-in slide-in-from-top-1 duration-200" 
+                                    placeholder="Nhập mã loại đất khác..." 
+                                    value={props.loaiDat} 
+                                    onChange={e => props.setLoaiDat(e.target.value.toUpperCase())} 
+                                />
+                            )}
                         </div>
                     </div>
 
