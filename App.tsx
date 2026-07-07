@@ -71,7 +71,14 @@ const hasValidStoredToken = () => {
   if (!token) return false;
 
   try {
-      const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+      const encodedPayload = token.split('.')[1];
+      if (!encodedPayload) return false;
+
+      const base64 = encodedPayload
+          .replace(/-/g, '+')
+          .replace(/_/g, '/')
+          .padEnd(Math.ceil(encodedPayload.length / 4) * 4, '=');
+      const payload = JSON.parse(atob(base64));
       return typeof payload.exp === 'number' && payload.exp * 1000 > Date.now();
   } catch {
       return false;
