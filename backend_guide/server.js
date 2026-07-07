@@ -45,6 +45,7 @@ const connectionErrorCodes = new Set([
 const connectionErrorMessages = [
     'connection terminated',
     'connection timeout',
+    'timeout exceeded when trying to connect',
     'connection ended unexpectedly',
     'terminating connection',
     'server closed the connection',
@@ -90,9 +91,26 @@ pool.query = async (...args) => {
 };
 
 const originalPoolConnect = pool.connect.bind(pool);
-pool.connect = async () => {
+pool.connect = (...args) => {
+    if (typeof args[0] === 'function') {
+        return originalPoolConnect(...args);
+    }
+
+    return connectWithRetry();
+};
+
+const connectWithRetry = async () => {
     for (let attempt = 0; attempt < 2; attempt += 1) {
-        const client = await originalPoolConnect();
+        let client;
+        try {
+            client = await originalPoolConnect();
+        } catch (error) {
+            if (!isConnectionError(error) || attempt === 1) throw error;
+            console.warn('[DB Pool] Connect failed, retrying:', error.message);
+            await delay(300);
+            continue;
+        }
+
         try {
             await client.query('SELECT 1');
             return client;

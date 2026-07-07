@@ -154,24 +154,49 @@ const TABLE_NAME_REGEX = /^[a-z0-9_]+$/;
 const PARCEL_COL_CANDIDATES = {
     sodoto: ['sodoto', 'so_to', 'shbando', 'sh_ban_do', 'tobando', 'to_ban_do'],
     sothua: ['sothua', 'so_thua', 'shthua', 'sh_thua', 'thua_dat'],
+    tenchu: ['tenchu', 'ten_chu', 'chu', 'chu_su_dung', 'chusudung', 'chu_so_huu', 'chusohuu', 'owner', 'owner_name'],
     loaidat: ['loaidat', 'loai_dat', 'kyhieumucd', 'ky_hieu_muc_dich'],
     dientich: ['dientich', 'dien_tich', 'area', 'shape_area'],
     madinhdanh: ['madinhdanh', 'ma_dinh_danh', 'parcel_code']
 };
 
+const normalizeSearchText = (value = '') => String(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+
+const cleanOwnerName = (value = '') => String(value || '')
+    .replace(/^(?:là|la|tên|ten|chủ|chu|chủ\s*sở\s*hữu|chu\s*so\s*huu|chủ\s*sử\s*dụng|chu\s*su\s*dung)\s+/i, '')
+    .replace(/\s+(?:ở|tai|tại|thuộc|thuoc|trong|của|cua)(?:\s|$).*$/i, '')
+    .replace(/[,.]+$/g, '')
+    .trim();
+
 const extractParcelIntent = (message = '') => {
-    const text = String(message).toLowerCase();
+    const raw = String(message || '');
+    const text = raw.toLowerCase();
     const soTo =
-        text.match(/(?:số\s*)?tờ\s*(?:bản\s*đồ)?\s*[:#-]?\s*([\w.-]+)/i)?.[1] ||
-        text.match(/to\s*(?:ban\s*do)?\s*[:#-]?\s*([\w.-]+)/i)?.[1] || '';
+        raw.match(/(?:số\s*)?tờ\s*(?:bản\s*đồ)?\s*(?:số\s*)?[:#-]?\s*([\w.-]+)/i)?.[1] ||
+        raw.match(/to\s*(?:ban\s*do)?\s*(?:so\s*)?[:#-]?\s*([\w.-]+)/i)?.[1] || '';
     const soThua =
-        text.match(/(?:số\s*)?thửa\s*[:#-]?\s*([\w.-]+)/i)?.[1] ||
-        text.match(/thua\s*[:#-]?\s*([\w.-]+)/i)?.[1] || '';
+        raw.match(/(?:số\s*)?thửa\s*(?:số\s*)?[:#-]?\s*([\w.-]+)/i)?.[1] ||
+        raw.match(/thua\s*(?:so\s*)?[:#-]?\s*([\w.-]+)/i)?.[1] || '';
+    const owner = cleanOwnerName(
+        raw.match(/(?:tên\s*chủ|ten\s*chu|chủ\s*sở\s*hữu|chu\s*so\s*huu|chủ\s*sử\s*dụng|chu\s*su\s*dung|chủ|chu)\s+([^,;\n]+?)(?=\s+(?:ở|tai|tại|thuộc|thuoc|tờ|to|số\s*tờ|so\s*to|thửa|thua)(?:\s|$)|$)/i)?.[1] || ''
+    );
+    const madinhdanh = (
+        raw.match(/(?:mã\s*định\s*danh|ma\s*dinh\s*danh|mã\s*thửa|ma\s*thua|parcel\s*(?:code|id))\s*[:#-]?\s*([a-z0-9_.-]+)/i)?.[1] || ''
+    ).replace(/[,.]$/, '');
     return {
         soTo: soTo.replace(/[,.]$/, ''),
         soThua: soThua.replace(/[,.]$/, ''),
+        owner,
+        madinhdanh,
         wantsHistory: /lịch\s*sử|biến\s*động|thay\s*đổi|phục\s*hồi/i.test(text),
-        wantsParcel: /thửa|thua|số\s*tờ|tờ\s*bản\s*đồ|số\s*thửa/i.test(text)
+        wantsParcel: /thửa|thua|số\s*tờ|tờ\s*bản\s*đồ|số\s*thửa|tên\s*chủ|ten\s*chu|chủ\s*sở\s*hữu|chủ\s*sử\s*dụng|mã\s*định\s*danh|ma\s*dinh\s*danh|mã\s*thửa|ma\s*thua|parcel\s*(?:code|id)/i.test(text)
     };
 };
 
@@ -189,21 +214,23 @@ const resolveColumns = async (pool, table) => {
         geometry: lowerMap.geometry || null,
         sodoto: find('sodoto'),
         sothua: find('sothua'),
+        tenchu: find('tenchu'),
         loaidat: find('loaidat'),
         dientich: find('dientich'),
         madinhdanh: find('madinhdanh')
     };
 };
 
-const searchParcelsBySheetParcel = async (pool, { soTo, soThua }) => {
-    if (!soTo && !soThua) return [];
+const searchParcelsBySheetParcel = async (pool, { soTo, soThua, owner, madinhdanh }) => {
+    if (!soTo && !soThua && !owner && !madinhdanh) return [];
     const tables = await getRegisteredTables(pool);
     const results = [];
+    const normalizedOwner = normalizeSearchText(owner);
     for (const tableInfo of tables) {
         if (results.length >= 10) break;
         const table = tableInfo.table_name;
         const cols = await resolveColumns(pool, table);
-        if (!cols.gid || (!cols.sodoto && soTo) || (!cols.sothua && soThua)) continue;
+        if (!cols.gid || (!cols.sodoto && soTo) || (!cols.sothua && soThua) || (!cols.tenchu && owner) || (!cols.madinhdanh && madinhdanh)) continue;
 
         const where = [];
         const params = [];
@@ -216,12 +243,25 @@ const searchParcelsBySheetParcel = async (pool, { soTo, soThua }) => {
             where.push(`"${cols.sothua}"::text ILIKE $${idx++}`);
             params.push(soThua);
         }
+        if (owner && cols.tenchu) {
+            where.push(`(
+                "${cols.tenchu}"::text ILIKE $${idx}
+                OR regexp_replace(replace(lower("${cols.tenchu}"::text), 'đ', 'd'), '[^a-z0-9]+', ' ', 'g') LIKE $${idx + 1}
+            )`);
+            params.push(`%${owner}%`, `%${normalizedOwner}%`);
+            idx += 2;
+        }
+        if (madinhdanh && cols.madinhdanh) {
+            where.push(`"${cols.madinhdanh}"::text ILIKE $${idx++}`);
+            params.push(madinhdanh);
+        }
         if (where.length === 0) continue;
 
         const selectParts = [
             `"${cols.gid}" AS gid`,
             cols.sodoto ? `"${cols.sodoto}" AS sodoto` : `NULL AS sodoto`,
             cols.sothua ? `"${cols.sothua}" AS sothua` : `NULL AS sothua`,
+            cols.tenchu ? `"${cols.tenchu}" AS tenchu` : `NULL AS tenchu`,
             cols.loaidat ? `"${cols.loaidat}" AS loaidat` : `NULL AS loaidat`,
             cols.dientich ? `"${cols.dientich}" AS dientich` : `NULL AS dientich`,
             cols.madinhdanh ? `"${cols.madinhdanh}" AS madinhdanh` : `NULL AS madinhdanh`,
@@ -255,13 +295,13 @@ const getRecentHistoryForParcel = async (pool, table, gid) => {
 };
 
 const buildDataLookupFallback = ({ intent, parcels, histories }) => {
-    if (!intent.wantsParcel || (!intent.soTo && !intent.soThua)) return null;
+    if (!intent.wantsParcel || (!intent.soTo && !intent.soThua && !intent.owner && !intent.madinhdanh)) return null;
     if (parcels.length === 0) {
-        return `Không tìm thấy thửa phù hợp với số tờ "${intent.soTo || '?'}" và số thửa "${intent.soThua || '?'}" trong các bảng dữ liệu đã đăng ký.`;
+        return `Không tìm thấy thửa phù hợp${intent.madinhdanh ? ` với mã định danh "${intent.madinhdanh}"` : ''}${intent.owner ? ` với tên chủ "${intent.owner}"` : ''}${intent.soTo ? `, số tờ "${intent.soTo}"` : ''}${intent.soThua ? `, số thửa "${intent.soThua}"` : ''} trong các bảng dữ liệu đã đăng ký.`;
     }
     const lines = [`Tìm thấy ${parcels.length} thửa phù hợp:`];
     parcels.slice(0, 5).forEach((p, i) => {
-        lines.push(`${i + 1}. Bảng ${p.display_name} (${p.table_name}), GID ${p.gid}: thửa ${p.sothua || '?'} / tờ ${p.sodoto || '?'}, loại đất ${p.loaidat || 'chưa rõ'}, diện tích ${p.dientich || 'chưa rõ'} m².`);
+        lines.push(`${i + 1}. Bảng ${p.display_name} (${p.table_name}), GID ${p.gid}: chủ ${p.tenchu || 'chưa rõ'}, thửa ${p.sothua || '?'} / tờ ${p.sodoto || '?'}, loại đất ${p.loaidat || 'chưa rõ'}, diện tích ${p.dientich || 'chưa rõ'} m².`);
         const h = histories?.[`${p.table_name}:${p.gid}`] || [];
         if (intent.wantsHistory) {
             if (h.length === 0) lines.push(`   - Chưa có lịch sử biến động gần đây.`);
@@ -473,6 +513,7 @@ export default function aiRouter(pool, logSystemAction) {
                     display_name: p.display_name,
                     sodoto: p.sodoto,
                     sothua: p.sothua,
+                    tenchu: p.tenchu,
                     loaidat: p.loaidat,
                     dientich: p.dientich,
                     madinhdanh: p.madinhdanh,
