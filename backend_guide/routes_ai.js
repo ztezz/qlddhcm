@@ -190,26 +190,73 @@ const cleanOwnerName = (value = '') => String(value || '')
 
 const extractParcelIntent = (message = '') => {
     const raw = String(message || '');
-    const text = raw.toLowerCase();
-    const soTo =
+    const text = raw.toLowerCase().trim();
+    
+    // 1. Check standard prefixes first
+    let soTo =
         raw.match(/(?:số\s*)?tờ\s*(?:bản\s*đồ)?\s*(?:số\s*)?[:#-]?\s*([\w.-]+)/i)?.[1] ||
-        raw.match(/to\s*(?:ban\s*do)?\s*(?:so\s*)?[:#-]?\s*([\w.-]+)/i)?.[1] || '';
-    const soThua =
+        raw.match(/\bto\s*(?:ban\s*do)?\s*(?:so\s*)?[:#-]?\s*([\w.-]+)/i)?.[1] || '';
+    let soThua =
         raw.match(/(?:số\s*)?thửa\s*(?:số\s*)?[:#-]?\s*([\w.-]+)/i)?.[1] ||
-        raw.match(/thua\s*(?:so\s*)?[:#-]?\s*([\w.-]+)/i)?.[1] || '';
-    const owner = cleanOwnerName(
+        raw.match(/\bthua\s*(?:so\s*)?[:#-]?\s*([\w.-]+)/i)?.[1] || '';
+    let owner = cleanOwnerName(
         raw.match(/(?:tên\s*chủ|ten\s*chu|chủ\s*sở\s*hữu|chu\s*so\s*huu|chủ\s*sử\s*dụng|chu\s*su\s*dung|chủ|chu)\s+([^,;\n]+?)(?=\s+(?:ở|tai|tại|thuộc|thuoc|tờ|to|số\s*tờ|so\s*to|thửa|thua)(?:\s|$)|$)/i)?.[1] || ''
     );
-    const madinhdanh = (
+    let madinhdanh = (
         raw.match(/(?:mã\s*định\s*danh|ma\s*dinh\s*danh|mã\s*thửa|ma\s*thua|parcel\s*(?:code|id))\s*[:#-]?\s*([a-z0-9_.-]+)/i)?.[1] || ''
     ).replace(/[,.]$/, '');
+
+    // 2. If no standard matches, try pattern "X/Y" or "X-Y" where X and Y are numbers
+    if (!soTo && !soThua) {
+        // e.g., "15/23" or "15-23" or "tờ 15, thửa 23"
+        const slashMatch = text.match(/\b(\d+)\s*[\/\-,\s]\s*(\d+)\b/);
+        if (slashMatch) {
+            soTo = slashMatch[1];
+            soThua = slashMatch[2];
+        } else {
+            // Check if just a single number is typed, e.g. "thửa 123" -> already matched.
+            // But what if they just type "123"? Treat as soThua.
+            const singleNumMatch = text.match(/^\d+$/);
+            if (singleNumMatch) {
+                soThua = singleNumMatch[0];
+            }
+        }
+    }
+
+    // 3. If no owner is matched yet, check if the whole message looks like a person's name
+    if (!owner && !soTo && !soThua && !madinhdanh) {
+        const cleanMsg = raw.replace(/[?.!]/g, '').trim();
+        const words = cleanMsg.split(/\s+/);
+        const isNotCommand = !/^(tìm|tim|tra|xem|bản|bản\s*đồ|tờ|thửa|lịch|biến|bảng|giá|editor|vẽ|chỉnh|xóa|sửa|lỗi|help|báo|bao|cáo|cao|ai|trợ|làm|như|cách)/i.test(cleanMsg);
+        const hasNoNumbers = !/\d/.test(cleanMsg);
+        if (words.length >= 2 && words.length <= 5 && isNotCommand && hasNoNumbers) {
+            owner = cleanMsg;
+        }
+    }
+
+    // 4. If no madinhdanh, but there is a string matching code format (e.g. BD_12345 or similar alphanumeric)
+    if (!madinhdanh && !soTo && !soThua && !owner) {
+        const cleanMsg = raw.replace(/[?.!]/g, '').trim();
+        if (/^[a-z0-9_.-]{5,30}$/i.test(cleanMsg) && /[a-z]/i.test(cleanMsg) && /\d/.test(cleanMsg)) {
+            madinhdanh = cleanMsg;
+        }
+    }
+
+    soTo = soTo.replace(/[,.]$/, '').trim();
+    soThua = soThua.replace(/[,.]$/, '').trim();
+    owner = owner.replace(/[,.]$/, '').trim();
+    madinhdanh = madinhdanh.replace(/[,.]$/, '').trim();
+
+    const wantsParcel = !!(soTo || soThua || owner || madinhdanh) ||
+        /thửa|thua|số\s*tờ|tờ\s*bản\s*đồ|số\s*thửa|tên\s*chủ|ten\s*chu|chủ\s*sở\s*hữu|chủ\s*sử\s*dụng|mã\s*định\s*danh|ma\s*dinh\s*danh|mã\s*thửa|ma\s*thua|parcel\s*(?:code|id)/i.test(text);
+
     return {
-        soTo: soTo.replace(/[,.]$/, ''),
-        soThua: soThua.replace(/[,.]$/, ''),
+        soTo,
+        soThua,
         owner,
         madinhdanh,
         wantsHistory: /lịch\s*sử|biến\s*động|thay\s*đổi|phục\s*hồi/i.test(text),
-        wantsParcel: /thửa|thua|số\s*tờ|tờ\s*bản\s*đồ|số\s*thửa|tên\s*chủ|ten\s*chu|chủ\s*sở\s*hữu|chủ\s*sử\s*dụng|mã\s*định\s*danh|ma\s*dinh\s*danh|mã\s*thửa|ma\s*thua|parcel\s*(?:code|id)/i.test(text)
+        wantsParcel
     };
 };
 
