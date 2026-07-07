@@ -54,6 +54,17 @@ const getApiUrl = () => {
 
 export const API_URL = getApiUrl();
 
+const isAuthSessionError = (status: number, responseData: any) => {
+    const message = String(responseData?.error || responseData?.message || '').toLowerCase();
+    return status === 401 || (
+        status === 403 && (
+            message.includes('session expired') ||
+            message.includes('phiên làm việc hết hạn') ||
+            message.includes('access denied')
+        )
+    );
+};
+
 const getAuthHeaders = () => {
     const headers: any = {};
     const userStr = localStorage.getItem('geo_user');
@@ -87,19 +98,6 @@ const apiCall = async (
         const headers: any = { 'Content-Type': 'application/json', ...getAuthHeaders(), ...options?.headers };
         if (options?.body instanceof FormData) delete headers['Content-Type'];
         const res = await fetch(finalUrl, { ...options, headers });
-        
-        // Handle 401/403 (Token hết hạn hoặc không hợp lệ)
-        if (res.status === 401 || res.status === 403) {
-            if (!endpoint.includes('/login')) { // Tránh loop nếu đang login
-                localStorage.removeItem('geo_token');
-                localStorage.removeItem('geo_user');
-                if (!config?.suppressAuthReload) {
-                    window.location.reload(); // Reload để app đẩy về trang login
-                }
-                throw new Error("Phiên làm việc hết hạn. Vui lòng đăng nhập lại.");
-            }
-        }
-
         const responseText = await res.text();
         let responseData: any = null;
         if (responseText) { 
@@ -108,6 +106,16 @@ const apiCall = async (
             } catch (e) {
                 console.warn(`[API] Failed to parse JSON from ${endpoint}:`, responseText.substring(0, 100));
             } 
+        }
+        
+        // Chỉ đăng xuất khi backend xác nhận token mất/hết hạn. Không coi mọi 403 là hết phiên.
+        if (isAuthSessionError(res.status, responseData) && !endpoint.includes('/login')) {
+            localStorage.removeItem('geo_token');
+            localStorage.removeItem('geo_user');
+            if (!config?.suppressAuthReload) {
+                window.location.reload();
+            }
+            throw new Error("Phiên làm việc hết hạn. Vui lòng đăng nhập lại.");
         }
         
         if (!res.ok) {

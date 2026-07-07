@@ -61,6 +61,23 @@ const REVERSE_PATH_MAPPING: Record<string, string> = Object.entries(PATH_MAPPING
 
 const KNOWN_PATHS = Object.values(PATH_MAPPING);
 
+const clearStoredSession = () => {
+  localStorage.removeItem('geo_token');
+  localStorage.removeItem('geo_user');
+};
+
+const hasValidStoredToken = () => {
+  const token = localStorage.getItem('geo_token');
+  if (!token) return false;
+
+  try {
+      const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+      return typeof payload.exp === 'number' && payload.exp * 1000 > Date.now();
+  } catch {
+      return false;
+  }
+};
+
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [showLogin, setShowLogin] = useState(false);
@@ -106,8 +123,12 @@ const App: React.FC = () => {
               
               const savedUser = localStorage.getItem('geo_user');
               if (savedUser && savedUser !== 'undefined' && savedUser !== 'null') {
+                  if (!hasValidStoredToken()) {
+                      clearStoredSession();
+                      return { settingsMap, user: null };
+                  }
                   let localUser: any;
-                  try { localUser = JSON.parse(savedUser); } catch { localStorage.removeItem('geo_user'); return { settingsMap, user: null }; }
+                  try { localUser = JSON.parse(savedUser); } catch { clearStoredSession(); return { settingsMap, user: null }; }
                   try {
                       const freshUser = await authService.getProfile(localUser.id);
                       if (freshUser) return { settingsMap, user: { ...localUser, ...freshUser } };
@@ -197,7 +218,7 @@ const App: React.FC = () => {
 
   const handleLogout = () => {
     setUser(null);
-    localStorage.removeItem('geo_user');
+    clearStoredSession();
     setIsSidebarCollapsed(true);
     navigate('/');
   };

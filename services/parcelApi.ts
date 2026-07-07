@@ -70,6 +70,17 @@ export interface ParcelListResponse {
     pages: number;
 }
 
+const isAuthSessionError = (status: number, responseData: any) => {
+    const message = String(responseData?.error || responseData?.message || '').toLowerCase();
+    return status === 401 || (
+        status === 403 && (
+            message.includes('session expired') ||
+            message.includes('phiên làm việc hết hạn') ||
+            message.includes('access denied')
+        )
+    );
+};
+
 const getAuthHeaders = () => {
     const headers: any = { 'Content-Type': 'application/json' };
     const userStr = localStorage.getItem('geo_user');
@@ -92,19 +103,19 @@ const getAuthHeaders = () => {
 };
 
 const handleResponse = async (res: Response) => {
-    // Handle 401/403
-    if (res.status === 401 || res.status === 403) {
+    const responseText = await res.text();
+    let responseData: any = null;
+    if (responseText) {
+        try { responseData = JSON.parse(responseText); } catch (e) {}
+    }
+
+    if (isAuthSessionError(res.status, responseData)) {
         localStorage.removeItem('geo_token');
         localStorage.removeItem('geo_user');
         window.location.reload();
         throw new Error("Phiên làm việc hết hạn. Vui lòng đăng nhập lại.");
     }
 
-    const responseText = await res.text();
-    let responseData: any = null;
-    if (responseText) {
-        try { responseData = JSON.parse(responseText); } catch (e) {}
-    }
     if (!res.ok) {
         let message = `Lỗi API (${res.status})`;
         if (responseData && (responseData.error || responseData.message)) {
@@ -351,7 +362,7 @@ export const parcelApi = {
                         }
                     }
 
-                    if (xhr.status === 401 || xhr.status === 403) {
+                    if (isAuthSessionError(xhr.status, responseData)) {
                         localStorage.removeItem('geo_token');
                         localStorage.removeItem('geo_user');
                         window.location.reload();
