@@ -1,5 +1,5 @@
-import React, { useMemo, useRef, useState } from 'react';
-import { Bot, Send, X, Loader2, Sparkles, Minimize2 } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Bot, Send, X, Loader2, Sparkles, Minimize2, ChevronDown, EyeOff, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { aiApi } from '../../services/aiApi';
 import { User } from '../../types';
@@ -18,14 +18,19 @@ const QUICK_PROMPTS = [
     'Cách chỉnh sửa thửa trong Editor?'
 ];
 
+const isZoomRequest = (text: string) => /\b(định\s*vị|dinh\s*vi|zoom|phóng\s*tới|phong\s*toi|tới\s*thửa|toi\s*thua|xem\s*trên\s*bản\s*đồ|xem\s*tren\s*ban\s*do)\b/i.test(text);
+
 const FloatingAiAssistant: React.FC<FloatingAiAssistantProps> = ({ user, page }) => {
     const [open, setOpen] = useState(false);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showScrollDown, setShowScrollDown] = useState(false);
+    const [showQuickPrompts, setShowQuickPrompts] = useState(true);
     const [messages, setMessages] = useState<ChatMessage[]>([
         { role: 'assistant', content: 'Xin chào, tôi là Axis. Tôi có thể hỗ trợ bạn tra cứu thửa đất, xem lịch sử biến động, chỉnh sửa bản đồ, phân tích dữ liệu và tạo báo cáo.' }
     ]);
     const inputRef = useRef<HTMLInputElement>(null);
+    const messagesRef = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
 
     const context = useMemo(() => ({
@@ -35,12 +40,61 @@ const FloatingAiAssistant: React.FC<FloatingAiAssistantProps> = ({ user, page })
         timestamp: new Date().toISOString()
     }), [page, user]);
 
+    const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+        const el = messagesRef.current;
+        if (!el) return;
+        el.scrollTo({ top: el.scrollHeight, behavior });
+    };
+
+    const updateScrollDownState = () => {
+        const el = messagesRef.current;
+        if (!el) return;
+        const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+        setShowScrollDown(distanceFromBottom > 120);
+    };
+
+    useEffect(() => {
+        const el = messagesRef.current;
+        if (!el) return;
+        const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+        if (distanceFromBottom < 180) {
+            scrollToBottom('smooth');
+        } else {
+            setShowScrollDown(true);
+        }
+    }, [messages, loading]);
+
+    useEffect(() => {
+        if (open) {
+            setTimeout(() => scrollToBottom('auto'), 50);
+        }
+    }, [open]);
+
     const sendMessage = async (text = input) => {
         const content = text.trim();
         if (!content || loading) return;
         setInput('');
         const nextMessages: ChatMessage[] = [...messages, { role: 'user', content }];
         setMessages(nextMessages);
+
+        if (isZoomRequest(content)) {
+            const latestParcel = [...messages]
+                .reverse()
+                .flatMap(m => m.parcels || [])
+                .find(p => p?.geometry);
+
+            if (latestParcel) {
+                zoomParcel(latestParcel);
+                setMessages([...nextMessages, {
+                    role: 'assistant',
+                    content: `Axis đã định vị thửa ${latestParcel.sothua || '?'} / tờ ${latestParcel.sodoto || '?'} trên bản đồ.`,
+                    parcels: [latestParcel]
+                }]);
+                setTimeout(() => inputRef.current?.focus(), 50);
+                return;
+            }
+        }
+
         setLoading(true);
         try {
             const result = await aiApi.chat({
@@ -61,6 +115,15 @@ const FloatingAiAssistant: React.FC<FloatingAiAssistantProps> = ({ user, page })
         sessionStorage.setItem('ai_editor_parcel', JSON.stringify(parcel));
         navigate('/chinhsuabanve');
         setOpen(false);
+    };
+
+    const zoomParcel = (parcel: any) => {
+        if (page !== 'map') {
+            navigate('/');
+            setTimeout(() => window.dispatchEvent(new CustomEvent('ai:zoom-parcel', { detail: parcel })), 150);
+            return;
+        }
+        window.dispatchEvent(new CustomEvent('ai:zoom-parcel', { detail: parcel }));
     };
 
     const openLandPriceDetail = (row: any) => {
@@ -107,9 +170,10 @@ const FloatingAiAssistant: React.FC<FloatingAiAssistantProps> = ({ user, page })
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar bg-slate-950">
-                        {messages.map((m, idx) => (
-                            <div key={idx} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className="relative flex-1 min-h-0 bg-slate-950">
+                        <div ref={messagesRef} onScroll={updateScrollDownState} className="h-full overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                            {messages.map((m, idx) => (
+                                <div key={idx} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`max-w-[86%] rounded-2xl px-3 py-2 text-xs leading-relaxed whitespace-pre-wrap ${m.role === 'user'
                                     ? 'bg-blue-600 text-white rounded-br-sm'
                                     : 'bg-slate-800 text-slate-100 border border-slate-700 rounded-bl-sm'
@@ -120,7 +184,7 @@ const FloatingAiAssistant: React.FC<FloatingAiAssistantProps> = ({ user, page })
                                             {m.parcels.slice(0, 3).map((p, i) => (
                                                 <div key={`${p.table_name}-${p.gid}-${i}`} className="space-y-1.5">
                                                     <button
-                                                        onClick={() => window.dispatchEvent(new CustomEvent('ai:zoom-parcel', { detail: p }))}
+                                                        onClick={() => zoomParcel(p)}
                                                         className="w-full text-left rounded-lg border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 px-2 py-1.5 text-[10px] text-purple-100 transition-colors"
                                                     >
                                                         Zoom tới thửa {p.sothua || '?'} / tờ {p.sodoto || '?'}
@@ -155,30 +219,55 @@ const FloatingAiAssistant: React.FC<FloatingAiAssistantProps> = ({ user, page })
                                         </div>
                                     )}
                                 </div>
-                            </div>
-                        ))}
-                        {loading && (
-                            <div className="flex justify-start">
-                                <div className="bg-slate-800 border border-slate-700 rounded-2xl rounded-bl-sm px-3 py-2 text-xs text-slate-300 flex items-center gap-2">
-                                    <Loader2 size={13} className="animate-spin" /> Đang suy nghĩ...
                                 </div>
-                            </div>
+                            ))}
+                            {loading && (
+                                <div className="flex justify-start">
+                                    <div className="bg-slate-800 border border-slate-700 rounded-2xl rounded-bl-sm px-3 py-2 text-xs text-slate-300 flex items-center gap-2">
+                                        <Loader2 size={13} className="animate-spin" /> Đang suy nghĩ...
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {showScrollDown && (
+                            <button
+                                onClick={() => scrollToBottom('smooth')}
+                                className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 rounded-full border border-purple-400/40 bg-purple-600/95 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-white shadow-xl shadow-purple-950/40 backdrop-blur transition-all hover:bg-purple-500 active:scale-95"
+                                title="Xuống cuối hội thoại"
+                            >
+                                <ChevronDown size={13} /> Cuối chat
+                            </button>
                         )}
                     </div>
 
                     <div className="shrink-0 p-3 border-t border-slate-800 bg-slate-900/80 space-y-2">
-                        <div className="flex flex-wrap gap-1.5">
-                            {QUICK_PROMPTS.map(p => (
-                                <button
-                                    key={p}
-                                    onClick={() => sendMessage(p)}
-                                    disabled={loading}
-                                    className="text-[10px] px-2 py-1 rounded-full bg-slate-800 hover:bg-purple-900/50 text-slate-300 border border-slate-700 hover:border-purple-500/40 transition-colors disabled:opacity-40"
-                                >
-                                    {p}
-                                </button>
-                            ))}
+                        <div className="flex items-center justify-between gap-2">
+                            <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Đề xuất</span>
+                            <button
+                                type="button"
+                                onClick={() => setShowQuickPrompts(v => !v)}
+                                className="flex items-center gap-1 rounded-full border border-slate-700 bg-slate-950/70 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-slate-400 transition-colors hover:border-purple-500/40 hover:text-purple-200"
+                                title={showQuickPrompts ? 'Ẩn đề xuất' : 'Hiện đề xuất'}
+                            >
+                                {showQuickPrompts ? <EyeOff size={11} /> : <Eye size={11} />}
+                                {showQuickPrompts ? 'Ẩn' : 'Hiện'}
+                            </button>
                         </div>
+                        {showQuickPrompts && (
+                            <div className="flex flex-wrap gap-1.5">
+                                {QUICK_PROMPTS.map(p => (
+                                    <button
+                                        key={p}
+                                        onClick={() => sendMessage(p)}
+                                        disabled={loading}
+                                        className="text-[10px] px-2 py-1 rounded-full bg-slate-800 hover:bg-purple-900/50 text-slate-300 border border-slate-700 hover:border-purple-500/40 transition-colors disabled:opacity-40"
+                                    >
+                                        {p}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                         <div className="flex items-center gap-2">
                             <input
                                 ref={inputRef}
