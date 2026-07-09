@@ -411,12 +411,16 @@ export default function(pool, logSystemAction) {
             const response = await fetch(url, {
                 method: 'POST',
                 headers: { 
+                    'Accept': 'application/json',
                     'Content-Type': 'application/json',
+                    'User-Agent': 'QLDDHCM-Axis/1.0',
                     'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({
                     model: model,
                     messages: [{ role: 'user', content: 'Ping' }],
+                    temperature: 0.2,
+                    max_tokens: 120,
                     stream: false
                 })
             });

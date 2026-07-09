@@ -128,15 +128,36 @@ const callNineRouter = async ({ apiKey, model, endpoint, prompt }) => {
     if (!url.endsWith('/chat/completions')) url += url.endsWith('/') ? 'chat/completions' : '/chat/completions';
     const response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'User-Agent': 'QLDDHCM-Axis/1.0',
+            Authorization: `Bearer ${apiKey}`
+        },
         body: JSON.stringify({
             model: model || '9router/google/gemini-1.5-flash',
             messages: [{ role: 'user', content: prompt }],
+            temperature: 0.2,
+            max_tokens: 1200,
             stream: false
         })
     });
     const text = await response.text();
     if (!response.ok) throw new Error(`9router HTTP ${response.status}: ${text.slice(0, 200)}`);
+    if (text.includes('data:')) {
+        let reply = '';
+        for (const line of text.split('\n')) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith('data:')) continue;
+            const data = trimmed.slice(5).trim();
+            if (!data || data === '[DONE]') continue;
+            try {
+                const chunk = JSON.parse(data);
+                reply += chunk?.choices?.[0]?.delta?.content || chunk?.choices?.[0]?.message?.content || '';
+            } catch (_) {}
+        }
+        return reply.trim();
+    }
     const json = JSON.parse(text);
     return json?.choices?.[0]?.message?.content?.trim() || '';
 };
@@ -146,7 +167,9 @@ const fallbackChat = (message = '', context = {}, profile = getAssistantProfile(
     const lines = [];
     lines.push(`Tôi là ${profile.name}, trợ lý AI của hệ thống WebGIS quản lý đất đai.`);
 
-    if (text.includes('lịch sử') || text.includes('biến động')) {
+    if (isGreetingMessage(message)) {
+        lines.push('Chào bạn, chúc bạn một ngày làm việc hiệu quả. Bạn cần tôi hỗ trợ tra cứu thửa đất, giá đất, bản đồ hay hướng dẫn thao tác nào?');
+    } else if (text.includes('lịch sử') || text.includes('biến động')) {
         lines.push('Bạn có thể vào Editor hoặc Quản trị → Lịch sử biến động để xem trước/sau, overlay hình thửa và phục hồi biến động.');
     } else if (text.includes('thửa') || text.includes('số tờ') || text.includes('số thửa')) {
         lines.push('Bạn có thể dùng chức năng Tra cứu thửa đất theo số tờ/số thửa, hoặc dùng bản đồ để chọn thửa rồi xem thuộc tính.');
@@ -182,6 +205,13 @@ const normalizeSearchText = (value = '') => String(value)
     .replace(/[^a-z0-9]+/g, ' ')
     .trim();
 
+const isGreetingMessage = (value = '') => {
+    const text = normalizeSearchText(value);
+    if (!text) return false;
+    return /^(xin chao|chao|hello|hi|hey|alo|good morning|good afternoon|good evening)(\s|$)/i.test(text) ||
+        /^(buoi sang|sang|trua|chieu|toi) vui ve$/i.test(text);
+};
+
 const cleanOwnerName = (value = '') => String(value || '')
     .replace(/^(?:là|la|tên|ten|chủ|chu|chủ\s*sở\s*hữu|chu\s*so\s*huu|chủ\s*sử\s*dụng|chu\s*su\s*dung)\s+/i, '')
     .replace(/\s+(?:ở|tai|tại|thuộc|thuoc|trong|của|cua)(?:\s|$).*$/i, '')
@@ -191,6 +221,16 @@ const cleanOwnerName = (value = '') => String(value || '')
 const extractParcelIntent = (message = '') => {
     const raw = String(message || '');
     const text = raw.toLowerCase().trim();
+    if (isGreetingMessage(raw)) {
+        return {
+            soTo: '',
+            soThua: '',
+            owner: '',
+            madinhdanh: '',
+            wantsHistory: false,
+            wantsParcel: false
+        };
+    }
     
     // 1. Check standard prefixes first
     let soTo =
@@ -470,6 +510,45 @@ const buildLandPriceFallback = ({ intent, results }) => {
     return lines.join('\n');
 };
 
+const callConfiguredAI = async (settings = {}, prompt = '') => {
+    const providers = [];
+    if (settings.ocr_use_9router === 'true' && settings.ocr_9router_key) {
+        providers.push({
+            name: '9router',
+            call: () => callNineRouter({
+                apiKey: settings.ocr_9router_key,
+                model: settings.ocr_9router_model,
+                endpoint: settings.ocr_9router_endpoint,
+                prompt
+            })
+        });
+    }
+    if (settings.ocr_use_gemini === 'true' && settings.ocr_gemini_key) {
+        providers.push({
+            name: 'gemini',
+            call: () => callGemini({
+                apiKey: settings.ocr_gemini_key,
+                model: settings.ocr_gemini_model,
+                prompt
+            })
+        });
+    }
+
+    const errors = [];
+    for (const provider of providers) {
+        try {
+            const content = await provider.call();
+            if (content) return { content, provider: provider.name };
+            errors.push(`${provider.name}: phản hồi rỗng`);
+        } catch (e) {
+            errors.push(`${provider.name}: ${e.message}`);
+        }
+    }
+
+    if (errors.length > 0) throw new Error(errors.join('; '));
+    return { content: '', provider: 'fallback' };
+};
+
 export default function aiRouter(pool, logSystemAction) {
     const router = express.Router();
 
@@ -485,22 +564,9 @@ export default function aiRouter(pool, logSystemAction) {
             let analysis = '';
             let provider = 'fallback';
             try {
-                if (settings.ocr_use_9router === 'true' && settings.ocr_9router_key) {
-                    analysis = await callNineRouter({
-                        apiKey: settings.ocr_9router_key,
-                        model: settings.ocr_9router_model,
-                        endpoint: settings.ocr_9router_endpoint,
-                        prompt
-                    });
-                    provider = '9router';
-                } else if (settings.ocr_use_gemini === 'true' && settings.ocr_gemini_key) {
-                    analysis = await callGemini({
-                        apiKey: settings.ocr_gemini_key,
-                        model: settings.ocr_gemini_model,
-                        prompt
-                    });
-                    provider = 'gemini';
-                }
+                const aiResult = await callConfiguredAI(settings, prompt);
+                analysis = aiResult.content;
+                provider = aiResult.provider;
             } catch (aiError) {
                 analysis = `${fallback}\n\n> Ghi chú: AI cloud lỗi (${aiError.message}), hệ thống đã dùng phân tích nội bộ.`;
                 provider = 'fallback';
@@ -541,22 +607,9 @@ export default function aiRouter(pool, logSystemAction) {
             let reply = '';
             let provider = 'fallback';
             try {
-                if (settings.ocr_use_9router === 'true' && settings.ocr_9router_key) {
-                    reply = await callNineRouter({
-                        apiKey: settings.ocr_9router_key,
-                        model: settings.ocr_9router_model,
-                        endpoint: settings.ocr_9router_endpoint,
-                        prompt: enrichedPrompt
-                    });
-                    provider = '9router';
-                } else if (settings.ocr_use_gemini === 'true' && settings.ocr_gemini_key) {
-                    reply = await callGemini({
-                        apiKey: settings.ocr_gemini_key,
-                        model: settings.ocr_gemini_model,
-                        prompt: enrichedPrompt
-                    });
-                    provider = 'gemini';
-                }
+                const aiResult = await callConfiguredAI(settings, enrichedPrompt);
+                reply = aiResult.content;
+                provider = aiResult.provider;
             } catch (aiError) {
                 reply = `${landPriceFallback || dataLookupFallback || fallbackChat(message, context, assistantProfile)}\n\n> Ghi chú: AI cloud lỗi (${aiError.message}), hệ thống đã dùng trả lời nội bộ.`;
                 provider = 'fallback';
@@ -602,22 +655,9 @@ export default function aiRouter(pool, logSystemAction) {
             let analysis = '';
             let provider = 'fallback';
             try {
-                if (settings.ocr_use_9router === 'true' && settings.ocr_9router_key) {
-                    analysis = await callNineRouter({
-                        apiKey: settings.ocr_9router_key,
-                        model: settings.ocr_9router_model,
-                        endpoint: settings.ocr_9router_endpoint,
-                        prompt
-                    });
-                    provider = '9router';
-                } else if (settings.ocr_use_gemini === 'true' && settings.ocr_gemini_key) {
-                    analysis = await callGemini({
-                        apiKey: settings.ocr_gemini_key,
-                        model: settings.ocr_gemini_model,
-                        prompt
-                    });
-                    provider = 'gemini';
-                }
+                const aiResult = await callConfiguredAI(settings, prompt);
+                analysis = aiResult.content;
+                provider = aiResult.provider;
             } catch (aiError) {
                 analysis = `${fallback}\n\n> Ghi chú: AI cloud lỗi (${aiError.message}), hệ thống đã dùng kiểm tra nội bộ.`;
                 provider = 'fallback';
