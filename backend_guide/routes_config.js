@@ -408,26 +408,36 @@ export default function(pool, logSystemAction) {
                 }
             }
             
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'User-Agent': 'QLDDHCM-Axis/1.0',
-                    'Authorization': `Bearer ${apiKey}`
-                },
-                body: JSON.stringify({
-                    model: model,
-                    messages: [{ role: 'user', content: 'Ping' }],
-                    temperature: 0.2,
-                    max_tokens: 120,
-                    stream: false
-                })
+            const body = JSON.stringify({
+                model: model,
+                messages: [{ role: 'user', content: 'Ping' }],
+                temperature: 0.2,
+                max_tokens: 120,
+                stream: false
             });
+
+            let response;
+            let resText = '';
+            for (let attempt = 1; attempt <= 3; attempt += 1) {
+                response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'QLDDHCM-Axis/1.0',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body
+                });
+                resText = await response.text();
+                if (!response.ok && [429, 502, 503, 504].includes(response.status) && attempt < 3) {
+                    await new Promise(resolve => setTimeout(resolve, attempt * 1200));
+                    continue;
+                }
+                break;
+            }
             
-            const resText = await response.text();
-            
-            if (response.ok) {
+            if (response?.ok) {
                 let reply = '';
                 if (resText.includes('data:')) {
                     const lines = resText.split('\n');
@@ -457,7 +467,7 @@ export default function(pool, logSystemAction) {
                     const json = JSON.parse(resText);
                     errMsg = json?.error?.message || errMsg;
                 } catch (e) {}
-                res.status(400).json({ error: `Lỗi HTTP ${response.status}: ${errMsg}` });
+                res.status(400).json({ error: `Lỗi HTTP ${response?.status}: ${errMsg}` });
             }
         } catch (e) {
             res.status(500).json({ error: `Lỗi kết nối tới 9router: ${e.message}` });
