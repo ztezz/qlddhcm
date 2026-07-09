@@ -124,26 +124,38 @@ const callGemini = async ({ apiKey, model, prompt }) => {
 };
 
 const callNineRouter = async ({ apiKey, model, endpoint, prompt }) => {
-    let url = endpoint || 'https://thzi-chinraoto.hf.space/v1';
+    let url = String(endpoint || 'https://thzi-chinraoto.hf.space/v1').trim();
     if (!url.endsWith('/chat/completions')) url += url.endsWith('/') ? 'chat/completions' : '/chat/completions';
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'User-Agent': 'QLDDHCM-Axis/1.0',
-            Authorization: `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-            model: model || '9router/google/gemini-1.5-flash',
-            messages: [{ role: 'user', content: prompt }],
-            temperature: 0.2,
-            max_tokens: 1200,
-            stream: false
-        })
+    const body = JSON.stringify({
+        model: model || '9router/google/gemini-1.5-flash',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.2,
+        max_tokens: 1200,
+        stream: false
     });
-    const text = await response.text();
-    if (!response.ok) throw new Error(`9router HTTP ${response.status}: ${text.slice(0, 200)}`);
+
+    let response;
+    let text = '';
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+        response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'User-Agent': 'QLDDHCM-Axis/1.0',
+                Authorization: `Bearer ${apiKey}`
+            },
+            body
+        });
+        text = await response.text();
+        if (!response.ok && [429, 502, 503, 504].includes(response.status) && attempt < 3) {
+            await new Promise(resolve => setTimeout(resolve, attempt * 1200));
+            continue;
+        }
+        break;
+    }
+
+    if (!response?.ok) throw new Error(`9router HTTP ${response?.status}: ${text.slice(0, 200)}`);
     if (text.includes('data:')) {
         let reply = '';
         for (const line of text.split('\n')) {
