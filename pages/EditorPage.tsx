@@ -1108,7 +1108,10 @@ const EditorPage: React.FC<{ user: User | null }> = ({ user }) => {
     };
 
     const handleExportGeoJSON = () => {
-        exportFeaturesGeoJson(editSource.current.getFeatures());
+        const dataProjection = coordSystem === 'VN2000'
+            ? registerDynamicVn2000(centralMeridian, projectionZone)
+            : 'EPSG:4326';
+        exportFeaturesGeoJson(editSource.current.getFeatures(), dataProjection);
     };
 
     const handleExportShpZip = async () => {

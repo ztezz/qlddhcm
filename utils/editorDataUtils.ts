@@ -120,14 +120,14 @@ export const exportCoordsTxt = (vertices: EditorVertex[], coordSystem: EditorCoo
     anchor.click();
 };
 
-const featuresToGeoJson = (features: Feature[]) => new GeoJSON().writeFeaturesObject(features, {
-    dataProjection: 'EPSG:4326',
+const featuresToGeoJson = (features: Feature[], dataProjection = 'EPSG:4326') => new GeoJSON().writeFeaturesObject(features, {
+    dataProjection,
     featureProjection: 'EPSG:3857'
 }) as any;
 
-export const exportFeaturesGeoJson = (features: Feature[]) => {
+export const exportFeaturesGeoJson = (features: Feature[], dataProjection = 'EPSG:4326') => {
     if (features.length === 0) return;
-    exportGeoJsonFile(featuresToGeoJson(features), `GeoMaster_${Date.now()}.geojson`);
+    exportGeoJsonFile(featuresToGeoJson(features, dataProjection), `GeoMaster_${Date.now()}.geojson`);
 };
 
 export const exportFeaturesShpZip = async (features: Feature[]) => {
